@@ -68,12 +68,14 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUserRole(userId: number, roleId: number): Promise<User>;
   hasPermission(userId: number, permissionName: string, forumId?: number): Promise<boolean>;
+  getOrCreateAPIUser(forumId: number): Promise<User>;
 
   // Category methods
   getCategory(id: number): Promise<Category | undefined>;
   getCategoryBySlug(slug: string): Promise<Category | undefined>;
   getAllCategories(): Promise<Category[]>;
   createCategory(category: InsertCategory): Promise<Category>;
+  getCategoriesByForum(forumId: number): Promise<Category[]>;
 
   // Question methods
   getQuestion(id: number): Promise<Question | undefined>;
@@ -82,12 +84,17 @@ export interface IStorage {
   getAllQuestionsWithDetails(): Promise<QuestionWithDetails[]>;
   createQuestion(question: InsertQuestion): Promise<Question>;
   incrementQuestionViews(id: number): Promise<void>;
+  getQuestionsForForum(forumId: number, limit?: number, categoryId?: number): Promise<QuestionWithDetails[]>;
+  getPopularQuestionsForForum(forumId: number, sortBy?: string, limit?: number, categoryId?: number, timeFrame?: number): Promise<QuestionWithDetails[]>;
+  searchQuestionsInForum(forumId: number, query: string, limit?: number, categoryId?: number): Promise<QuestionWithDetails[]>;
+  countQuestionsByForum(forumId: number): Promise<number>;
 
   // Answer methods
   getAnswer(id: number): Promise<Answer | undefined>;
   getAnswerWithDetails(id: number): Promise<AnswerWithDetails | undefined>;
   getAnswersForQuestion(questionId: number): Promise<AnswerWithDetails[]>;
   createAnswer(answer: InsertAnswer): Promise<Answer>;
+  countAnswersByForum(forumId: number): Promise<number>;
 
   // Vote methods
   getVote(id: number): Promise<Vote | undefined>;
@@ -1403,6 +1410,32 @@ export class MemStorage implements IStorage {
     }
     return undefined;
   }
+  
+  async getOrCreateAPIUser(forumId: number): Promise<User> {
+    // First, check if an API user for this forum already exists
+    for (const user of this.usersStore.values()) {
+      if (user.isAI && user.username.startsWith(`api_forum_${forumId}_`)) {
+        return user;
+      }
+    }
+    
+    // If not found, create a new API user
+    const apiUserName = `api_forum_${forumId}_${Date.now()}`;
+    const apiUser = await this.createUser({
+      username: apiUserName,
+      email: `api_${apiUserName}@formai.app`,
+      password: `api_${Math.random().toString(36).substring(2, 15)}`,
+      displayName: `API User (Forum ${forumId})`,
+      isAI: true,
+      isAdmin: false,
+      status: 'active'
+    });
+    
+    // Assign appropriate role if needed
+    // This would depend on your role system
+    
+    return apiUser;
+  }
 
   async createUser(user: InsertUser): Promise<User> {
     const id = this.userId++;
@@ -1874,6 +1907,217 @@ export class MemStorage implements IStorage {
   async getAllForums(): Promise<Forum[]> {
     return Array.from(this.forumsStore.values());
   }
+  
+  async countQuestionsByForum(forumId: number): Promise<number> {
+    let count = 0;
+    for (const question of this.questionsStore.values()) {
+      // We need to find questions associated with this forum
+      // In a real implementation, questions would have forumId directly
+      // Here we're getting categories for the forum and checking if the question belongs to them
+      const categories = await this.getCategoriesByForum(forumId);
+      const categoryIds = categories.map(c => c.id);
+      if (categoryIds.includes(question.categoryId)) {
+        count++;
+      }
+    }
+    return count;
+  }
+  
+  async countAnswersByForum(forumId: number): Promise<number> {
+    let count = 0;
+    for (const answer of this.answersStore.values()) {
+      const question = this.questionsStore.get(answer.questionId);
+      if (question) {
+        // Same approach as countQuestionsByForum
+        const categories = await this.getCategoriesByForum(forumId);
+        const categoryIds = categories.map(c => c.id);
+        if (categoryIds.includes(question.categoryId)) {
+          count++;
+        }
+      }
+    }
+    return count;
+  }
+  
+  async getCategoriesByForum(forumId: number): Promise<Category[]> {
+    // In this simplified implementation, we assume that each forum has a set of categories
+    // In a real implementation, categories would have forumId
+    // For now, we'll use a simple rule based on IDs to simulate forum-category relationship
+    return Array.from(this.categoriesStore.values()).filter(category => 
+      category.id % 10 === forumId % 10
+    );
+  }
+  
+  async getQuestionsForForum(forumId: number, limit: number = 10, categoryId?: number): Promise<QuestionWithDetails[]> {
+    const categories = categoryId 
+      ? [await this.getCategory(categoryId)].filter(Boolean) as Category[]
+      : await this.getCategoriesByForum(forumId);
+    
+    const categoryIds = categories.map(c => c.id);
+    
+    const questions = Array.from(this.questionsStore.values())
+      .filter(q => categoryIds.includes(q.categoryId))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, limit);
+    
+    // Enrich with user and category information
+    return Promise.all(questions.map(async q => {
+      const user = await this.getUser(q.userId);
+      const category = await this.getCategory(q.categoryId);
+      
+      if (!user || !category) {
+        throw new Error(`Missing user or category for question ${q.id}`);
+      }
+      
+      // Count answers
+      let answerCount = 0;
+      for (const answer of this.answersStore.values()) {
+        if (answer.questionId === q.id) {
+          answerCount++;
+        }
+      }
+      
+      return {
+        ...q,
+        user,
+        category,
+        answers: answerCount
+      };
+    }));
+  }
+  
+  async getPopularQuestionsForForum(
+    forumId: number, 
+    sortBy: 'views' | 'answers' = 'views', 
+    limit: number = 10,
+    categoryId?: number,
+    timeFrame?: number
+  ): Promise<QuestionWithDetails[]> {
+    const categories = categoryId 
+      ? [await this.getCategory(categoryId)].filter(Boolean) as Category[]
+      : await this.getCategoriesByForum(forumId);
+    
+    const categoryIds = categories.map(c => c.id);
+    
+    // Filter by time frame if specified
+    let questions = Array.from(this.questionsStore.values())
+      .filter(q => categoryIds.includes(q.categoryId));
+    
+    if (timeFrame) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - timeFrame);
+      questions = questions.filter(q => new Date(q.createdAt).getTime() > cutoffDate.getTime());
+    }
+    
+    // Enrich with user, category, and answer counts
+    const questionsWithDetails = await Promise.all(questions.map(async q => {
+      const user = await this.getUser(q.userId);
+      const category = await this.getCategory(q.categoryId);
+      
+      if (!user || !category) {
+        throw new Error(`Missing user or category for question ${q.id}`);
+      }
+      
+      // Count answers
+      let answerCount = 0;
+      for (const answer of this.answersStore.values()) {
+        if (answer.questionId === q.id) {
+          answerCount++;
+        }
+      }
+      
+      return {
+        ...q,
+        user,
+        category,
+        answers: answerCount
+      };
+    }));
+    
+    // Sort by the specified criteria
+    if (sortBy === 'views') {
+      questionsWithDetails.sort((a, b) => (b.views || 0) - (a.views || 0));
+    } else {
+      questionsWithDetails.sort((a, b) => b.answers - a.answers);
+    }
+    
+    return questionsWithDetails.slice(0, limit);
+  }
+  
+  async searchQuestionsInForum(
+    forumId: number,
+    query: string,
+    limit: number = 20,
+    categoryId?: number
+  ): Promise<QuestionWithDetails[]> {
+    const categories = categoryId 
+      ? [await this.getCategory(categoryId)].filter(Boolean) as Category[]
+      : await this.getCategoriesByForum(forumId);
+    
+    const categoryIds = categories.map(c => c.id);
+    
+    // Simple search implementation for demo purposes
+    const lowerQuery = query.toLowerCase();
+    const matchingQuestions = Array.from(this.questionsStore.values())
+      .filter(q => 
+        categoryIds.includes(q.categoryId) && 
+        (q.title.toLowerCase().includes(lowerQuery) || 
+         q.content.toLowerCase().includes(lowerQuery))
+      );
+    
+    // Enrich with user, category, and answer counts
+    const questionsWithDetails = await Promise.all(matchingQuestions.map(async q => {
+      const user = await this.getUser(q.userId);
+      const category = await this.getCategory(q.categoryId);
+      
+      if (!user || !category) {
+        throw new Error(`Missing user or category for question ${q.id}`);
+      }
+      
+      // Count answers
+      let answerCount = 0;
+      for (const answer of this.answersStore.values()) {
+        if (answer.questionId === q.id) {
+          answerCount++;
+        }
+      }
+      
+      return {
+        ...q,
+        user,
+        category,
+        answers: answerCount
+      };
+    }));
+    
+    // Sort by relevance (simple implementation)
+    questionsWithDetails.sort((a, b) => {
+      const aTitle = a.title.toLowerCase().includes(lowerQuery);
+      const bTitle = b.title.toLowerCase().includes(lowerQuery);
+      
+      if (aTitle && !bTitle) return -1;
+      if (!aTitle && bTitle) return 1;
+      
+      // If both titles match or don't match, sort by recency
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    
+    return questionsWithDetails.slice(0, limit);
+  }
+  
+  async checkSameForumOwner(questionId: number, forumId: number): Promise<boolean> {
+    const question = await this.getQuestion(questionId);
+    if (!question) return false;
+    
+    const questionCategory = await this.getCategory(question.categoryId);
+    if (!questionCategory) return false;
+    
+    // In our simplified model, we check if categories are related to the same forum
+    const forumCategories = await this.getCategoriesByForum(forumId);
+    const forumCategoryIds = forumCategories.map(c => c.id);
+    
+    return forumCategoryIds.includes(questionCategory.id);
+  }
 
   async getForumsByUser(userId: number): Promise<ForumWithStats[]> {
     const userForums = Array.from(this.forumsStore.values())
@@ -2089,6 +2333,44 @@ export class MemStorage implements IStorage {
         this.leadSubmissionsStore.set(id, updatedSubmission);
       }
     }
+  }
+  
+  // Lead Form View Tracking methods
+  async recordLeadFormView(view: InsertLeadFormView): Promise<LeadFormView> {
+    return this.createLeadFormView(view);
+  }
+  
+  async createLeadFormView(view: InsertLeadFormView): Promise<LeadFormView> {
+    const id = this.leadFormViewId++;
+    const newView: LeadFormView = {
+      ...view,
+      id,
+      createdAt: new Date(),
+      referrer: view.referrer || null,
+      userAgent: view.userAgent || null,
+      ipAddress: view.ipAddress || null,
+      isConversion: view.isConversion || false
+    };
+    this.leadFormViewsStore.set(id, newView);
+    return newView;
+  }
+  
+  async getLeadFormStats(formId: number): Promise<{ views: number; submissions: number; conversionRate: number }> {
+    const views = Array.from(this.leadFormViewsStore.values()).filter(
+      view => view.formId === formId && !view.isConversion
+    ).length;
+    
+    const conversions = Array.from(this.leadFormViewsStore.values()).filter(
+      view => view.formId === formId && view.isConversion
+    ).length;
+    
+    const conversionRate = views > 0 ? (conversions / views) * 100 : 0;
+    
+    return {
+      views,
+      submissions: conversions,
+      conversionRate
+    };
   }
 
   // Gated Content methods
