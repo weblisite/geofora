@@ -53,6 +53,24 @@ export async function initDatabase(): Promise<void> {
     // Instead of using the drizzle-kit push command, we'll return early and let the ORM handle the tables
     // This is a simpler approach for development and avoids issues with child processes
     
+    // Create a default forum if none exists
+    try {
+      const defaultForum = await db.select().from(forums).limit(1);
+      if (!defaultForum.length) {
+        await db.insert(forums).values({
+          name: 'Default Forum',
+          slug: 'default',
+          userId: 1,
+          settings: {},
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+        log('Default forum created');
+      }
+    } catch (error: any) {
+      log(`Error creating default forum: ${error.message}`);
+    }
+    
     log('Database initialized - tables will be managed by Drizzle ORM');
     return;
   } catch (error: any) {
