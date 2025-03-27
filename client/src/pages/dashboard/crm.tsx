@@ -486,8 +486,8 @@ export default function CrmIntegrationsPage() {
           <p className="text-gray-400">Connect your lead capture forms to external CRM systems</p>
         </div>
 
-        <div className="flex mb-6">
-          <div className="mr-4 w-64">
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="w-full sm:w-64">
             <Select
               value={selectedForumId?.toString() || ""}
               onValueChange={(value) => setSelectedForumId(parseInt(value))}
@@ -515,7 +515,7 @@ export default function CrmIntegrationsPage() {
           <Button
             onClick={() => setIsCreateModalOpen(true)}
             disabled={!selectedForumId}
-            className="flex items-center"
+            className="flex items-center justify-center"
           >
             <Plus className="mr-2 h-4 w-4" /> Add CRM Integration
           </Button>
@@ -533,71 +533,76 @@ export default function CrmIntegrationsPage() {
                 <span>Loading integrations...</span>
               </div>
             ) : crmIntegrations?.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Provider</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Last Synced</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {crmIntegrations.map((integration: CrmIntegration) => (
-                    <TableRow key={integration.id}>
-                      <TableCell>
-                        <div className="font-medium">{integration.provider.charAt(0).toUpperCase() + integration.provider.slice(1)}</div>
-                        <div className="text-xs text-gray-500">
-                          {integration.provider === "webhooks" || integration.provider === "zapier"
-                            ? integration.webhookUrl
-                            : integration.provider === "salesforce"
-                            ? "Connected via API"
-                            : integration.listId
-                            ? `List ID: ${integration.listId}`
-                            : "API Connected"}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {integration.isActive ? (
-                          <Badge className="bg-green-500/20 text-green-500 hover:bg-green-500/30">Active</Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-gray-500/10 text-gray-400 hover:bg-gray-500/20">Inactive</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {integration.lastSyncedAt ? (
-                          formatDate(integration.lastSyncedAt)
-                        ) : (
-                          <span className="text-gray-400 text-sm">Never</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{formatDate(integration.createdAt)}</TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setCurrentIntegration(integration);
-                              setIsEditModalOpen(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(integration.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[150px]">Provider</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="hidden sm:table-cell">Last Synced</TableHead>
+                      <TableHead className="hidden sm:table-cell">Created</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {crmIntegrations.map((integration: CrmIntegration) => (
+                      <TableRow key={integration.id}>
+                        <TableCell>
+                          <div className="font-medium">{integration.provider.charAt(0).toUpperCase() + integration.provider.slice(1)}</div>
+                          <div className="text-xs text-gray-500 truncate max-w-[150px]">
+                            {integration.provider === "webhooks" || integration.provider === "zapier"
+                              ? integration.webhookUrl
+                              : integration.provider === "salesforce"
+                              ? "Connected via API"
+                              : integration.listId
+                              ? `List ID: ${integration.listId}`
+                              : "API Connected"}
+                          </div>
+                          <div className="text-xs text-gray-500 sm:hidden">
+                            {!integration.lastSyncedAt ? 'Never synced' : `Synced: ${formatDate(integration.lastSyncedAt)}`}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {integration.isActive ? (
+                            <Badge className="bg-green-500/20 text-green-500 hover:bg-green-500/30">Active</Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-gray-500/10 text-gray-400 hover:bg-gray-500/20">Inactive</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          {integration.lastSyncedAt ? (
+                            formatDate(integration.lastSyncedAt)
+                          ) : (
+                            <span className="text-gray-400 text-sm">Never</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">{formatDate(integration.createdAt)}</TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setCurrentIntegration(integration);
+                                setIsEditModalOpen(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(integration.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             ) : selectedForumId ? (
               <div className="text-center py-12">
                 <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4 opacity-20" />

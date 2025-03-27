@@ -373,8 +373,8 @@ export default function LeadCapturePage() {
           <p className="text-gray-400">Create and manage lead capture forms and view submissions</p>
         </div>
 
-        <div className="flex mb-6">
-          <div className="mr-4 w-64">
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="w-full sm:w-64">
             <Select
               value={selectedForumId?.toString() || ""}
               onValueChange={(value) => setSelectedForumId(parseInt(value))}
@@ -402,15 +402,15 @@ export default function LeadCapturePage() {
           <Button
             onClick={() => setIsCreateModalOpen(true)}
             disabled={!selectedForumId}
-            className="flex items-center"
+            className="flex items-center justify-center"
           >
             <Plus className="mr-2 h-4 w-4" /> Create Lead Form
           </Button>
         </div>
 
-        <div className="grid grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           {/* Left sidebar - list of forms */}
-          <div className="col-span-3">
+          <div className="col-span-1 md:col-span-3">
             <Card>
               <CardHeader>
                 <CardTitle>Lead Forms</CardTitle>
@@ -469,7 +469,7 @@ export default function LeadCapturePage() {
           </div>
 
           {/* Right content - form details */}
-          <div className="col-span-9">
+          <div className="col-span-1 md:col-span-9">
             {selectedFormId ? (
               <Card>
                 <CardHeader>
@@ -516,7 +516,7 @@ export default function LeadCapturePage() {
                         </div>
                       ) : (
                         <div className="space-y-6">
-                          <div className="grid grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                             <Card>
                               <CardHeader className="pb-2">
                                 <CardDescription>Views</CardDescription>
@@ -571,7 +571,7 @@ export default function LeadCapturePage() {
                           <div>
                             <h3 className="text-lg font-medium mb-2">Form Settings</h3>
                             <div className="space-y-2">
-                              <div className="grid grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                   <span className="text-gray-400">Submit Button Text:</span>
                                   <p>{formStats?.submitButtonText || "Submit"}</p>
@@ -622,60 +622,70 @@ export default function LeadCapturePage() {
                           </div>
 
                           {submissions?.length > 0 ? (
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Email</TableHead>
-                                  <TableHead>Name</TableHead>
-                                  <TableHead>Date</TableHead>
-                                  <TableHead>Data</TableHead>
-                                  <TableHead>Status</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {submissions.map((submission: LeadSubmission) => (
-                                  <TableRow key={submission.id}>
-                                    <TableCell className="font-medium">{submission.email}</TableCell>
-                                    <TableCell>
-                                      {`${submission.firstName || ""} ${submission.lastName || ""}`.trim() ||
-                                        "N/A"}
-                                    </TableCell>
-                                    <TableCell>{formatDate(submission.createdAt)}</TableCell>
-                                    <TableCell>
-                                      <Dialog>
-                                        <DialogTrigger asChild>
-                                          <Button variant="ghost" size="sm">
-                                            View Data
-                                          </Button>
-                                        </DialogTrigger>
-                                        <DialogContent>
-                                          <DialogHeader>
-                                            <DialogTitle>Submission Data</DialogTitle>
-                                          </DialogHeader>
-                                          <div className="space-y-2">
-                                            {Object.entries(parseFormData(submission.formData)).map(
-                                              ([key, value]) => (
-                                                <div key={key}>
-                                                  <span className="font-medium">{key}: </span>
-                                                  <span>{String(value)}</span>
-                                                </div>
-                                              )
-                                            )}
-                                          </div>
-                                        </DialogContent>
-                                      </Dialog>
-                                    </TableCell>
-                                    <TableCell>
-                                      {submission.isExported ? (
-                                        <span className="text-green-500">Exported</span>
-                                      ) : (
-                                        <span className="text-yellow-500">New</span>
-                                      )}
-                                    </TableCell>
+                            <div className="overflow-x-auto">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Email</TableHead>
+                                    <TableHead className="hidden sm:table-cell">Name</TableHead>
+                                    <TableHead className="hidden md:table-cell">Date</TableHead>
+                                    <TableHead>Data</TableHead>
+                                    <TableHead>Status</TableHead>
                                   </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
+                                </TableHeader>
+                                <TableBody>
+                                  {submissions.map((submission: LeadSubmission) => (
+                                    <TableRow key={submission.id}>
+                                      <TableCell className="font-medium">
+                                        <div>{submission.email}</div>
+                                        <div className="text-xs text-gray-500 sm:hidden">
+                                          {`${submission.firstName || ""} ${submission.lastName || ""}`.trim() || "N/A"}
+                                        </div>
+                                        <div className="text-xs text-gray-500 md:hidden">
+                                          {formatDate(submission.createdAt)}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="hidden sm:table-cell">
+                                        {`${submission.firstName || ""} ${submission.lastName || ""}`.trim() ||
+                                          "N/A"}
+                                      </TableCell>
+                                      <TableCell className="hidden md:table-cell">{formatDate(submission.createdAt)}</TableCell>
+                                      <TableCell>
+                                        <Dialog>
+                                          <DialogTrigger asChild>
+                                            <Button variant="ghost" size="sm">
+                                              View Data
+                                            </Button>
+                                          </DialogTrigger>
+                                          <DialogContent>
+                                            <DialogHeader>
+                                              <DialogTitle>Submission Data</DialogTitle>
+                                            </DialogHeader>
+                                            <div className="space-y-2">
+                                              {Object.entries(parseFormData(submission.formData)).map(
+                                                ([key, value]) => (
+                                                  <div key={key}>
+                                                    <span className="font-medium">{key}: </span>
+                                                    <span>{String(value)}</span>
+                                                  </div>
+                                                )
+                                              )}
+                                            </div>
+                                          </DialogContent>
+                                        </Dialog>
+                                      </TableCell>
+                                      <TableCell>
+                                        {submission.isExported ? (
+                                          <span className="text-green-500">Exported</span>
+                                        ) : (
+                                          <span className="text-yellow-500">New</span>
+                                        )}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
                           ) : (
                             <div className="text-center py-8 text-gray-400">
                               <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
