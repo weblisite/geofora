@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Glassmorphism } from "@/components/ui/glassmorphism";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Globe, Edit, Server } from "lucide-react";
+import { Plus, Trash2, Globe, Edit, Server, Type, Palette, Link } from "lucide-react";
 
 type Forum = {
   id: number;
@@ -21,6 +21,11 @@ type Forum = {
   subdomain?: string; 
   customDomain?: string;
   themeColor: string;
+  primaryFont: string;
+  secondaryFont: string;
+  headingFontSize: string;
+  bodyFontSize: string;
+  mainWebsiteUrl?: string;
   isPublic: boolean;
   requiresApproval: boolean;
   createdAt: string;
@@ -43,6 +48,11 @@ export default function ForumManagementPage() {
     slug: "",
     description: "",
     themeColor: "#3B82F6",
+    primaryFont: "Inter",
+    secondaryFont: "Roboto",
+    headingFontSize: "1.5rem",
+    bodyFontSize: "1rem",
+    mainWebsiteUrl: "",
     isPublic: true,
     requiresApproval: false
   });
@@ -187,6 +197,11 @@ export default function ForumManagementPage() {
       slug: "",
       description: "",
       themeColor: "#3B82F6",
+      primaryFont: "Inter",
+      secondaryFont: "Roboto",
+      headingFontSize: "1.5rem",
+      bodyFontSize: "1rem",
+      mainWebsiteUrl: "",
       isPublic: true,
       requiresApproval: false
     });
@@ -200,6 +215,11 @@ export default function ForumManagementPage() {
       slug: forum.slug,
       description: forum.description,
       themeColor: forum.themeColor,
+      primaryFont: forum.primaryFont || "Inter",
+      secondaryFont: forum.secondaryFont || "Roboto",
+      headingFontSize: forum.headingFontSize || "1.5rem",
+      bodyFontSize: forum.bodyFontSize || "1rem",
+      mainWebsiteUrl: forum.mainWebsiteUrl || "",
       isPublic: forum.isPublic,
       requiresApproval: forum.requiresApproval
     });
@@ -251,6 +271,11 @@ export default function ForumManagementPage() {
       description: "Forum for discussing technology topics and trends",
       subdomain: "tech",
       themeColor: "#3B82F6",
+      primaryFont: "Inter",
+      secondaryFont: "Roboto",
+      headingFontSize: "1.5rem",
+      bodyFontSize: "1rem",
+      mainWebsiteUrl: "https://techblog.example.com",
       isPublic: true,
       requiresApproval: false,
       createdAt: "2023-05-15T10:30:00Z",
@@ -263,6 +288,11 @@ export default function ForumManagementPage() {
       slug: "health-wellness",
       description: "Discussions about health, fitness, and wellbeing",
       themeColor: "#10B981",
+      primaryFont: "Poppins",
+      secondaryFont: "Open Sans",
+      headingFontSize: "1.75rem",
+      bodyFontSize: "1.125rem",
+      mainWebsiteUrl: "https://healthblog.example.com",
       isPublic: true,
       requiresApproval: true,
       createdAt: "2023-06-20T14:15:00Z",
@@ -340,7 +370,69 @@ export default function ForumManagementPage() {
             />
           </div>
         </div>
+
+        <h3 className="text-lg font-medium pt-4 pb-1">Branding & Typography</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="primaryFont">Primary Font</Label>
+            <Input 
+              id="primaryFont" 
+              name="primaryFont" 
+              value={formData.primaryFont} 
+              onChange={handleInputChange} 
+              placeholder="Inter"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="secondaryFont">Secondary Font</Label>
+            <Input 
+              id="secondaryFont" 
+              name="secondaryFont" 
+              value={formData.secondaryFont} 
+              onChange={handleInputChange} 
+              placeholder="Roboto"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="headingFontSize">Heading Font Size</Label>
+            <Input 
+              id="headingFontSize" 
+              name="headingFontSize" 
+              value={formData.headingFontSize} 
+              onChange={handleInputChange} 
+              placeholder="1.5rem"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="bodyFontSize">Body Font Size</Label>
+            <Input 
+              id="bodyFontSize" 
+              name="bodyFontSize" 
+              value={formData.bodyFontSize} 
+              onChange={handleInputChange} 
+              placeholder="1rem"
+            />
+          </div>
+        </div>
         
+        <div className="space-y-2">
+          <Label htmlFor="mainWebsiteUrl">Main Website URL (for keyword scraping)</Label>
+          <Input 
+            id="mainWebsiteUrl" 
+            name="mainWebsiteUrl" 
+            value={formData.mainWebsiteUrl} 
+            onChange={handleInputChange} 
+            placeholder="https://example.com"
+          />
+          <p className="text-xs text-gray-400">
+            We'll analyze your main website to generate relevant forum content and SEO optimizations
+          </p>
+        </div>
+        
+        <h3 className="text-lg font-medium pt-4 pb-1">Forum Settings</h3>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Switch 
@@ -461,6 +553,26 @@ export default function ForumManagementPage() {
               </Badge>
             </div>
             <p className="text-gray-400 mb-4">{forum.description}</p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 mb-4 text-sm text-gray-400">
+              <div className="flex items-center gap-2">
+                <Type className="w-4 h-4 opacity-60" />
+                <span>{forum.primaryFont || "Inter"}</span>
+                <span className="mx-1">/</span>
+                <span>{forum.secondaryFont || "Roboto"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Palette className="w-4 h-4 opacity-60" />
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: forum.themeColor }}></div>
+                <span>{forum.themeColor}</span>
+              </div>
+              {forum.mainWebsiteUrl && (
+                <div className="flex items-center gap-2 col-span-2">
+                  <Link className="w-4 h-4 opacity-60" />
+                  <span className="truncate">{forum.mainWebsiteUrl}</span>
+                </div>
+              )}
+            </div>
             
             <div className="flex flex-wrap gap-2 text-sm">
               <Badge variant="outline" className="flex items-center gap-1">
