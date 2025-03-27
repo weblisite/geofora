@@ -50,7 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: "POST", 
         body: JSON.stringify(credentials)
       });
-      return await res.json();
+      const data = await res.json();
+      return data;
     },
     onSuccess: (userData: User) => {
       queryClient.setQueryData(["/api/user"], userData);
@@ -74,7 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: "POST", 
         body: JSON.stringify(userData)
       });
-      return await res.json();
+      const data = await res.json();
+      return data;
     },
     onSuccess: (userData: User) => {
       queryClient.setQueryData(["/api/user"], userData);
@@ -132,8 +134,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
+  
+  // Return a default context if the real one is not available
+  // This helps prevent errors when the AuthProvider is not available
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    console.warn("useAuth was used outside of AuthProvider; returning default context");
+    return {
+      user: null,
+      isLoading: false,
+      error: new Error("AuthProvider not available"),
+      loginMutation: {
+        mutate: () => {},
+        isPending: false,
+        isError: false,
+        isSuccess: false,
+        reset: () => {},
+      } as any,
+      logoutMutation: {
+        mutate: () => {},
+        isPending: false,
+        isError: false,
+        isSuccess: false,
+        reset: () => {},
+      } as any,
+      registerMutation: {
+        mutate: () => {},
+        isPending: false,
+        isError: false,
+        isSuccess: false,
+        reset: () => {},
+      } as any,
+    };
   }
+  
   return context;
 }

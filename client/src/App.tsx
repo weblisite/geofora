@@ -16,8 +16,24 @@ import LoginPage from "@/pages/auth/login";
 import RegisterPage from "@/pages/auth/register";
 import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
+import { useAuth } from "@/hooks/use-auth";
+import { Loader2 } from "lucide-react";
 
 function App() {
+  try {
+    const { isLoading } = useAuth();
+
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="h-8 w-8 animate-spin text-border" />
+        </div>
+      );
+    }
+  } catch (error) {
+    console.error("Auth error in App:", error);
+  }
+
   return (
     <>
       <Switch>

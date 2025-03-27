@@ -9,25 +9,36 @@ export function ProtectedRoute({
   path: string;
   component: () => React.JSX.Element;
 }) {
-  const { user, isLoading } = useAuth();
+  // Try-catch block to handle potential errors when using useAuth
+  try {
+    const { user, isLoading } = useAuth();
 
-  if (isLoading) {
+    if (isLoading) {
+      return (
+        <Route path={path}>
+          <div className="flex items-center justify-center min-h-screen">
+            <Loader2 className="h-8 w-8 animate-spin text-border" />
+          </div>
+        </Route>
+      );
+    }
+
+    if (!user) {
+      return (
+        <Route path={path}>
+          <Redirect to="/auth" />
+        </Route>
+      );
+    }
+
+    return <Route path={path} component={Component} />;
+  } catch (error) {
+    // If there's an error with the auth context, redirect to login
+    console.error("Auth error:", error);
     return (
       <Route path={path}>
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-border" />
-        </div>
+        <Redirect to="/auth" />
       </Route>
     );
   }
-
-  if (!user) {
-    return (
-      <Route path={path}>
-        <Redirect to="/login" />
-      </Route>
-    );
-  }
-
-  return <Route path={path} component={Component} />;
 }

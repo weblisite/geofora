@@ -262,7 +262,9 @@ export default function AnalyticsPage() {
     queryKey: ["/api/analytics/conversion-funnel", timePeriod, selectedForumId],
     queryFn: async () => {
       const forumParam = selectedForumId ? `&forumId=${selectedForumId}` : "";
-      const res = await apiRequest("GET", `/api/analytics/conversion-funnel?period=${timePeriod}${forumParam}`);
+      const res = await apiRequest(`/api/analytics/conversion-funnel?period=${timePeriod}${forumParam}`, {
+        method: "GET"
+      });
       return await res.json();
     },
   });
@@ -272,7 +274,9 @@ export default function AnalyticsPage() {
     queryKey: ["/api/analytics/referral-traffic", timePeriod, selectedForumId],
     queryFn: async () => {
       const forumParam = selectedForumId ? `&forumId=${selectedForumId}` : "";
-      const res = await apiRequest("GET", `/api/analytics/referral-traffic?period=${timePeriod}${forumParam}`);
+      const res = await apiRequest(`/api/analytics/referral-traffic?period=${timePeriod}${forumParam}`, {
+        method: "GET"
+      });
       return await res.json();
     },
   });
@@ -282,7 +286,9 @@ export default function AnalyticsPage() {
     queryKey: ["/api/analytics/device-distribution", timePeriod, selectedForumId],
     queryFn: async () => {
       const forumParam = selectedForumId ? `&forumId=${selectedForumId}` : "";
-      const res = await apiRequest("GET", `/api/analytics/device-distribution?period=${timePeriod}${forumParam}`);
+      const res = await apiRequest(`/api/analytics/device-distribution?period=${timePeriod}${forumParam}`, {
+        method: "GET"
+      });
       return await res.json();
     },
   });
@@ -292,7 +298,9 @@ export default function AnalyticsPage() {
     queryKey: ["/api/analytics/geographic-data", timePeriod, selectedForumId],
     queryFn: async () => {
       const forumParam = selectedForumId ? `&forumId=${selectedForumId}` : "";
-      const res = await apiRequest("GET", `/api/analytics/geographic-data?period=${timePeriod}${forumParam}`);
+      const res = await apiRequest(`/api/analytics/geographic-data?period=${timePeriod}${forumParam}`, {
+        method: "GET"
+      });
       return await res.json();
     },
   });
@@ -302,7 +310,9 @@ export default function AnalyticsPage() {
     queryKey: ["/api/analytics/lead-capture-stats", timePeriod, selectedForumId],
     queryFn: async () => {
       const forumParam = selectedForumId ? `&forumId=${selectedForumId}` : "";
-      const res = await apiRequest("GET", `/api/analytics/lead-capture-stats?period=${timePeriod}${forumParam}`);
+      const res = await apiRequest(`/api/analytics/lead-capture-stats?period=${timePeriod}${forumParam}`, {
+        method: "GET"
+      });
       return await res.json();
     },
   });

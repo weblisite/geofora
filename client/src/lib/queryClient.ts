@@ -10,7 +10,7 @@ async function throwIfResNotOk(res: Response) {
 export async function apiRequest(
   url: string,
   options?: RequestInit,
-): Promise<any> {
+): Promise<Response> {
   const res = await fetch(url, {
     method: options?.method || 'GET',
     headers: {
@@ -22,11 +22,7 @@ export async function apiRequest(
   });
 
   await throwIfResNotOk(res);
-  try {
-    return await res.json();
-  } catch (e) {
-    return res;
-  }
+  return res;
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
