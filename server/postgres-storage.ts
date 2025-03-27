@@ -698,4 +698,115 @@ export class PostgresStorage implements IStorage {
     
     return await query.orderBy(desc(analyticsEvents.timestamp));
   }
+
+  // Implementation for required analytics methods
+  async createAnalyticsEvent(event: InsertAnalyticsEvent): Promise<AnalyticsEvent> {
+    const [result] = await db.insert(analyticsEvents).values(event).returning();
+    return result;
+  }
+
+  async getAnalyticsEventsByForum(forumId: number, eventType?: string, startDate?: string, endDate?: string): Promise<AnalyticsEvent[]> {
+    let query = db.select().from(analyticsEvents).where(eq(analyticsEvents.forumId, forumId));
+    
+    if (eventType) {
+      query = query.where(eq(analyticsEvents.eventType, eventType));
+    }
+    
+    if (startDate) {
+      const startDateTime = new Date(startDate);
+      query = query.where(gte(analyticsEvents.timestamp, startDateTime));
+    }
+    
+    if (endDate) {
+      const endDateTime = new Date(endDate);
+      query = query.where(lte(analyticsEvents.timestamp, endDateTime));
+    }
+    
+    return await query;
+  }
+
+  async getEventCountsByType(forumId: number, days: number = 30): Promise<{ eventType: string, count: number }[]> {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    const result = await db
+      .select({
+        eventType: analyticsEvents.eventType,
+        count: sql<number>`count(*)::int`
+      })
+      .from(analyticsEvents)
+      .where(
+        and(
+          eq(analyticsEvents.forumId, forumId),
+          gte(analyticsEvents.timestamp, startDate)
+        )
+      )
+      .groupBy(analyticsEvents.eventType);
+    
+    return result;
+  }
+
+  async getPopularEventTargets(forumId: number, eventType?: string, limit: number = 10): Promise<{ targetId: string, targetType: string, count: number }[]> {
+    let query = db
+      .select({
+        targetId: analyticsEvents.eventLabel,
+        targetType: analyticsEvents.eventCategory,
+        count: sql<number>`count(*)::int`
+      })
+      .from(analyticsEvents)
+      .where(eq(analyticsEvents.forumId, forumId));
+    
+    if (eventType) {
+      query = query.where(eq(analyticsEvents.eventType, eventType));
+    }
+    
+    const result = await query
+      .groupBy(analyticsEvents.eventLabel, analyticsEvents.eventCategory)
+      .orderBy(desc(sql`count(*)`))
+      .limit(limit);
+    
+    return result.map(item => ({
+      targetId: item.targetId || '',
+      targetType: item.targetType || '',
+      count: item.count
+    }));
+  }
+  
+  async trackAnalyticsEvent(eventData: InsertAnalyticsEvent): Promise<AnalyticsEvent> {
+    // Reuse the existing createAnalyticsEvent method
+    return this.createAnalyticsEvent(eventData);
+  }
+
+  async getUserEngagementMetricsByForumAndDate(forumId: number, date: string): Promise<UserEngagementMetric | undefined> {
+    const [result] = await db
+      .select()
+      .from(userEngagementMetrics)
+      .where(
+        and(
+          eq(userEngagementMetrics.forumId, forumId),
+          eq(userEngagementMetrics.date, date)
+        )
+      );
+    
+    return result;
+  }
+
+  async updateUserEngagementMetrics(id: number, data: Partial<InsertUserEngagementMetric>): Promise<UserEngagementMetric> {
+    const [result] = await db
+      .update(userEngagementMetrics)
+      .set(data)
+      .where(eq(userEngagementMetrics.id, id))
+      .returning();
+    
+    return result;
+  }
+
+  async createUserEngagementMetrics(metrics: InsertUserEngagementMetric): Promise<UserEngagementMetric> {
+    const [result] = await db
+      .insert(userEngagementMetrics)
+      .values(metrics)
+      .returning();
+    
+    return result;
+  }
 }

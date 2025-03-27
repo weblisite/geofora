@@ -243,6 +243,9 @@ export interface IStorage {
   getAnalyticsEventsByForum(forumId: number, eventType?: string, startDate?: string, endDate?: string): Promise<AnalyticsEvent[]>;
   getEventCountsByType(forumId: number, days?: number): Promise<{ eventType: string, count: number }[]>;
   getPopularEventTargets(forumId: number, eventType?: string, limit?: number): Promise<{ targetId: string, targetType: string, count: number }[]>;
+  trackAnalyticsEvent(eventData: InsertAnalyticsEvent): Promise<AnalyticsEvent>;
+  getUserEngagementMetricsByForumAndDate(forumId: number, date: string): Promise<UserEngagementMetric | undefined>;
+  updateUserEngagementMetrics(id: number, data: Partial<InsertUserEngagementMetric>): Promise<UserEngagementMetric>;
   
   // Funnel Definition methods
   getFunnelDefinition(id: number): Promise<FunnelDefinition | undefined>;
@@ -3353,6 +3356,40 @@ export class MemStorage implements IStorage {
     return Array.from(targetCounts.values())
       .sort((a, b) => b.count - a.count)
       .slice(0, limit);
+  }
+  
+  // Implement missing analytics methods
+  async trackAnalyticsEvent(eventData: InsertAnalyticsEvent): Promise<AnalyticsEvent> {
+    // This is simply an alias for createAnalyticsEvent for API consistency
+    return this.createAnalyticsEvent(eventData);
+  }
+
+  async getUserEngagementMetricsByForumAndDate(forumId: number, date: string): Promise<UserEngagementMetric | undefined> {
+    // Find the user engagement metric for the specified forum and date
+    for (const metric of this.userEngagementMetricsStore.values()) {
+      if (metric.forumId === forumId && metric.date === date) {
+        return metric;
+      }
+    }
+    return undefined;
+  }
+
+  async updateUserEngagementMetrics(id: number, data: Partial<InsertUserEngagementMetric>): Promise<UserEngagementMetric> {
+    // Get the existing metric
+    const existingMetric = this.userEngagementMetricsStore.get(id);
+    if (!existingMetric) {
+      throw new Error(`User engagement metric with ID ${id} not found`);
+    }
+    
+    // Update the metric with the new data
+    const updatedMetric = {
+      ...existingMetric,
+      ...data,
+    };
+    
+    // Save the updated metric
+    this.userEngagementMetricsStore.set(id, updatedMetric);
+    return updatedMetric;
   }
   
   // Funnel Definition Methods
