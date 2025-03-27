@@ -1,18 +1,16 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { queryClient } from "@/lib/queryClient";
 import { Glassmorphism } from "@/components/ui/glassmorphism";
 import { GradientText } from "@/components/ui/gradient-text";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { Loader2 } from "lucide-react";
 
 const loginSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -24,8 +22,14 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const [, navigate] = useLocation();
-  const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user, loginMutation } = useAuth();
+  
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -36,31 +40,12 @@ export default function LoginPage() {
     },
   });
 
-  const loginMutation = useMutation({
-    mutationFn: async (data: LoginFormValues) => {
-      return apiRequest("POST", "/api/auth/login", data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries();
-      toast({
-        title: "Login successful",
-        description: "You have been logged in successfully",
-      });
-      navigate("/dashboard");
-    },
-    onError: (error) => {
-      toast({
-        title: "Login failed",
-        description: error.message || "Invalid username or password",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-    },
-  });
-
   const onSubmit = (data: LoginFormValues) => {
-    setIsSubmitting(true);
-    loginMutation.mutate(data);
+    loginMutation.mutate(data, {
+      onSuccess: () => {
+        navigate("/dashboard");
+      }
+    });
   };
 
   return (
@@ -148,11 +133,11 @@ export default function LoginPage() {
             <Button 
               type="submit" 
               className="w-full bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 shadow-glow"
-              disabled={isSubmitting}
+              disabled={loginMutation.isPending}
             >
-              {isSubmitting ? (
+              {loginMutation.isPending ? (
                 <>
-                  <span className="material-icons animate-spin mr-2">refresh</span>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Logging in...
                 </>
               ) : (

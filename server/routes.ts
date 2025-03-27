@@ -64,7 +64,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/auth/logout", (req, res) => {
+  app.post("/api/auth/logout", (req, res) => {
     if (req.session) {
       req.session.destroy((err: Error | null) => {
         if (err) {

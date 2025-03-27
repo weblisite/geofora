@@ -1,17 +1,16 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { Glassmorphism } from "@/components/ui/glassmorphism";
 import { GradientText } from "@/components/ui/gradient-text";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { Loader2 } from "lucide-react";
 
 const registerSchema = z.object({
   username: z.string()
@@ -37,8 +36,14 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const [, navigate] = useLocation();
-  const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user, registerMutation } = useAuth();
+  
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -51,32 +56,14 @@ export default function RegisterPage() {
     },
   });
 
-  const registerMutation = useMutation({
-    mutationFn: async (data: RegisterFormValues) => {
-      // Remove confirmPassword and termsAccepted before sending to API
-      const { confirmPassword, termsAccepted, ...userInfo } = data;
-      return apiRequest("POST", "/api/auth/register", userInfo);
-    },
-    onSuccess: () => {
-      toast({
-        title: "Registration successful",
-        description: "Your account has been created. You can now log in.",
-      });
-      navigate("/login");
-    },
-    onError: (error) => {
-      toast({
-        title: "Registration failed",
-        description: error.message || "There was an error creating your account",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-    },
-  });
-
   const onSubmit = (data: RegisterFormValues) => {
-    setIsSubmitting(true);
-    registerMutation.mutate(data);
+    // Remove confirmPassword and termsAccepted before sending to API
+    const { confirmPassword, termsAccepted, ...userInfo } = data;
+    registerMutation.mutate(userInfo, {
+      onSuccess: () => {
+        navigate("/login");
+      }
+    });
   };
 
   return (
@@ -212,11 +199,11 @@ export default function RegisterPage() {
             <Button 
               type="submit" 
               className="w-full bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 shadow-glow"
-              disabled={isSubmitting}
+              disabled={registerMutation.isPending}
             >
-              {isSubmitting ? (
+              {registerMutation.isPending ? (
                 <>
-                  <span className="material-icons animate-spin mr-2">refresh</span>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Creating account...
                 </>
               ) : (
