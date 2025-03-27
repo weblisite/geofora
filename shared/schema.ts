@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -348,6 +348,193 @@ export type InsertDomainVerification = z.infer<typeof insertDomainVerificationSc
 export type ForumWithStats = Forum & {
   totalQuestions: number;
   totalAnswers: number;
+};
+
+// SEO Keywords tracking schema
+export const seoKeywords = pgTable("seo_keywords", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  keyword: text("keyword").notNull(),
+  url: text("url").notNull(), // URL being tracked for this keyword
+  searchVolume: integer("search_volume"),
+  difficulty: integer("difficulty"), // 0-100 scale indicating how competitive the keyword is
+  priority: integer("priority").default(0), // 0-10 scale for prioritizing keywords
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  lastCheckedAt: timestamp("last_checked_at"),
+  notes: text("notes"),
+  serp_features: text("serp_features"), // JSON string of SERP features (featured snippets, image packs, etc.)
+  intent: text("intent"), // informational, navigational, commercial, transactional
+  stage: text("stage"), // awareness, consideration, decision
+});
+
+// SEO Positions tracking schema - historical record of keyword positions
+export const seoPositions = pgTable("seo_positions", {
+  id: serial("id").primaryKey(),
+  keywordId: integer("keyword_id").notNull().references(() => seoKeywords.id),
+  position: integer("position").notNull(),
+  date: date("date").notNull(),
+  previousPosition: integer("previous_position"),
+  change: integer("change"), // + or - number indicating the change from previous check
+  clicks: integer("clicks"), // Estimated clicks from this keyword (from Search Console)
+  impressions: integer("impressions"), // Estimated impressions from this keyword
+  ctr: real("ctr"), // Click-through rate as a decimal (0.0-1.0)
+  device: text("device").default("desktop"), // desktop, mobile, tablet
+  location: text("location").default("global"), // Country or region code
+});
+
+// SEO Page metrics schema
+export const seoPageMetrics = pgTable("seo_page_metrics", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  url: text("url").notNull(), // Relative URL of the page
+  incomingLinks: integer("incoming_links").default(0), // Count of internal links to this page
+  outgoingLinks: integer("outgoing_links").default(0), // Count of internal links from this page
+  totalWordCount: integer("total_word_count"), 
+  metaQualityScore: real("meta_quality_score"), // Score 0-1 for meta title/description quality
+  keywordDensity: jsonb("keyword_density"), // JSON of keyword density data
+  readabilityScore: real("readability_score"), // Score 0-100 based on readability metrics
+  pageSpeed: jsonb("page_speed"), // JSON object with page speed metrics
+  organicTraffic: integer("organic_traffic"), // Estimated monthly organic traffic
+  lastAnalyzedAt: timestamp("last_analyzed_at"),
+  contentQualityScore: real("content_quality_score"), // AI-scored metric for overall content quality
+});
+
+// SEO Content gaps schema
+export const seoContentGaps = pgTable("seo_content_gaps", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  topic: text("topic").notNull(), // The topic with identified gap
+  competitorCoverage: text("competitor_coverage"), // How competitors are covering this topic
+  searchVolume: integer("search_volume"), 
+  opportunityScore: integer("opportunity_score"), // 0-100 scale for potential impact
+  recommendedKeywords: text("recommended_keywords"), // JSON string of recommended keywords
+  contentSuggestion: text("content_suggestion"), // AI suggestion for content to fill gap
+  isAddressed: boolean("is_addressed").default(false), // Whether this gap has been addressed
+  targetUrl: text("target_url"), // URL of created content addressing the gap (if any)
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// SEO Weekly reports schema
+export const seoWeeklyReports = pgTable("seo_weekly_reports", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  reportDate: date("report_date").notNull(),
+  avgPosition: real("avg_position"), 
+  topTenKeywords: integer("top_ten_keywords"), // Count of keywords in top 10
+  topThreeKeywords: integer("top_three_keywords"), // Count of keywords in top 3
+  totalKeywords: integer("total_keywords"), 
+  organicTraffic: integer("organic_traffic"),
+  previousOrganicTraffic: integer("previous_organic_traffic"),
+  trafficChange: real("traffic_change"), // Percentage change in traffic
+  topPerformingUrls: jsonb("top_performing_urls"), // JSON object of top URLs
+  topRisingKeywords: jsonb("top_rising_keywords"), // JSON object of keywords with biggest gains
+  topDecliningKeywords: jsonb("top_declining_keywords"), // JSON object of keywords with biggest losses
+  recommendedActions: text("recommended_actions"), // AI-generated recommendations
+  reportData: jsonb("report_data"), // Full JSON data for the report
+});
+
+// Schemas for inserting data
+export const insertSeoKeywordSchema = createInsertSchema(seoKeywords).pick({
+  forumId: true,
+  keyword: true,
+  url: true,
+  searchVolume: true,
+  difficulty: true,
+  priority: true,
+  isActive: true,
+  notes: true,
+  serp_features: true,
+  intent: true,
+  stage: true,
+});
+
+export const insertSeoPositionSchema = createInsertSchema(seoPositions).pick({
+  keywordId: true,
+  position: true,
+  date: true,
+  previousPosition: true,
+  change: true,
+  clicks: true,
+  impressions: true,
+  ctr: true,
+  device: true,
+  location: true,
+});
+
+export const insertSeoPageMetricSchema = createInsertSchema(seoPageMetrics).pick({
+  forumId: true,
+  url: true,
+  incomingLinks: true,
+  outgoingLinks: true,
+  totalWordCount: true,
+  metaQualityScore: true,
+  keywordDensity: true,
+  readabilityScore: true,
+  pageSpeed: true,
+  organicTraffic: true,
+  contentQualityScore: true,
+});
+
+export const insertSeoContentGapSchema = createInsertSchema(seoContentGaps).pick({
+  forumId: true,
+  topic: true,
+  competitorCoverage: true,
+  searchVolume: true,
+  opportunityScore: true,
+  recommendedKeywords: true,
+  contentSuggestion: true,
+  isAddressed: true,
+  targetUrl: true,
+});
+
+export const insertSeoWeeklyReportSchema = createInsertSchema(seoWeeklyReports).pick({
+  forumId: true,
+  reportDate: true,
+  avgPosition: true,
+  topTenKeywords: true,
+  topThreeKeywords: true,
+  totalKeywords: true,
+  organicTraffic: true,
+  previousOrganicTraffic: true,
+  trafficChange: true,
+  topPerformingUrls: true,
+  topRisingKeywords: true,
+  topDecliningKeywords: true,
+  recommendedActions: true,
+  reportData: true,
+});
+
+// Type exports for SEO
+export type SeoKeyword = typeof seoKeywords.$inferSelect;
+export type InsertSeoKeyword = z.infer<typeof insertSeoKeywordSchema>;
+
+export type SeoPosition = typeof seoPositions.$inferSelect;
+export type InsertSeoPosition = z.infer<typeof insertSeoPositionSchema>;
+
+export type SeoPageMetric = typeof seoPageMetrics.$inferSelect;
+export type InsertSeoPageMetric = z.infer<typeof insertSeoPageMetricSchema>;
+
+export type SeoContentGap = typeof seoContentGaps.$inferSelect;
+export type InsertSeoContentGap = z.infer<typeof insertSeoContentGapSchema>;
+
+export type SeoWeeklyReport = typeof seoWeeklyReports.$inferSelect;
+export type InsertSeoWeeklyReport = z.infer<typeof insertSeoWeeklyReportSchema>;
+
+// Extended types for frontend use
+export type SeoKeywordWithPositionHistory = SeoKeyword & {
+  positionHistory: SeoPosition[];
+  latestPosition?: SeoPosition;
+};
+
+export type SeoWeeklyReportWithDetails = SeoWeeklyReport & {
+  keywordMovements: {
+    rising: {keyword: string, change: number, position: number}[];
+    declining: {keyword: string, change: number, position: number}[];
+    new: {keyword: string, position: number}[];
+  };
 };
 
 // Lead Capture Forms schema

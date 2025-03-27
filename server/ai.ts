@@ -8,7 +8,11 @@ import {
   seoAnalysisSystemPrompt,
   answerGenerationSystemPrompt,
   expertiseGuidelines,
-  interlinkingSystemPrompt
+  interlinkingSystemPrompt,
+  keywordAnalysisSystemPrompt,
+  keywordDifficultyAnalysisPrompt,
+  contentGapAnalysisPrompt,
+  keywordOptimizedQuestionGeneratorPrompt
 } from "./ai-prompts";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
@@ -645,6 +649,137 @@ export async function generateBidirectionalInterlinkingSuggestions(
 /**
  * Interface for keyword analysis results
  */
+// Advanced Keyword Analysis Types
+export interface KeywordCluster {
+  clusterName: string;
+  primaryKeywords: string[];
+  secondaryKeywords: string[];
+  searchIntent: 'informational' | 'navigational' | 'commercial' | 'transactional';
+  estimatedMonthlyVolume: number;
+  competitiveDifficulty: number; // 1-100 scale
+  contentOpportunities: string[];
+  serp_features: string[]; // Potential SERP features to target
+}
+
+export interface CompetitiveGapAnalysis {
+  contentGaps: string[];
+  keywordGaps: string[];
+  topCompetitorsForKeywords: string[];
+}
+
+export interface QuestionKeywords {
+  informational: string[];
+  commercial: string[];
+  transactional: string[];
+}
+
+export interface ContentRecommendation {
+  contentType: string; // e.g., "blog", "guide", "product page", "forum Q&A"
+  targetKeywords: string[];
+  suggestedTitle: string;
+  contentStructure: string[]; // Suggested H2s/sections
+  estimatedTrafficPotential: number;
+}
+
+export interface AdvancedKeywordAnalysisResult {
+  domainFocus: string;
+  industryVertical: string;
+  keywordClusters: KeywordCluster[];
+  competitiveGapAnalysis: CompetitiveGapAnalysis;
+  questionKeywords: QuestionKeywords;
+  contentRecommendations: ContentRecommendation[];
+}
+
+export interface KeywordDifficultyAnalysis {
+  keyword: string;
+  searchVolume: {
+    estimate: string;
+    trend: 'increasing' | 'stable' | 'decreasing';
+  };
+  difficultyScore: number; // 1-100 scale
+  competitionLevel: 'very low' | 'low' | 'medium' | 'high' | 'very high';
+  contentRequirements: {
+    wordCount: string; // e.g., "1500-2000 words"
+    depth: 'basic' | 'comprehensive' | 'expert';
+    mediaTypes: string[]; // e.g., ["images", "videos", "infographics"]
+  };
+  domainAuthorityNeeded: {
+    minimum: number; // e.g., 30
+    recommended: number; // e.g., 50
+  };
+  serp_features: string[];
+  rankingProbability: {
+    newSite: string; // e.g., "very unlikely"
+    establishedSite: string; // e.g., "moderate"
+    authorityDomain: string; // e.g., "very likely"
+  };
+  timeToRank: {
+    estimate: string; // e.g., "3-6 months"
+    factors: string[];
+  };
+}
+
+export interface TopicCluster {
+  clusterName: string;
+  keywordGaps: string[];
+  averageSearchVolume: number;
+  competitionLevel: 'very low' | 'low' | 'medium' | 'high' | 'very high';
+  contentOpportunityScore: number; // 1-100
+  suggestedContentApproach: string;
+  estimatedTrafficPotential: number;
+}
+
+export interface QuestionOpportunity {
+  question: string;
+  searchVolume: string;
+  currentAnswerQuality: 'poor' | 'fair' | 'good' | 'excellent';
+  opportunityReason: string;
+}
+
+export interface CompetitiveInsight {
+  contentGapsOverview: string;
+  topCompetitors: string[];
+  competitorStrengths: string[];
+  competitorWeaknesses: string[];
+}
+
+export interface PrioritizedRecommendation {
+  contentFocus: string;
+  targetKeywords: string[];
+  estimatedImpact: 'low' | 'medium' | 'high' | 'very high';
+  implementationDifficulty: 'easy' | 'moderate' | 'difficult';
+}
+
+export interface ContentGapAnalysisResult {
+  topicClusters: TopicCluster[];
+  questionOpportunities: QuestionOpportunity[];
+  competitiveInsights: CompetitiveInsight;
+  prioritizedRecommendations: PrioritizedRecommendation[];
+}
+
+export interface TargetKeywords {
+  primary: string;
+  secondary: string[];
+}
+
+export interface OptimizedQuestionDetails {
+  title: string;
+  content: string;
+  targetKeywords: TargetKeywords;
+  searchIntent: 'informational' | 'commercial' | 'transactional';
+  estimatedSearchVolume: string;
+  competitiveDifficulty: number; // 1-100 scale
+  snippetOpportunity: boolean; // Featured snippet potential
+  serp_features: string[];
+  topicCluster: string; // Related topic grouping
+  rankingPotential: number; // 1-100 scale
+}
+
+export interface KeywordOptimizedQuestions {
+  questions: OptimizedQuestionDetails[];
+}
+
+// Legacy interface for backward compatibility
 export interface KeywordAnalysisResult {
   primaryKeywords: string[];
   secondaryKeywords: string[];
@@ -661,6 +796,501 @@ export interface KeywordAnalysisResult {
 }
 
 /**
+ * Advanced Keyword Analysis Engine
+ * 
+ * This function performs a comprehensive keyword analysis for a given website URL,
+ * providing detailed insights into keyword opportunities, content gaps, and SEO strategy.
+ * 
+ * @param websiteUrl The URL to analyze for keywords
+ * @return A comprehensive keyword analysis result with clustering, competitive analysis, and content recommendations
+ */
+export async function performAdvancedKeywordAnalysis(
+  websiteUrl: string
+): Promise<AdvancedKeywordAnalysisResult> {
+  try {
+    // Check cache first
+    const cacheParams = { websiteUrl };
+    const cachedResponse = aiCache.get<AdvancedKeywordAnalysisResult>('advanced-keyword-analysis', cacheParams);
+    
+    if (cachedResponse) {
+      console.log(`[AI Cache] Hit for advanced-keyword-analysis with URL: ${websiteUrl}`);
+      return cachedResponse;
+    }
+    
+    const prompt = `Perform a comprehensive keyword analysis for this website: ${websiteUrl}
+    
+    I need an in-depth analysis that identifies:
+    
+    1. The primary domain focus and industry vertical
+    2. Keyword clusters with search intent classification
+    3. Competitive gap analysis with specific keyword opportunities
+    4. Question-based keyword opportunities categorized by search intent
+    5. Detailed content recommendations with estimated traffic potential
+    
+    Provide a strategic analysis that will guide content creation and SEO strategy. Since you can't crawl the website directly, use your knowledge to make realistic inferences based on the domain name, likely industry, and SEO best practices.`;
+
+    const response = await openai.chat.completions.create({
+      model: AI_MODELS.default,
+      messages: [
+        { role: "system", content: keywordAnalysisSystemPrompt },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.4, // Lower temperature for more focused, analytical results
+    });
+    
+    const content = response.choices[0].message.content || "{}";
+    const result = JSON.parse(content);
+
+    // Process and validate the response data
+    const processedResult: AdvancedKeywordAnalysisResult = {
+      domainFocus: result.domainFocus || "",
+      industryVertical: result.industryVertical || "",
+      keywordClusters: Array.isArray(result.keywordClusters) 
+        ? result.keywordClusters.map((cluster: any) => ({
+            clusterName: cluster.clusterName || "",
+            primaryKeywords: Array.isArray(cluster.primaryKeywords) ? cluster.primaryKeywords : [],
+            secondaryKeywords: Array.isArray(cluster.secondaryKeywords) ? cluster.secondaryKeywords : [],
+            searchIntent: ['informational', 'navigational', 'commercial', 'transactional'].includes(cluster.searchIntent)
+              ? cluster.searchIntent as 'informational' | 'navigational' | 'commercial' | 'transactional'
+              : 'informational',
+            estimatedMonthlyVolume: typeof cluster.estimatedMonthlyVolume === 'number' ? cluster.estimatedMonthlyVolume : 0,
+            competitiveDifficulty: typeof cluster.competitiveDifficulty === 'number' 
+              ? Math.min(100, Math.max(1, cluster.competitiveDifficulty)) 
+              : 50,
+            contentOpportunities: Array.isArray(cluster.contentOpportunities) ? cluster.contentOpportunities : [],
+            serp_features: Array.isArray(cluster.serp_features) ? cluster.serp_features : []
+          }))
+        : [],
+      competitiveGapAnalysis: {
+        contentGaps: Array.isArray(result.competitiveGapAnalysis?.contentGaps) 
+          ? result.competitiveGapAnalysis.contentGaps 
+          : [],
+        keywordGaps: Array.isArray(result.competitiveGapAnalysis?.keywordGaps) 
+          ? result.competitiveGapAnalysis.keywordGaps 
+          : [],
+        topCompetitorsForKeywords: Array.isArray(result.competitiveGapAnalysis?.topCompetitorsForKeywords) 
+          ? result.competitiveGapAnalysis.topCompetitorsForKeywords 
+          : []
+      },
+      questionKeywords: {
+        informational: Array.isArray(result.questionKeywords?.informational) 
+          ? result.questionKeywords.informational 
+          : [],
+        commercial: Array.isArray(result.questionKeywords?.commercial) 
+          ? result.questionKeywords.commercial 
+          : [],
+        transactional: Array.isArray(result.questionKeywords?.transactional) 
+          ? result.questionKeywords.transactional 
+          : []
+      },
+      contentRecommendations: Array.isArray(result.contentRecommendations) 
+        ? result.contentRecommendations.map((rec: any) => ({
+            contentType: rec.contentType || "",
+            targetKeywords: Array.isArray(rec.targetKeywords) ? rec.targetKeywords : [],
+            suggestedTitle: rec.suggestedTitle || "",
+            contentStructure: Array.isArray(rec.contentStructure) ? rec.contentStructure : [],
+            estimatedTrafficPotential: typeof rec.estimatedTrafficPotential === 'number' 
+              ? rec.estimatedTrafficPotential 
+              : 0
+          }))
+        : []
+    };
+    
+    // Cache the result for future use - use a long TTL since this is intensive analysis
+    aiCache.set('advanced-keyword-analysis', cacheParams, processedResult, CACHE_TTL.VERY_LONG);
+    
+    return processedResult;
+  } catch (error) {
+    console.error("Error in advanced keyword analysis:", error);
+    // Return a minimal valid result in case of error
+    return {
+      domainFocus: "",
+      industryVertical: "",
+      keywordClusters: [],
+      competitiveGapAnalysis: {
+        contentGaps: [],
+        keywordGaps: [],
+        topCompetitorsForKeywords: []
+      },
+      questionKeywords: {
+        informational: [],
+        commercial: [],
+        transactional: []
+      },
+      contentRecommendations: []
+    };
+  }
+}
+
+/**
+ * Perform a detailed analysis of keyword difficulty
+ * 
+ * This function evaluates the competitiveness of a specific keyword, providing insights
+ * into ranking difficulty, content requirements, and timeframe expectations
+ * 
+ * @param keyword The keyword to analyze for difficulty
+ * @return A comprehensive keyword difficulty analysis
+ */
+export async function analyzeKeywordDifficulty(
+  keyword: string
+): Promise<KeywordDifficultyAnalysis> {
+  try {
+    // Check cache first
+    const cacheParams = { keyword };
+    const cachedResponse = aiCache.get<KeywordDifficultyAnalysis>('keyword-difficulty', cacheParams);
+    
+    if (cachedResponse) {
+      console.log(`[AI Cache] Hit for keyword-difficulty with keyword: ${keyword}`);
+      return cachedResponse;
+    }
+    
+    const prompt = `Analyze the SEO difficulty of this keyword: "${keyword}"
+    
+    I need a detailed assessment of:
+    1. The competitive landscape for ranking on this keyword
+    2. Expected search volume and trends
+    3. Content requirements to compete effectively
+    4. Domain authority needed to rank
+    5. SERP features present for this keyword
+    6. Realistic ranking probabilities based on site maturity
+    7. Expected time to rank with dedicated optimization
+    
+    Provide your expert assessment for strategic SEO planning.`;
+
+    const response = await openai.chat.completions.create({
+      model: AI_MODELS.default,
+      messages: [
+        { role: "system", content: keywordDifficultyAnalysisPrompt },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.3, // Lower temperature for more focused, predictable results
+    });
+    
+    const content = response.choices[0].message.content || "{}";
+    const result = JSON.parse(content);
+
+    // Process and validate the response
+    const processedResult: KeywordDifficultyAnalysis = {
+      keyword: result.keyword || keyword,
+      searchVolume: {
+        estimate: result.searchVolume?.estimate || "Unknown",
+        trend: ['increasing', 'stable', 'decreasing'].includes(result.searchVolume?.trend)
+          ? result.searchVolume.trend as 'increasing' | 'stable' | 'decreasing'
+          : 'stable'
+      },
+      difficultyScore: typeof result.difficultyScore === 'number' 
+        ? Math.min(100, Math.max(1, result.difficultyScore)) 
+        : 50,
+      competitionLevel: ['very low', 'low', 'medium', 'high', 'very high'].includes(result.competitionLevel)
+        ? result.competitionLevel as 'very low' | 'low' | 'medium' | 'high' | 'very high'
+        : 'medium',
+      contentRequirements: {
+        wordCount: result.contentRequirements?.wordCount || "1000-1500 words",
+        depth: ['basic', 'comprehensive', 'expert'].includes(result.contentRequirements?.depth)
+          ? result.contentRequirements.depth as 'basic' | 'comprehensive' | 'expert'
+          : 'comprehensive',
+        mediaTypes: Array.isArray(result.contentRequirements?.mediaTypes) 
+          ? result.contentRequirements.mediaTypes 
+          : ["images"]
+      },
+      domainAuthorityNeeded: {
+        minimum: typeof result.domainAuthorityNeeded?.minimum === 'number' 
+          ? result.domainAuthorityNeeded.minimum 
+          : 20,
+        recommended: typeof result.domainAuthorityNeeded?.recommended === 'number' 
+          ? result.domainAuthorityNeeded.recommended 
+          : 40
+      },
+      serp_features: Array.isArray(result.serp_features) ? result.serp_features : [],
+      rankingProbability: {
+        newSite: result.rankingProbability?.newSite || "difficult",
+        establishedSite: result.rankingProbability?.establishedSite || "moderate",
+        authorityDomain: result.rankingProbability?.authorityDomain || "good"
+      },
+      timeToRank: {
+        estimate: result.timeToRank?.estimate || "3-6 months",
+        factors: Array.isArray(result.timeToRank?.factors) 
+          ? result.timeToRank.factors 
+          : ["content quality", "backlink profile", "site authority"]
+      }
+    };
+    
+    // Cache the result
+    aiCache.set('keyword-difficulty', cacheParams, processedResult, CACHE_TTL.LONG);
+    
+    return processedResult;
+  } catch (error) {
+    console.error("Error analyzing keyword difficulty:", error);
+    // Return a default result in case of error
+    return {
+      keyword: keyword,
+      searchVolume: {
+        estimate: "Unknown",
+        trend: "stable"
+      },
+      difficultyScore: 50,
+      competitionLevel: "medium",
+      contentRequirements: {
+        wordCount: "1000-1500 words",
+        depth: "comprehensive",
+        mediaTypes: ["images"]
+      },
+      domainAuthorityNeeded: {
+        minimum: 20,
+        recommended: 40
+      },
+      serp_features: [],
+      rankingProbability: {
+        newSite: "difficult",
+        establishedSite: "moderate",
+        authorityDomain: "good"
+      },
+      timeToRank: {
+        estimate: "3-6 months",
+        factors: ["content quality", "backlink profile", "site authority"]
+      }
+    };
+  }
+}
+
+/**
+ * Identify content gaps and opportunities across a keyword landscape
+ * 
+ * This function analyzes current content coverage to find untapped topics
+ * and question opportunities that competitors are missing
+ * 
+ * @param industry The industry or niche to analyze
+ * @param existingKeywords Keywords already targeted (optional)
+ * @return A detailed content gap analysis with prioritized recommendations
+ */
+export async function analyzeContentGaps(
+  industry: string,
+  existingKeywords?: string[]
+): Promise<ContentGapAnalysisResult> {
+  try {
+    // Check cache first
+    const cacheParams = { 
+      industry, 
+      existingKeywordsHash: existingKeywords 
+        ? Buffer.from(existingKeywords.sort().join(',')).toString('base64').substring(0, 20)
+        : 'none' 
+    };
+    const cachedResponse = aiCache.get<ContentGapAnalysisResult>('content-gaps', cacheParams);
+    
+    if (cachedResponse) {
+      console.log(`[AI Cache] Hit for content-gaps with industry: ${industry}`);
+      return cachedResponse;
+    }
+    
+    const prompt = `Perform a content gap analysis for the ${industry} industry.
+    
+    ${existingKeywords && existingKeywords.length > 0 
+      ? `Consider that we're already targeting these keywords: ${existingKeywords.join(', ')}` 
+      : 'We are starting fresh with no existing keyword targeting.'}
+    
+    I need to identify:
+    1. Untapped topic clusters with high opportunity potential
+    2. Specific question-based queries that aren't being addressed well
+    3. Competitive insights on content gaps in this space
+    4. Prioritized recommendations for filling these gaps
+    
+    Focus on identifying valuable opportunities that aren't being adequately addressed by competitors.`;
+
+    const response = await openai.chat.completions.create({
+      model: AI_MODELS.default,
+      messages: [
+        { role: "system", content: contentGapAnalysisPrompt },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.5, // Balanced to encourage both accuracy and creativity in finding opportunities
+    });
+    
+    const content = response.choices[0].message.content || "{}";
+    const result = JSON.parse(content);
+
+    // Process and validate the response
+    const processedResult: ContentGapAnalysisResult = {
+      topicClusters: Array.isArray(result.topicClusters) 
+        ? result.topicClusters.map((cluster: any) => ({
+            clusterName: cluster.clusterName || "",
+            keywordGaps: Array.isArray(cluster.keywordGaps) ? cluster.keywordGaps : [],
+            averageSearchVolume: typeof cluster.averageSearchVolume === 'number' 
+              ? cluster.averageSearchVolume 
+              : 0,
+            competitionLevel: ['very low', 'low', 'medium', 'high', 'very high'].includes(cluster.competitionLevel)
+              ? cluster.competitionLevel as 'very low' | 'low' | 'medium' | 'high' | 'very high'
+              : 'medium',
+            contentOpportunityScore: typeof cluster.contentOpportunityScore === 'number' 
+              ? Math.min(100, Math.max(1, cluster.contentOpportunityScore)) 
+              : 50,
+            suggestedContentApproach: cluster.suggestedContentApproach || "",
+            estimatedTrafficPotential: typeof cluster.estimatedTrafficPotential === 'number' 
+              ? cluster.estimatedTrafficPotential 
+              : 0
+          }))
+        : [],
+      questionOpportunities: Array.isArray(result.questionOpportunities) 
+        ? result.questionOpportunities.map((question: any) => ({
+            question: question.question || "",
+            searchVolume: question.searchVolume || "Unknown",
+            currentAnswerQuality: ['poor', 'fair', 'good', 'excellent'].includes(question.currentAnswerQuality)
+              ? question.currentAnswerQuality as 'poor' | 'fair' | 'good' | 'excellent'
+              : 'fair',
+            opportunityReason: question.opportunityReason || ""
+          }))
+        : [],
+      competitiveInsights: {
+        contentGapsOverview: result.competitiveInsights?.contentGapsOverview || "",
+        topCompetitors: Array.isArray(result.competitiveInsights?.topCompetitors) 
+          ? result.competitiveInsights.topCompetitors 
+          : [],
+        competitorStrengths: Array.isArray(result.competitiveInsights?.competitorStrengths) 
+          ? result.competitiveInsights.competitorStrengths 
+          : [],
+        competitorWeaknesses: Array.isArray(result.competitiveInsights?.competitorWeaknesses) 
+          ? result.competitiveInsights.competitorWeaknesses 
+          : []
+      },
+      prioritizedRecommendations: Array.isArray(result.prioritizedRecommendations) 
+        ? result.prioritizedRecommendations.map((rec: any) => ({
+            contentFocus: rec.contentFocus || "",
+            targetKeywords: Array.isArray(rec.targetKeywords) ? rec.targetKeywords : [],
+            estimatedImpact: ['low', 'medium', 'high', 'very high'].includes(rec.estimatedImpact)
+              ? rec.estimatedImpact as 'low' | 'medium' | 'high' | 'very high'
+              : 'medium',
+            implementationDifficulty: ['easy', 'moderate', 'difficult'].includes(rec.implementationDifficulty)
+              ? rec.implementationDifficulty as 'easy' | 'moderate' | 'difficult'
+              : 'moderate'
+          }))
+        : []
+    };
+    
+    // Cache the result
+    aiCache.set('content-gaps', cacheParams, processedResult, CACHE_TTL.LONG);
+    
+    return processedResult;
+  } catch (error) {
+    console.error("Error analyzing content gaps:", error);
+    // Return a minimal valid result in case of error
+    return {
+      topicClusters: [],
+      questionOpportunities: [],
+      competitiveInsights: {
+        contentGapsOverview: "",
+        topCompetitors: [],
+        competitorStrengths: [],
+        competitorWeaknesses: []
+      },
+      prioritizedRecommendations: []
+    };
+  }
+}
+
+/**
+ * Generate highly optimized questions for SEO targeting with detailed metadata
+ * 
+ * This function creates questions specifically designed to rank in search results
+ * with comprehensive metadata about search intent, competition, and ranking potential
+ * 
+ * @param keyword The primary keyword to target
+ * @param count Number of questions to generate (default: 5)
+ * @param searchIntent Optional specific search intent to target
+ * @return A set of SEO-optimized questions with detailed metadata
+ */
+export async function generateSeoOptimizedQuestions(
+  keyword: string,
+  count: number = 5,
+  searchIntent?: 'informational' | 'commercial' | 'transactional'
+): Promise<KeywordOptimizedQuestions> {
+  try {
+    // Check cache first
+    const cacheParams = { keyword, count, searchIntent };
+    const cachedResponse = aiCache.get<KeywordOptimizedQuestions>('seo-optimized-questions', cacheParams);
+    
+    if (cachedResponse) {
+      console.log(`[AI Cache] Hit for seo-optimized-questions with keyword: ${keyword}`);
+      return cachedResponse;
+    }
+    
+    const prompt = `Generate ${count} highly SEO-optimized forum questions targeting: "${keyword}"
+    
+    ${searchIntent 
+      ? `Focus specifically on ${searchIntent} search intent.` 
+      : 'Create a mix of different search intents (informational, commercial, transactional).'}
+    
+    For each question, provide:
+    1. A search-optimized title that would rank well in Google
+    2. Detailed question content (250-500 words) with proper keyword usage
+    3. Primary and secondary target keywords
+    4. Search intent classification
+    5. Estimated search volume
+    6. Competitive difficulty assessment
+    7. Featured snippet opportunity evaluation
+    8. SERP feature opportunities
+    9. Topic cluster association
+    10. Overall ranking potential
+    
+    Design these questions specifically to rank well in search results while maintaining natural language and engaging content.`;
+
+    const response = await openai.chat.completions.create({
+      model: AI_MODELS.default,
+      messages: [
+        { role: "system", content: keywordOptimizedQuestionGeneratorPrompt },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.6, // Balanced to encourage both SEO optimization and natural language
+    });
+    
+    const content = response.choices[0].message.content || "{}";
+    const result = JSON.parse(content);
+
+    // Process and validate the response
+    const processedResult: KeywordOptimizedQuestions = {
+      questions: Array.isArray(result.questions) 
+        ? result.questions.map((q: any) => ({
+            title: q.title || "",
+            content: q.content || "",
+            targetKeywords: {
+              primary: q.targetKeywords?.primary || keyword,
+              secondary: Array.isArray(q.targetKeywords?.secondary) 
+                ? q.targetKeywords.secondary 
+                : []
+            },
+            searchIntent: ['informational', 'commercial', 'transactional'].includes(q.searchIntent)
+              ? q.searchIntent as 'informational' | 'commercial' | 'transactional'
+              : searchIntent || 'informational',
+            estimatedSearchVolume: q.estimatedSearchVolume || "Unknown",
+            competitiveDifficulty: typeof q.competitiveDifficulty === 'number' 
+              ? Math.min(100, Math.max(1, q.competitiveDifficulty)) 
+              : 50,
+            snippetOpportunity: typeof q.snippetOpportunity === 'boolean' 
+              ? q.snippetOpportunity 
+              : false,
+            serp_features: Array.isArray(q.serp_features) ? q.serp_features : [],
+            topicCluster: q.topicCluster || "",
+            rankingPotential: typeof q.rankingPotential === 'number' 
+              ? Math.min(100, Math.max(1, q.rankingPotential)) 
+              : 50
+          }))
+        : []
+    };
+    
+    // Cache the result
+    aiCache.set('seo-optimized-questions', cacheParams, processedResult, CACHE_TTL.VERY_LONG);
+    
+    return processedResult;
+  } catch (error) {
+    console.error("Error generating SEO-optimized questions:", error);
+    // Return an empty result in case of error
+    return { questions: [] };
+  }
+}
+
+/**
  * Analyze a website URL to extract keywords and generate SEO-optimized question ideas
  * @param websiteUrl The URL to analyze for keywords
  * @param questionCount Number of questions to generate (default: 10)
@@ -670,6 +1300,15 @@ export async function analyzeWebsiteForKeywords(
   questionCount: number = 10
 ): Promise<KeywordAnalysisResult> {
   try {
+    // Check cache first
+    const cacheParams = { websiteUrl, questionCount };
+    const cachedResponse = aiCache.get<KeywordAnalysisResult>('website-keywords', cacheParams);
+    
+    if (cachedResponse) {
+      console.log(`[AI Cache] Hit for website-keywords with URL: ${websiteUrl}`);
+      return cachedResponse;
+    }
+    
     const prompt = `Analyze this website URL: ${websiteUrl}
     
     Imagine you've done a complete SEO analysis of this website and its industry. Based on your expert knowledge:
@@ -721,7 +1360,7 @@ export async function analyzeWebsiteForKeywords(
     const content = response.choices[0].message.content || "{}";
     const result = JSON.parse(content);
 
-    return {
+    const analysisResult = {
       primaryKeywords: Array.isArray(result.primaryKeywords) ? result.primaryKeywords : [],
       secondaryKeywords: Array.isArray(result.secondaryKeywords) ? result.secondaryKeywords : [],
       questions: Array.isArray(result.questions) 
@@ -739,6 +1378,11 @@ export async function analyzeWebsiteForKeywords(
       contentGaps: Array.isArray(result.contentGaps) ? result.contentGaps : [],
       competitorInsights: Array.isArray(result.competitorInsights) ? result.competitorInsights : []
     };
+    
+    // Cache the result
+    aiCache.set('website-keywords', cacheParams, analysisResult, CACHE_TTL.VERY_LONG);
+    
+    return analysisResult;
   } catch (error) {
     console.error("Error analyzing website for keywords:", error);
     return {

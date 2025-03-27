@@ -27,6 +27,10 @@ import {
   generateQuestionInterlinkingSuggestions,
   analyzeWebsiteForKeywords,
   generateKeywordOptimizedQuestions,
+  performAdvancedKeywordAnalysis,
+  analyzeKeywordDifficulty,
+  analyzeContentGaps,
+  generateSeoOptimizedQuestions,
   InterlinkableContent
 } from "./ai";
 import { 
@@ -383,6 +387,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to generate keyword-optimized questions" });
     }
   });
+  
+  // Advanced Keyword Analysis routes
+  app.post("/api/ai/advanced-keyword-analysis", async (req, res) => {
+    try {
+      const { websiteUrl } = req.body;
+      
+      if (!websiteUrl) {
+        return res.status(400).json({ message: "Website URL is required" });
+      }
+      
+      const analysis = await performAdvancedKeywordAnalysis(websiteUrl);
+      res.json(analysis);
+    } catch (error) {
+      console.error("Error performing advanced keyword analysis:", error);
+      res.status(500).json({ message: "Failed to perform advanced keyword analysis" });
+    }
+  });
+
+  app.post("/api/ai/keyword-difficulty", async (req, res) => {
+    try {
+      const { keyword } = req.body;
+      
+      if (!keyword) {
+        return res.status(400).json({ message: "Keyword is required" });
+      }
+      
+      const analysis = await analyzeKeywordDifficulty(keyword);
+      res.json(analysis);
+    } catch (error) {
+      console.error("Error analyzing keyword difficulty:", error);
+      res.status(500).json({ message: "Failed to analyze keyword difficulty" });
+    }
+  });
+
+  app.post("/api/ai/content-gaps", async (req, res) => {
+    try {
+      const { industry, existingKeywords } = req.body;
+      
+      if (!industry) {
+        return res.status(400).json({ message: "Industry or niche is required" });
+      }
+      
+      const analysis = await analyzeContentGaps(industry, existingKeywords);
+      res.json(analysis);
+    } catch (error) {
+      console.error("Error analyzing content gaps:", error);
+      res.status(500).json({ message: "Failed to analyze content gaps" });
+    }
+  });
+
+  app.post("/api/ai/seo-optimized-questions", async (req, res) => {
+    try {
+      const { keyword, count = 5, searchIntent } = req.body;
+      
+      if (!keyword) {
+        return res.status(400).json({ message: "Keyword is required" });
+      }
+      
+      if (searchIntent && !["informational", "commercial", "transactional"].includes(searchIntent)) {
+        return res.status(400).json({ 
+          message: "Valid search intent is required: informational, commercial, or transactional" 
+        });
+      }
+      
+      const questions = await generateSeoOptimizedQuestions(
+        keyword, 
+        count, 
+        searchIntent as 'informational' | 'commercial' | 'transactional' | undefined
+      );
+      res.json(questions);
+    } catch (error) {
+      console.error("Error generating SEO-optimized questions:", error);
+      res.status(500).json({ message: "Failed to generate SEO-optimized questions" });
+    }
+  });
 
   // Forum specific keyword analysis
   app.post("/api/forums/:id/analyze-keywords", async (req, res) => {
@@ -411,11 +490,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const analysis = await analyzeWebsiteForKeywords(forum.mainWebsiteUrl, 10);
-      res.json(analysis);
+      // Check which type of analysis was requested
+      const { analysisType = 'basic' } = req.body;
+      
+      if (analysisType === 'advanced') {
+        const analysis = await performAdvancedKeywordAnalysis(forum.mainWebsiteUrl);
+        res.json(analysis);
+      } else {
+        const analysis = await analyzeWebsiteForKeywords(forum.mainWebsiteUrl, 10);
+        res.json(analysis);
+      }
     } catch (error) {
       console.error("Error analyzing forum keywords:", error);
       res.status(500).json({ message: "Failed to analyze forum keywords" });
+    }
+  });
+  
+  // Additional forum keyword analysis endpoints
+  app.post("/api/forums/:id/keyword-difficulty", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to analyze keyword difficulty" });
+      }
+      
+      const forumId = parseInt(req.params.id);
+      const forum = await storage.getForum(forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if user owns the forum
+      if (forum.userId !== req.session.userId) {
+        return res.status(403).json({ message: "You don't have permission to analyze keyword difficulty" });
+      }
+      
+      const { keyword } = req.body;
+      
+      if (!keyword) {
+        return res.status(400).json({ message: "Keyword is required for difficulty analysis" });
+      }
+      
+      const analysis = await analyzeKeywordDifficulty(keyword);
+      res.json(analysis);
+    } catch (error) {
+      console.error("Error analyzing keyword difficulty:", error);
+      res.status(500).json({ message: "Failed to analyze keyword difficulty" });
+    }
+  });
+  
+  app.post("/api/forums/:id/content-gaps", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to analyze content gaps" });
+      }
+      
+      const forumId = parseInt(req.params.id);
+      const forum = await storage.getForum(forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if user owns the forum
+      if (forum.userId !== req.session.userId) {
+        return res.status(403).json({ message: "You don't have permission to analyze content gaps" });
+      }
+      
+      const { industry, existingKeywords } = req.body;
+      
+      if (!industry) {
+        return res.status(400).json({ message: "Industry is required for content gap analysis" });
+      }
+      
+      const analysis = await analyzeContentGaps(industry, existingKeywords);
+      res.json(analysis);
+    } catch (error) {
+      console.error("Error analyzing content gaps:", error);
+      res.status(500).json({ message: "Failed to analyze content gaps" });
+    }
+  });
+  
+  app.post("/api/forums/:id/seo-questions", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to generate SEO questions" });
+      }
+      
+      const forumId = parseInt(req.params.id);
+      const forum = await storage.getForum(forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if user owns the forum
+      if (forum.userId !== req.session.userId) {
+        return res.status(403).json({ message: "You don't have permission to generate SEO questions" });
+      }
+      
+      const { keyword, count = 5, searchIntent } = req.body;
+      
+      if (!keyword) {
+        return res.status(400).json({ message: "Keyword is required to generate SEO questions" });
+      }
+      
+      if (searchIntent && !["informational", "commercial", "transactional"].includes(searchIntent)) {
+        return res.status(400).json({ 
+          message: "Valid search intent is required: informational, commercial, or transactional" 
+        });
+      }
+      
+      const questions = await generateSeoOptimizedQuestions(
+        keyword, 
+        count, 
+        searchIntent as 'informational' | 'commercial' | 'transactional' | undefined
+      );
+      res.json(questions);
+    } catch (error) {
+      console.error("Error generating SEO questions:", error);
+      res.status(500).json({ message: "Failed to generate SEO questions" });
     }
   });
 
@@ -1836,6 +2030,246 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error publishing content schedule:", error);
       res.status(500).json({ message: "Failed to publish content schedule" });
+    }
+  });
+
+  // SEO Tracking API Routes
+  // Get all keywords for a forum
+  app.get("/api/forums/:id/seo/keywords", async (req, res) => {
+    try {
+      const forumId = parseInt(req.params.id);
+      const keywords = await storage.getSeoKeywordsByForum(forumId);
+      res.json(keywords);
+    } catch (error) {
+      console.error("Error getting forum SEO keywords:", error);
+      res.status(500).json({ message: "Failed to get SEO keywords" });
+    }
+  });
+
+  // Get a specific keyword with position history
+  app.get("/api/seo/keywords/:id", async (req, res) => {
+    try {
+      const keywordId = parseInt(req.params.id);
+      const keyword = await storage.getSeoKeywordWithPositionHistory(keywordId);
+      
+      if (!keyword) {
+        return res.status(404).json({ message: "Keyword not found" });
+      }
+      
+      res.json(keyword);
+    } catch (error) {
+      console.error("Error getting SEO keyword details:", error);
+      res.status(500).json({ message: "Failed to get SEO keyword details" });
+    }
+  });
+
+  // Create a new SEO keyword to track
+  app.post("/api/seo/keywords", async (req, res) => {
+    try {
+      const keywordData = req.body;
+      
+      // Validate input
+      if (!keywordData.keyword || !keywordData.forumId) {
+        return res.status(400).json({ message: "Keyword and forumId are required" });
+      }
+      
+      const newKeyword = await storage.createSeoKeyword(keywordData);
+      res.status(201).json(newKeyword);
+    } catch (error) {
+      console.error("Error creating SEO keyword:", error);
+      res.status(500).json({ message: "Failed to create SEO keyword" });
+    }
+  });
+
+  // Update an existing SEO keyword
+  app.patch("/api/seo/keywords/:id", async (req, res) => {
+    try {
+      const keywordId = parseInt(req.params.id);
+      const keywordData = req.body;
+      
+      const updatedKeyword = await storage.updateSeoKeyword(keywordId, keywordData);
+      res.json(updatedKeyword);
+    } catch (error) {
+      console.error("Error updating SEO keyword:", error);
+      res.status(500).json({ message: "Failed to update SEO keyword" });
+    }
+  });
+
+  // Delete an SEO keyword
+  app.delete("/api/seo/keywords/:id", async (req, res) => {
+    try {
+      const keywordId = parseInt(req.params.id);
+      await storage.deleteSeoKeyword(keywordId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting SEO keyword:", error);
+      res.status(500).json({ message: "Failed to delete SEO keyword" });
+    }
+  });
+
+  // Add a position record for a keyword
+  app.post("/api/seo/keywords/:id/positions", async (req, res) => {
+    try {
+      const keywordId = parseInt(req.params.id);
+      const positionData = {
+        ...req.body,
+        keywordId
+      };
+      
+      if (!positionData.position) {
+        return res.status(400).json({ message: "Position value is required" });
+      }
+      
+      const newPosition = await storage.createSeoPosition(positionData);
+      res.status(201).json(newPosition);
+    } catch (error) {
+      console.error("Error creating SEO position:", error);
+      res.status(500).json({ message: "Failed to create SEO position" });
+    }
+  });
+
+  // Get content gaps for a forum
+  app.get("/api/forums/:id/seo/content-gaps", async (req, res) => {
+    try {
+      const forumId = parseInt(req.params.id);
+      const onlyUnaddressed = req.query.unaddressed === 'true';
+      
+      const gaps = onlyUnaddressed 
+        ? await storage.getUnadressedSeoContentGaps(forumId)
+        : await storage.getSeoContentGapsByForum(forumId);
+        
+      res.json(gaps);
+    } catch (error) {
+      console.error("Error getting content gaps:", error);
+      res.status(500).json({ message: "Failed to get content gaps" });
+    }
+  });
+
+  // Create a new content gap
+  app.post("/api/seo/content-gaps", async (req, res) => {
+    try {
+      const gapData = req.body;
+      
+      if (!gapData.keyword || !gapData.forumId) {
+        return res.status(400).json({ message: "Keyword and forumId are required" });
+      }
+      
+      const newGap = await storage.createSeoContentGap(gapData);
+      res.status(201).json(newGap);
+    } catch (error) {
+      console.error("Error creating content gap:", error);
+      res.status(500).json({ message: "Failed to create content gap" });
+    }
+  });
+
+  // Update a content gap's addressed status
+  app.patch("/api/seo/content-gaps/:id/status", async (req, res) => {
+    try {
+      const gapId = parseInt(req.params.id);
+      const { isAddressed, targetUrl } = req.body;
+      
+      if (typeof isAddressed !== 'boolean') {
+        return res.status(400).json({ message: "isAddressed status is required" });
+      }
+      
+      const updatedGap = await storage.updateSeoContentGapStatus(gapId, isAddressed, targetUrl);
+      res.json(updatedGap);
+    } catch (error) {
+      console.error("Error updating content gap status:", error);
+      res.status(500).json({ message: "Failed to update content gap status" });
+    }
+  });
+
+  // Get SEO page metrics for a forum
+  app.get("/api/forums/:id/seo/page-metrics", async (req, res) => {
+    try {
+      const forumId = parseInt(req.params.id);
+      const metrics = await storage.getSeoPageMetricsByForum(forumId);
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error getting SEO page metrics:", error);
+      res.status(500).json({ message: "Failed to get SEO page metrics" });
+    }
+  });
+
+  // Create or update SEO page metric
+  app.post("/api/seo/page-metrics", async (req, res) => {
+    try {
+      const metricData = req.body;
+      
+      if (!metricData.url || !metricData.forumId || !metricData.pageTitle) {
+        return res.status(400).json({ 
+          message: "URL, forumId, and pageTitle are required" 
+        });
+      }
+      
+      // Check if metric for this URL exists
+      const existingMetric = await storage.getSeoPageMetricByUrl(
+        metricData.forumId, 
+        metricData.url
+      );
+      
+      let result;
+      if (existingMetric) {
+        // Update existing metric
+        result = await storage.updateSeoPageMetric(existingMetric.id, metricData);
+      } else {
+        // Create new metric
+        result = await storage.createSeoPageMetric(metricData);
+      }
+      
+      res.status(existingMetric ? 200 : 201).json(result);
+    } catch (error) {
+      console.error("Error creating/updating SEO page metric:", error);
+      res.status(500).json({ message: "Failed to create/update SEO page metric" });
+    }
+  });
+
+  // Get weekly SEO reports for a forum
+  app.get("/api/forums/:id/seo/weekly-reports", async (req, res) => {
+    try {
+      const forumId = parseInt(req.params.id);
+      const reports = await storage.getSeoWeeklyReportsByForum(forumId);
+      res.json(reports);
+    } catch (error) {
+      console.error("Error getting SEO weekly reports:", error);
+      res.status(500).json({ message: "Failed to get SEO weekly reports" });
+    }
+  });
+
+  // Get latest SEO report for a forum
+  app.get("/api/forums/:id/seo/weekly-reports/latest", async (req, res) => {
+    try {
+      const forumId = parseInt(req.params.id);
+      const report = await storage.getLatestSeoWeeklyReport(forumId);
+      
+      if (!report) {
+        return res.status(404).json({ message: "No weekly reports found" });
+      }
+      
+      res.json(report);
+    } catch (error) {
+      console.error("Error getting latest SEO report:", error);
+      res.status(500).json({ message: "Failed to get latest SEO report" });
+    }
+  });
+
+  // Create a new weekly SEO report
+  app.post("/api/seo/weekly-reports", async (req, res) => {
+    try {
+      const reportData = req.body;
+      
+      if (!reportData.forumId || !reportData.weekStartDate || !reportData.weekEndDate) {
+        return res.status(400).json({ 
+          message: "forumId, weekStartDate, and weekEndDate are required" 
+        });
+      }
+      
+      const newReport = await storage.createSeoWeeklyReport(reportData);
+      res.status(201).json(newReport);
+    } catch (error) {
+      console.error("Error creating SEO weekly report:", error);
+      res.status(500).json({ message: "Failed to create SEO weekly report" });
     }
   });
 

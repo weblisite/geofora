@@ -18,7 +18,12 @@ import {
   gatedContents, type GatedContent, type InsertGatedContent,
   crmIntegrations, type CrmIntegration, type InsertCrmIntegration,
   leadFormViews, type LeadFormView, type InsertLeadFormView,
-  contentSchedules, type ContentSchedule, type InsertContentSchedule, type ContentScheduleWithDetails
+  contentSchedules, type ContentSchedule, type InsertContentSchedule, type ContentScheduleWithDetails,
+  seoKeywords, type SeoKeyword, type InsertSeoKeyword, type SeoKeywordWithPositionHistory,
+  seoPositions, type SeoPosition, type InsertSeoPosition,
+  seoPageMetrics, type SeoPageMetric, type InsertSeoPageMetric,
+  seoContentGaps, type SeoContentGap, type InsertSeoContentGap,
+  seoWeeklyReports, type SeoWeeklyReport, type InsertSeoWeeklyReport, type SeoWeeklyReportWithDetails
 } from "@shared/schema";
 // Import this way to make TypeScript happy in an ESM context
 import memorystore from 'memorystore';
@@ -167,6 +172,41 @@ export interface IStorage {
   updateContentScheduleStatus(id: number, status: string, questionIds?: number[]): Promise<ContentSchedule>;
   deleteContentSchedule(id: number): Promise<void>;
   
+  // SEO Keyword methods
+  getSeoKeyword(id: number): Promise<SeoKeyword | undefined>;
+  getSeoKeywordsByForum(forumId: number): Promise<SeoKeyword[]>;
+  getSeoKeywordWithPositionHistory(id: number): Promise<SeoKeywordWithPositionHistory | undefined>;
+  createSeoKeyword(keyword: InsertSeoKeyword): Promise<SeoKeyword>;
+  updateSeoKeyword(id: number, data: Partial<InsertSeoKeyword>): Promise<SeoKeyword>;
+  deleteSeoKeyword(id: number): Promise<void>;
+  
+  // SEO Position methods
+  getSeoPosition(id: number): Promise<SeoPosition | undefined>;
+  getSeoPositionsByKeyword(keywordId: number): Promise<SeoPosition[]>;
+  getSeoPositionsByDate(date: Date): Promise<SeoPosition[]>;
+  createSeoPosition(position: InsertSeoPosition): Promise<SeoPosition>;
+  
+  // SEO Page Metrics methods
+  getSeoPageMetric(id: number): Promise<SeoPageMetric | undefined>;
+  getSeoPageMetricByUrl(forumId: number, url: string): Promise<SeoPageMetric | undefined>;
+  getSeoPageMetricsByForum(forumId: number): Promise<SeoPageMetric[]>;
+  createSeoPageMetric(metric: InsertSeoPageMetric): Promise<SeoPageMetric>;
+  updateSeoPageMetric(id: number, data: Partial<InsertSeoPageMetric>): Promise<SeoPageMetric>;
+  
+  // SEO Content Gap methods
+  getSeoContentGap(id: number): Promise<SeoContentGap | undefined>;
+  getSeoContentGapsByForum(forumId: number): Promise<SeoContentGap[]>;
+  getUnadressedSeoContentGaps(forumId: number): Promise<SeoContentGap[]>;
+  createSeoContentGap(gap: InsertSeoContentGap): Promise<SeoContentGap>;
+  updateSeoContentGapStatus(id: number, isAddressed: boolean, targetUrl?: string): Promise<SeoContentGap>;
+  
+  // SEO Weekly Report methods
+  getSeoWeeklyReport(id: number): Promise<SeoWeeklyReport | undefined>;
+  getSeoWeeklyReportWithDetails(id: number): Promise<SeoWeeklyReportWithDetails | undefined>;
+  getSeoWeeklyReportsByForum(forumId: number): Promise<SeoWeeklyReport[]>;
+  getLatestSeoWeeklyReport(forumId: number): Promise<SeoWeeklyReportWithDetails | undefined>;
+  createSeoWeeklyReport(report: InsertSeoWeeklyReport): Promise<SeoWeeklyReport>;
+  
   // Session store
   sessionStore: any;
 }
@@ -193,6 +233,11 @@ export class MemStorage implements IStorage {
   private crmIntegrationsStore: Map<number, CrmIntegration>;
   private leadFormViewsStore: Map<number, LeadFormView>;
   private contentSchedulesStore: Map<number, ContentSchedule>;
+  private seoKeywordsStore: Map<number, SeoKeyword>;
+  private seoPositionsStore: Map<number, SeoPosition>;
+  private seoPageMetricsStore: Map<number, SeoPageMetric>;
+  private seoContentGapsStore: Map<number, SeoContentGap>;
+  private seoWeeklyReportsStore: Map<number, SeoWeeklyReport>;
   
   private roleId: number;
   private permissionId: number;
@@ -214,6 +259,11 @@ export class MemStorage implements IStorage {
   private crmIntegrationId: number;
   private leadFormViewId: number;
   private contentScheduleId: number;
+  private seoKeywordId: number;
+  private seoPositionId: number;
+  private seoPageMetricId: number;
+  private seoContentGapId: number;
+  private seoWeeklyReportId: number;
   public sessionStore: any;
 
   constructor() {
@@ -238,6 +288,11 @@ export class MemStorage implements IStorage {
     this.crmIntegrationsStore = new Map();
     this.leadFormViewsStore = new Map();
     this.contentSchedulesStore = new Map();
+    this.seoKeywordsStore = new Map();
+    this.seoPositionsStore = new Map();
+    this.seoPageMetricsStore = new Map();
+    this.seoContentGapsStore = new Map();
+    this.seoWeeklyReportsStore = new Map();
     
     // Create session store from memorystore
     this.sessionStore = new MemoryStore({
@@ -265,12 +320,263 @@ export class MemStorage implements IStorage {
     this.crmIntegrationId = 1;
     this.leadFormViewId = 1;
     this.contentScheduleId = 1;
+    this.seoKeywordId = 1;
+    this.seoPositionId = 1;
+    this.seoPageMetricId = 1;
+    this.seoContentGapId = 1;
+    this.seoWeeklyReportId = 1;
 
     // Initialize with sample data
     this.initSampleData();
   }
 
+  private async initSeoData() {
+    // Initialize SEO stores
+    this.seoKeywordsStore = new Map();
+    this.seoPositionsStore = new Map();
+    this.seoPageMetricsStore = new Map();
+    this.seoContentGapsStore = new Map();
+    this.seoWeeklyReportsStore = new Map();
+    
+    // Create sample SEO keywords for the first forum
+    const sampleKeywords = [
+      {
+        keyword: "ai-powered content generation",
+        forumId: 1,
+        targetPosition: 3,
+        difficulty: 65,
+        searchVolume: 2400,
+        isTracking: true,
+        notes: "Competing with major AI platforms",
+        startingPosition: 12
+      },
+      {
+        keyword: "seo forum platform",
+        forumId: 1,
+        targetPosition: 1,
+        difficulty: 45,
+        searchVolume: 1800,
+        isTracking: true,
+        notes: "Strong opportunity for our niche",
+        startingPosition: 8
+      },
+      {
+        keyword: "forum seo optimization",
+        forumId: 1,
+        targetPosition: 5,
+        difficulty: 55,
+        searchVolume: 1200,
+        isTracking: true,
+        notes: "Medium competition with good conversion potential",
+        startingPosition: 15
+      },
+      {
+        keyword: "question answer platform seo",
+        forumId: 1,
+        targetPosition: 4,
+        difficulty: 40,
+        searchVolume: 890,
+        isTracking: true,
+        notes: "Target for Q2 growth",
+        startingPosition: 11
+      },
+      {
+        keyword: "how to optimize forum for google",
+        forumId: 1,
+        targetPosition: 2,
+        difficulty: 35,
+        searchVolume: 1500,
+        isTracking: true,
+        notes: "Educational content opportunity",
+        startingPosition: 6
+      }
+    ];
+    
+    // Create keywords
+    let keywordMap = [];
+    for (const keywordData of sampleKeywords) {
+      const keyword = await this.createSeoKeyword(keywordData);
+      keywordMap.push(keyword);
+    }
+    
+    // Create position history for each keyword
+    const today = new Date();
+    const oneDay = 24 * 60 * 60 * 1000;
+    
+    for (const keyword of keywordMap) {
+      // Create 30 days of position history
+      for (let i = 0; i < 30; i++) {
+        const date = new Date(today.getTime() - (i * oneDay));
+        
+        // Calculate a somewhat realistic position trend (improving over time with some fluctuations)
+        const startingPos = keyword.startingPosition || 20;
+        const targetPos = keyword.targetPosition || 3;
+        const daysProgress = (30 - i) / 30; // 0 to 1 progress factor
+        const basePosition = startingPos - ((startingPos - targetPos) * daysProgress);
+        const randomFactor = Math.random() * 3 - 1.5; // Random fluctuation between -1.5 and +1.5
+        const position = Math.max(1, Math.round(basePosition + randomFactor));
+        
+        // Calculate change from previous day
+        let change = null;
+        if (i > 0) {
+          const prevPos = Math.max(1, Math.round(basePosition + (Math.random() * 3 - 1.5)));
+          change = prevPos - position;
+        }
+        
+        await this.createSeoPosition({
+          keywordId: keyword.id,
+          position,
+          trackedAt: date,
+          url: `https://forum.example.com/post/${Math.floor(Math.random() * 1000)}`,
+          change,
+          searchVolume: keyword.searchVolume
+        });
+      }
+    }
+    
+    // Create sample content gaps
+    const contentGaps = [
+      {
+        forumId: 1,
+        keyword: "forum vs social media for seo",
+        searchVolume: 980,
+        difficulty: 42,
+        competitorUrls: "competitor1.com/blog/forums, competitor2.com/seo-comparison",
+        isAddressed: false,
+        priority: "high"
+      },
+      {
+        forumId: 1,
+        keyword: "best forum software for seo",
+        searchVolume: 750,
+        difficulty: 38,
+        competitorUrls: "competitor1.com/tools, competitor3.com/forum-platforms",
+        isAddressed: false,
+        priority: "medium"
+      },
+      {
+        forumId: 1,
+        keyword: "improve forum engagement metrics",
+        searchVolume: 560,
+        difficulty: 30,
+        competitorUrls: "competitor2.com/engagement, competitor4.com/metrics",
+        isAddressed: true,
+        targetUrl: "https://forum.example.com/guides/engagement",
+        priority: "medium"
+      }
+    ];
+    
+    for (const gap of contentGaps) {
+      await this.createSeoContentGap(gap);
+    }
+    
+    // Create sample page metrics
+    const pageMetrics = [
+      {
+        forumId: 1,
+        url: "https://forum.example.com/topic/ai-content",
+        pageTitle: "AI Content Generation Strategies",
+        organicTraffic: 1245,
+        bounceRate: 42.5,
+        avgTimeOnPage: 185,
+        keywordRankings: JSON.stringify({
+          "ai content": 3,
+          "ai writing": 7,
+          "content generation": 5
+        }),
+        pageSpeed: 87,
+        conversionRate: 3.2,
+        contentLength: 2450,
+        internalLinks: 14,
+        externalLinks: 6,
+        backlinks: 23
+      },
+      {
+        forumId: 1,
+        url: "https://forum.example.com/topic/seo-basics",
+        pageTitle: "SEO Fundamentals for Forums",
+        organicTraffic: 2380,
+        bounceRate: 38.7,
+        avgTimeOnPage: 220,
+        keywordRankings: JSON.stringify({
+          "forum seo": 2,
+          "seo basics": 4,
+          "forum optimization": 3
+        }),
+        pageSpeed: 92,
+        conversionRate: 4.8,
+        contentLength: 3200,
+        internalLinks: 18,
+        externalLinks: 8,
+        backlinks: 42
+      }
+    ];
+    
+    for (const metric of pageMetrics) {
+      await this.createSeoPageMetric(metric);
+    }
+    
+    // Create weekly reports
+    const currentDate = new Date();
+    const oneWeek = 7 * 24 * 60 * 60 * 1000;
+    
+    for (let i = 0; i < 4; i++) {
+      const weekStartDate = new Date(currentDate.getTime() - ((i + 1) * oneWeek));
+      const weekEndDate = new Date(weekStartDate.getTime() + oneWeek - (24 * 60 * 60 * 1000));
+      
+      // Traffic increases over time
+      const baseTraffic = 5000;
+      const weekMultiplier = 1 + (0.12 * (3 - i));
+      const totalTraffic = Math.round(baseTraffic * weekMultiplier);
+      const prevWeekTraffic = i > 0 ? Math.round(baseTraffic * (1 + (0.12 * (3 - (i-1))))) : baseTraffic;
+      const trafficChange = ((totalTraffic - prevWeekTraffic) / prevWeekTraffic) * 100;
+      
+      // Position improves over time
+      const basePosition = 18;
+      const posImprovement = 0.8 * (3 - i);
+      const avgPosition = basePosition - (3 - i) * 2.5;
+      const positionChange = posImprovement;
+      
+      // Create sample keyword movements
+      const keywordMovements = {
+        rising: [
+          { keyword: "forum seo optimization", change: 3, position: 6 - i },
+          { keyword: "ai content generation", change: 2, position: 7 - i },
+          { keyword: "seo question answer", change: 4, position: 5 - i }
+        ],
+        declining: [
+          { keyword: "social media marketing", change: -1, position: 12 + i },
+          { keyword: "content marketing", change: -2, position: 15 + i }
+        ],
+        new: i === 0 ? [
+          { keyword: "forum subdomain seo", position: 8 },
+          { keyword: "user generated content seo", position: 11 }
+        ] : []
+      };
+      
+      await this.createSeoWeeklyReport({
+        forumId: 1,
+        weekStartDate,
+        weekEndDate,
+        totalOrganicTraffic: totalTraffic,
+        trafficChange,
+        averagePosition: avgPosition,
+        positionChange,
+        topPerformingPages: JSON.stringify([
+          { url: "https://forum.example.com/topic/seo-basics", traffic: 875 },
+          { url: "https://forum.example.com/topic/ai-content", traffic: 620 },
+          { url: "https://forum.example.com/topic/forum-strategy", traffic: 480 }
+        ]),
+        keywordMovements: JSON.stringify(keywordMovements),
+        newBacklinks: 15 - (i * 3),
+        recommendedActions: "Focus on content gaps in AI and forum optimization topics. Improve internal linking structure."
+      });
+    }
+  }
+  
   private async initSampleData() {
+    await this.initSeoData();
+    
     // Create predefined roles
     const roles = [
       {
@@ -2009,6 +2315,336 @@ export class MemStorage implements IStorage {
     }
     
     this.contentSchedulesStore.delete(id);
+  }
+
+  // SEO Keyword methods
+  async getSeoKeyword(id: number): Promise<SeoKeyword | undefined> {
+    return this.seoKeywordsStore.get(id);
+  }
+
+  async getSeoKeywordsByForum(forumId: number): Promise<SeoKeyword[]> {
+    const keywords: SeoKeyword[] = [];
+    for (const keyword of this.seoKeywordsStore.values()) {
+      if (keyword.forumId === forumId) {
+        keywords.push(keyword);
+      }
+    }
+    return keywords;
+  }
+
+  async getSeoKeywordWithPositionHistory(id: number): Promise<SeoKeywordWithPositionHistory | undefined> {
+    const keyword = await this.getSeoKeyword(id);
+    if (!keyword) return undefined;
+
+    const positions = await this.getSeoPositionsByKeyword(id);
+    const latestPosition = positions.length > 0 
+      ? positions.sort((a, b) => new Date(b.trackedAt).getTime() - new Date(a.trackedAt).getTime())[0]
+      : undefined;
+
+    return {
+      ...keyword,
+      positionHistory: positions,
+      latestPosition
+    };
+  }
+
+  async createSeoKeyword(keywordData: InsertSeoKeyword): Promise<SeoKeyword> {
+    const id = this.seoKeywordId++;
+    const now = new Date();
+    const keyword: SeoKeyword = {
+      id,
+      createdAt: now,
+      updatedAt: now,
+      keyword: keywordData.keyword,
+      forumId: keywordData.forumId,
+      targetPosition: keywordData.targetPosition ?? null,
+      difficulty: keywordData.difficulty ?? null,
+      searchVolume: keywordData.searchVolume ?? null,
+      isTracking: keywordData.isTracking ?? true,
+      notes: keywordData.notes ?? null,
+      startingPosition: keywordData.startingPosition ?? null
+    };
+    
+    this.seoKeywordsStore.set(id, keyword);
+    return keyword;
+  }
+
+  async updateSeoKeyword(id: number, data: Partial<InsertSeoKeyword>): Promise<SeoKeyword> {
+    const keyword = await this.getSeoKeyword(id);
+    if (!keyword) {
+      throw new Error(`SEO keyword with ID ${id} not found`);
+    }
+    
+    const updated: SeoKeyword = {
+      ...keyword,
+      ...data,
+      updatedAt: new Date()
+    };
+    
+    this.seoKeywordsStore.set(id, updated);
+    return updated;
+  }
+
+  async deleteSeoKeyword(id: number): Promise<void> {
+    if (!this.seoKeywordsStore.has(id)) {
+      throw new Error(`SEO keyword with ID ${id} not found`);
+    }
+    this.seoKeywordsStore.delete(id);
+    
+    // Also delete any positions associated with this keyword
+    for (const [posId, position] of this.seoPositionsStore.entries()) {
+      if (position.keywordId === id) {
+        this.seoPositionsStore.delete(posId);
+      }
+    }
+  }
+  
+  // SEO Position methods
+  async getSeoPosition(id: number): Promise<SeoPosition | undefined> {
+    return this.seoPositionsStore.get(id);
+  }
+
+  async getSeoPositionsByKeyword(keywordId: number): Promise<SeoPosition[]> {
+    const positions: SeoPosition[] = [];
+    for (const position of this.seoPositionsStore.values()) {
+      if (position.keywordId === keywordId) {
+        positions.push(position);
+      }
+    }
+    return positions;
+  }
+
+  async getSeoPositionsByDate(date: Date): Promise<SeoPosition[]> {
+    const positions: SeoPosition[] = [];
+    const dateStr = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+    
+    for (const position of this.seoPositionsStore.values()) {
+      const positionDate = new Date(position.trackedAt).toISOString().split('T')[0];
+      if (positionDate === dateStr) {
+        positions.push(position);
+      }
+    }
+    return positions;
+  }
+
+  async createSeoPosition(positionData: InsertSeoPosition): Promise<SeoPosition> {
+    const id = this.seoPositionId++;
+    const position: SeoPosition = {
+      id,
+      keywordId: positionData.keywordId,
+      position: positionData.position,
+      trackedAt: positionData.trackedAt ?? new Date(),
+      url: positionData.url ?? null,
+      change: positionData.change ?? null,
+      searchVolume: positionData.searchVolume ?? null
+    };
+    
+    this.seoPositionsStore.set(id, position);
+    return position;
+  }
+  
+  // SEO Page Metrics methods
+  async getSeoPageMetric(id: number): Promise<SeoPageMetric | undefined> {
+    return this.seoPageMetricsStore.get(id);
+  }
+
+  async getSeoPageMetricByUrl(forumId: number, url: string): Promise<SeoPageMetric | undefined> {
+    for (const metric of this.seoPageMetricsStore.values()) {
+      if (metric.forumId === forumId && metric.url === url) {
+        return metric;
+      }
+    }
+    return undefined;
+  }
+
+  async getSeoPageMetricsByForum(forumId: number): Promise<SeoPageMetric[]> {
+    const metrics: SeoPageMetric[] = [];
+    for (const metric of this.seoPageMetricsStore.values()) {
+      if (metric.forumId === forumId) {
+        metrics.push(metric);
+      }
+    }
+    return metrics;
+  }
+
+  async createSeoPageMetric(metricData: InsertSeoPageMetric): Promise<SeoPageMetric> {
+    const id = this.seoPageMetricId++;
+    const now = new Date();
+    const metric: SeoPageMetric = {
+      id,
+      createdAt: now,
+      updatedAt: now,
+      forumId: metricData.forumId,
+      url: metricData.url,
+      pageTitle: metricData.pageTitle,
+      organicTraffic: metricData.organicTraffic ?? 0,
+      bounceRate: metricData.bounceRate ?? null,
+      avgTimeOnPage: metricData.avgTimeOnPage ?? null,
+      keywordRankings: metricData.keywordRankings ?? null,
+      pageSpeed: metricData.pageSpeed ?? null,
+      conversionRate: metricData.conversionRate ?? null,
+      contentLength: metricData.contentLength ?? null,
+      internalLinks: metricData.internalLinks ?? null,
+      externalLinks: metricData.externalLinks ?? null,
+      backlinks: metricData.backlinks ?? null,
+      lastUpdated: now
+    };
+    
+    this.seoPageMetricsStore.set(id, metric);
+    return metric;
+  }
+
+  async updateSeoPageMetric(id: number, data: Partial<InsertSeoPageMetric>): Promise<SeoPageMetric> {
+    const metric = await this.getSeoPageMetric(id);
+    if (!metric) {
+      throw new Error(`SEO page metric with ID ${id} not found`);
+    }
+    
+    const updated: SeoPageMetric = {
+      ...metric,
+      ...data,
+      updatedAt: new Date(),
+      lastUpdated: new Date()
+    };
+    
+    this.seoPageMetricsStore.set(id, updated);
+    return updated;
+  }
+  
+  // SEO Content Gap methods
+  async getSeoContentGap(id: number): Promise<SeoContentGap | undefined> {
+    return this.seoContentGapsStore.get(id);
+  }
+
+  async getSeoContentGapsByForum(forumId: number): Promise<SeoContentGap[]> {
+    const gaps: SeoContentGap[] = [];
+    for (const gap of this.seoContentGapsStore.values()) {
+      if (gap.forumId === forumId) {
+        gaps.push(gap);
+      }
+    }
+    return gaps;
+  }
+
+  async getUnadressedSeoContentGaps(forumId: number): Promise<SeoContentGap[]> {
+    const gaps: SeoContentGap[] = [];
+    for (const gap of this.seoContentGapsStore.values()) {
+      if (gap.forumId === forumId && !gap.isAddressed) {
+        gaps.push(gap);
+      }
+    }
+    return gaps;
+  }
+
+  async createSeoContentGap(gapData: InsertSeoContentGap): Promise<SeoContentGap> {
+    const id = this.seoContentGapId++;
+    const now = new Date();
+    const gap: SeoContentGap = {
+      id,
+      createdAt: now,
+      updatedAt: now,
+      forumId: gapData.forumId,
+      keyword: gapData.keyword,
+      searchVolume: gapData.searchVolume ?? null,
+      difficulty: gapData.difficulty ?? null,
+      competitorUrls: gapData.competitorUrls ?? null,
+      isAddressed: gapData.isAddressed ?? false,
+      targetUrl: gapData.targetUrl ?? null,
+      priority: gapData.priority ?? "medium"
+    };
+    
+    this.seoContentGapsStore.set(id, gap);
+    return gap;
+  }
+
+  async updateSeoContentGapStatus(id: number, isAddressed: boolean, targetUrl?: string): Promise<SeoContentGap> {
+    const gap = await this.getSeoContentGap(id);
+    if (!gap) {
+      throw new Error(`SEO content gap with ID ${id} not found`);
+    }
+    
+    const updated: SeoContentGap = {
+      ...gap,
+      isAddressed,
+      targetUrl: targetUrl ?? gap.targetUrl,
+      updatedAt: new Date()
+    };
+    
+    this.seoContentGapsStore.set(id, updated);
+    return updated;
+  }
+  
+  // SEO Weekly Report methods
+  async getSeoWeeklyReport(id: number): Promise<SeoWeeklyReport | undefined> {
+    return this.seoWeeklyReportsStore.get(id);
+  }
+
+  async getSeoWeeklyReportWithDetails(id: number): Promise<SeoWeeklyReportWithDetails | undefined> {
+    const report = await this.getSeoWeeklyReport(id);
+    if (!report) return undefined;
+    
+    // Parse keywordMovements from the report
+    let keywordMovements;
+    try {
+      keywordMovements = JSON.parse(report.keywordMovements || '{"rising":[],"declining":[],"new":[]}');
+    } catch (e) {
+      keywordMovements = {
+        rising: [],
+        declining: [],
+        new: []
+      };
+    }
+    
+    return {
+      ...report,
+      keywordMovements
+    };
+  }
+
+  async getSeoWeeklyReportsByForum(forumId: number): Promise<SeoWeeklyReport[]> {
+    const reports: SeoWeeklyReport[] = [];
+    for (const report of this.seoWeeklyReportsStore.values()) {
+      if (report.forumId === forumId) {
+        reports.push(report);
+      }
+    }
+    return reports.sort((a, b) => new Date(b.weekStartDate).getTime() - new Date(a.weekStartDate).getTime());
+  }
+
+  async getLatestSeoWeeklyReport(forumId: number): Promise<SeoWeeklyReportWithDetails | undefined> {
+    const reports = await this.getSeoWeeklyReportsByForum(forumId);
+    if (reports.length === 0) return undefined;
+    
+    const latestReport = reports[0]; // Already sorted descending by date
+    return this.getSeoWeeklyReportWithDetails(latestReport.id);
+  }
+
+  async createSeoWeeklyReport(reportData: InsertSeoWeeklyReport): Promise<SeoWeeklyReport> {
+    const id = this.seoWeeklyReportId++;
+    const now = new Date();
+    const report: SeoWeeklyReport = {
+      id,
+      createdAt: now,
+      updatedAt: now,
+      forumId: reportData.forumId,
+      weekStartDate: reportData.weekStartDate,
+      weekEndDate: reportData.weekEndDate,
+      totalOrganicTraffic: reportData.totalOrganicTraffic ?? 0,
+      trafficChange: reportData.trafficChange ?? 0,
+      averagePosition: reportData.averagePosition ?? null,
+      positionChange: reportData.positionChange ?? null,
+      topPerformingPages: reportData.topPerformingPages ?? null,
+      keywordMovements: reportData.keywordMovements ?? JSON.stringify({
+        rising: [],
+        declining: [],
+        new: []
+      }),
+      newBacklinks: reportData.newBacklinks ?? 0,
+      recommendedActions: reportData.recommendedActions ?? null
+    };
+    
+    this.seoWeeklyReportsStore.set(id, report);
+    return report;
   }
 }
 
