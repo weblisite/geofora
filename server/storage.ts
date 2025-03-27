@@ -6,6 +6,12 @@ import {
   votes, type Vote, type InsertVote,
   aiPersonas, type AiPersona, type InsertAiPersona
 } from "@shared/schema";
+// Import this way to make TypeScript happy in an ESM context
+import memorystore from 'memorystore';
+import session from 'express-session';
+
+// Create the MemoryStore
+const MemoryStore = memorystore(session);
 
 // Storage interface with CRUD methods
 export interface IStorage {
@@ -43,6 +49,9 @@ export interface IStorage {
   getAIPersona(id: number): Promise<AiPersona | undefined>;
   getAllAIPersonas(): Promise<AiPersona[]>;
   createAIPersona(persona: InsertAiPersona): Promise<AiPersona>;
+  
+  // Session store
+  sessionStore: any;
 }
 
 // In-memory storage implementation
@@ -60,6 +69,7 @@ export class MemStorage implements IStorage {
   private answerId: number;
   private voteId: number;
   private aiPersonaId: number;
+  public sessionStore: any;
 
   constructor() {
     this.usersStore = new Map();
@@ -68,6 +78,11 @@ export class MemStorage implements IStorage {
     this.answersStore = new Map();
     this.votesStore = new Map();
     this.aiPersonasStore = new Map();
+    
+    // Create session store from memorystore
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    });
 
     this.userId = 1;
     this.categoryId = 1;

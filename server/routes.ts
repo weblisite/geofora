@@ -10,12 +10,16 @@ import {
   generateAnswer,
   generateInterlinkingSuggestions
 } from "./ai";
+import { setupAuth } from "./auth";
 import session from "express-session";
 
 // Extend Express Request to include session property
 declare module "express-session" {
   interface SessionData {
     userId?: number;
+    passport?: {
+      user?: number;
+    };
   }
 }
 
@@ -29,6 +33,9 @@ declare global {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup authentication with passport
+  setupAuth(app);
+  
   // User authentication routes
   app.post("/api/auth/register", async (req, res) => {
     try {

@@ -2,21 +2,18 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import session from "express-session";
-import MemoryStore from "memorystore";
+import { storage } from "./storage";
 
-const MemoryStoreSession = MemoryStore(session);
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Configure session middleware
+// Configure session middleware using our storage's session store
 app.use(session({
-  secret: "forumAI-session-secret",
+  secret: process.env.SESSION_SECRET || "forumAI-session-secret",
   resave: false,
   saveUninitialized: false,
-  store: new MemoryStoreSession({
-    checkPeriod: 86400000 // prune expired entries every 24h
-  }),
+  store: storage.sessionStore,
   cookie: {
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
     secure: process.env.NODE_ENV === "production"
