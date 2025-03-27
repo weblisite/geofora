@@ -1,1 +1,1 @@
-export * from "./section-generator";
+export * from './section-generator';

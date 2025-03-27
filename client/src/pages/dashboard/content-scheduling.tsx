@@ -624,9 +624,10 @@ export default function ContentSchedulingPage() {
 
       <Glassmorphism className="p-4 mb-6">
         <Tabs defaultValue="upcoming" onValueChange={setActiveTab} value={activeTab}>
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
             <TabsTrigger value="all">All Schedules</TabsTrigger>
+            <TabsTrigger value="generate-section">Generate Section</TabsTrigger>
           </TabsList>
           
           <TabsContent value="upcoming" className="pt-4">
@@ -776,6 +777,15 @@ export default function ContentSchedulingPage() {
                 </Button>
               </div>
             )}
+          </TabsContent>
+          
+          <TabsContent value="generate-section" className="pt-4">
+            <h3 className="text-xl font-semibold mb-4">Generate Complete Section</h3>
+            <p className="text-muted-foreground mb-6">
+              Generate a full section of SEO-optimized content including multiple related questions and answers
+            </p>
+            
+            <SectionGenerator forums={forums} />
           </TabsContent>
         </Tabs>
       </Glassmorphism>

@@ -472,6 +472,204 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to generate SEO-optimized questions" });
     }
   });
+  
+  app.post("/api/ai/generate-section", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const { 
+        forumId, 
+        keyword, 
+        title, 
+        description, 
+        questionCount, 
+        answerCount, 
+        personaType,
+        relatedKeywordsCount,
+        contentDepth 
+      } = req.body;
+      
+      if (!keyword || !forumId || !title) {
+        return res.status(400).json({ error: "Missing required parameters: keyword, forumId, and title are required" });
+      }
+      
+      // Step 1: Get the forum to verify it exists and access to additional info
+      const forum = await storage.getForum(forumId);
+      if (!forum) {
+        return res.status(404).json({ error: "Forum not found" });
+      }
+      
+      // Step 2: Generate keywords analysis and related keywords
+      console.log(`Generating keyword analysis for "${keyword}"`);
+      const difficultyAnalysis = await analyzeKeywordDifficulty(keyword);
+      
+      // Step 3: Generate questions based on keyword and related keywords
+      console.log(`Generating ${questionCount} questions for keyword "${keyword}"`);
+      const questionsData = await generateSeoOptimizedQuestions(
+        keyword, 
+        questionCount || 5
+      );
+      
+      // Step 4: Generate answers for each question based on the persona type
+      console.log(`Generating answers with ${personaType} persona`);
+      const answers = [];
+      
+      for (const question of questionsData.questions) {
+        // Generate 1-3 answers per question based on answerCount parameter
+        const answersPerQuestion = Math.min(answerCount || 3, 5); // Cap at 5 answers per question
+        
+        for (let i = 0; i < answersPerQuestion; i++) {
+          const answerPersona = i === 0 ? personaType : ["beginner", "intermediate", "expert", "moderator"][Math.floor(Math.random() * 4)];
+          
+          console.log(`Generating ${answerPersona} answer for question: ${question.title}`);
+          const answerContent = await generateAnswer(
+            question.title,
+            question.content,
+            answerPersona
+          );
+          
+          answers.push({
+            content: answerContent,
+            personaType: answerPersona,
+            questionTitle: question.title
+          });
+        }
+      }
+      
+      // Step 5: Generate related keywords based on the primary keyword
+      console.log("Generating related keywords");
+      const keywordAnalysis = await analyzeWebsiteForKeywords(
+        `https://example.com/topics/${keyword.replace(/\s+/g, "-")}`, 
+        relatedKeywordsCount || 3
+      );
+      
+      // Construct the complete section response
+      const section = {
+        title,
+        description: description || `A comprehensive guide to ${keyword}`,
+        questions: questionsData.questions.map(q => ({
+          title: q.title,
+          content: q.content,
+          keywords: q.targetKeywords.secondary.slice(0, 5),
+          estimatedSearchVolume: q.estimatedSearchVolume,
+          difficulty: q.competitiveDifficulty < 30 ? "beginner" : 
+                     q.competitiveDifficulty < 70 ? "intermediate" : "expert"
+        })),
+        answers,
+        relatedKeywords: keywordAnalysis.primaryKeywords.concat(keywordAnalysis.secondaryKeywords).slice(0, 10),
+        searchEstimates: {
+          totalVolume: difficultyAnalysis.searchVolume.estimate,
+          difficultyAverage: difficultyAnalysis.difficultyScore,
+          rankingPotential: difficultyAnalysis.rankingProbability.establishedSite
+        }
+      };
+      
+      res.json(section);
+    } catch (error) {
+      console.error("Error generating section:", error);
+      res.status(500).json({ error: error.message || "Failed to generate section" });
+    }
+  });
+  
+  app.post("/api/content/publish-section", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const { 
+        forumId, 
+        keyword, 
+        section 
+      } = req.body;
+      
+      if (!forumId || !keyword || !section) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+      
+      const forum = await storage.getForum(forumId);
+      if (!forum) {
+        return res.status(404).json({ error: "Forum not found" });
+      }
+      
+      // Find or create a category for the section
+      let categoryId = null;
+      const categories = await storage.getCategories();
+      let category = categories.find(cat => cat.name.toLowerCase() === section.title.toLowerCase());
+      
+      if (!category) {
+        // Create a new category for this section
+        category = await storage.createCategory({
+          name: section.title,
+          slug: section.title.toLowerCase().replace(/\s+/g, "-"),
+          description: section.description
+        });
+        categoryId = category.id;
+      } else {
+        categoryId = category.id;
+      }
+      
+      // Create questions and answers
+      const createdQuestions = [];
+      
+      for (const question of section.questions) {
+        // Create the question
+        const newQuestion = await storage.createQuestion({
+          title: question.title,
+          content: question.content,
+          categoryId,
+          userId: req.user.id,
+          isAiGenerated: true,
+          aiPersonaType: question.difficulty
+        });
+        
+        createdQuestions.push(newQuestion.id);
+        
+        // Create the answers for this question
+        const answersForThisQuestion = section.answers.filter(a => 
+          a.questionTitle === question.title
+        );
+        
+        for (const answer of answersForThisQuestion) {
+          await storage.createAnswer({
+            content: answer.content,
+            questionId: newQuestion.id,
+            userId: req.user.id,
+            isAiGenerated: true,
+            aiPersonaType: answer.personaType
+          });
+        }
+      }
+      
+      // Create a content schedule record to track this section
+      const schedule = await storage.createContentSchedule({
+        title: section.title,
+        description: section.description,
+        forumId: parseInt(forumId),
+        userId: req.user.id,
+        keyword,
+        categoryId,
+        personaType: req.body.personaType || "expert",
+        contentType: "section",
+        questionCount: section.questions.length,
+        scheduledFor: new Date(),
+        status: "published",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        publishedAt: new Date(),
+        questionIds: JSON.stringify(createdQuestions)
+      });
+      
+      res.json({
+        success: true,
+        message: "Section published successfully",
+        questionsCreated: createdQuestions.length,
+        answersCreated: section.answers.length,
+        schedule
+      });
+    } catch (error) {
+      console.error("Error publishing section:", error);
+      res.status(500).json({ error: error.message || "Failed to publish section" });
+    }
+  });
 
   // Forum specific keyword analysis
   app.post("/api/forums/:id/analyze-keywords", async (req, res) => {

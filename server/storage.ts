@@ -74,6 +74,7 @@ export interface IStorage {
   getCategory(id: number): Promise<Category | undefined>;
   getCategoryBySlug(slug: string): Promise<Category | undefined>;
   getAllCategories(): Promise<Category[]>;
+  getCategories(): Promise<Category[]>;
   createCategory(category: InsertCategory): Promise<Category>;
   getCategoriesByForum(forumId: number): Promise<Category[]>;
 
@@ -1468,6 +1469,10 @@ export class MemStorage implements IStorage {
 
   async getAllCategories(): Promise<Category[]> {
     return Array.from(this.categoriesStore.values());
+  }
+  
+  async getCategories(): Promise<Category[]> {
+    return this.getAllCategories();
   }
 
   async createCategory(category: InsertCategory): Promise<Category> {
