@@ -23,7 +23,9 @@ import {
   seoPositions, type SeoPosition, type InsertSeoPosition,
   seoPageMetrics, type SeoPageMetric, type InsertSeoPageMetric,
   seoContentGaps, type SeoContentGap, type InsertSeoContentGap,
-  seoWeeklyReports, type SeoWeeklyReport, type InsertSeoWeeklyReport, type SeoWeeklyReportWithDetails
+  seoWeeklyReports, type SeoWeeklyReport, type InsertSeoWeeklyReport, type SeoWeeklyReportWithDetails,
+  funnelDefinitions, type FunnelDefinition, type InsertFunnelDefinition, type FunnelDefinitionWithStats,
+  funnelAnalytics, type FunnelAnalytic, type InsertFunnelAnalytic
 } from "@shared/schema";
 // Import this way to make TypeScript happy in an ESM context
 import memorystore from 'memorystore';
@@ -230,6 +232,36 @@ export interface IStorage {
   getAnalyticsEventsByForum(forumId: number, eventType?: string, startDate?: string, endDate?: string): Promise<AnalyticsEvent[]>;
   getEventCountsByType(forumId: number, days?: number): Promise<{ eventType: string, count: number }[]>;
   getPopularEventTargets(forumId: number, eventType?: string, limit?: number): Promise<{ targetId: string, targetType: string, count: number }[]>;
+  
+  // Funnel Definition methods
+  getFunnelDefinition(id: number): Promise<FunnelDefinition | undefined>;
+  getFunnelDefinitionsByForum(forumId: number): Promise<FunnelDefinition[]>;
+  createFunnelDefinition(funnel: InsertFunnelDefinition): Promise<FunnelDefinition>;
+  updateFunnelDefinition(id: number, data: Partial<InsertFunnelDefinition>): Promise<FunnelDefinition>;
+  deleteFunnelDefinition(id: number): Promise<void>;
+  getFunnelDefinitionWithStats(id: number): Promise<FunnelDefinitionWithStats | undefined>;
+  
+  // Funnel Analytics methods
+  getFunnelAnalytic(id: number): Promise<FunnelAnalytic | undefined>;
+  getFunnelAnalyticsByDefinition(funnelId: number): Promise<FunnelAnalytic[]>;
+  getFunnelAnalyticsByDateRange(funnelId: number, startDate: string, endDate: string): Promise<FunnelAnalytic[]>;
+  createFunnelAnalytic(analytic: InsertFunnelAnalytic): Promise<FunnelAnalytic>;
+  updateFunnelAnalytic(id: number, data: Partial<InsertFunnelAnalytic>): Promise<FunnelAnalytic>;
+  
+  // Funnel Definition methods
+  getFunnelDefinition(id: number): Promise<FunnelDefinition | undefined>;
+  getFunnelDefinitionsByForum(forumId: number): Promise<FunnelDefinition[]>;
+  createFunnelDefinition(funnel: InsertFunnelDefinition): Promise<FunnelDefinition>;
+  updateFunnelDefinition(id: number, data: Partial<InsertFunnelDefinition>): Promise<FunnelDefinition>;
+  deleteFunnelDefinition(id: number): Promise<void>;
+  getFunnelDefinitionWithStats(id: number): Promise<FunnelDefinitionWithStats | undefined>;
+  
+  // Funnel Analytics methods
+  getFunnelAnalytic(id: number): Promise<FunnelAnalytic | undefined>;
+  getFunnelAnalyticsByDefinition(funnelId: number): Promise<FunnelAnalytic[]>;
+  getFunnelAnalyticsByDateRange(funnelId: number, startDate: string, endDate: string): Promise<FunnelAnalytic[]>;
+  createFunnelAnalytic(analytic: InsertFunnelAnalytic): Promise<FunnelAnalytic>;
+  updateFunnelAnalytic(id: number, data: Partial<InsertFunnelAnalytic>): Promise<FunnelAnalytic>;
 }
 
 // In-memory storage implementation
@@ -262,6 +294,8 @@ export class MemStorage implements IStorage {
   private userEngagementMetricsStore: Map<number, UserEngagementMetric>;
   private contentPerformanceMetricsStore: Map<number, ContentPerformanceMetric>;
   private analyticsEventsStore: Map<number, AnalyticsEvent>;
+  private funnelDefinitionsStore: Map<number, FunnelDefinition>;
+  private funnelAnalyticsStore: Map<number, FunnelAnalytic>;
   
   private roleId: number;
   private permissionId: number;
@@ -291,6 +325,8 @@ export class MemStorage implements IStorage {
   private userEngagementMetricId: number;
   private contentPerformanceMetricId: number;
   private analyticsEventId: number;
+  private funnelDefinitionId: number;
+  private funnelAnalyticId: number;
   public sessionStore: any;
 
   constructor() {
@@ -323,6 +359,8 @@ export class MemStorage implements IStorage {
     this.userEngagementMetricsStore = new Map();
     this.contentPerformanceMetricsStore = new Map();
     this.analyticsEventsStore = new Map();
+    this.funnelDefinitionsStore = new Map();
+    this.funnelAnalyticsStore = new Map();
     
     // Create session store from memorystore
     this.sessionStore = new MemoryStore({
@@ -358,6 +396,8 @@ export class MemStorage implements IStorage {
     this.userEngagementMetricId = 1;
     this.contentPerformanceMetricId = 1;
     this.analyticsEventId = 1;
+    this.funnelDefinitionId = 1;
+    this.funnelAnalyticId = 1;
 
     // Initialize with sample data
     this.initSampleData();
@@ -3023,6 +3063,159 @@ export class MemStorage implements IStorage {
     return Array.from(targetCounts.values())
       .sort((a, b) => b.count - a.count)
       .slice(0, limit);
+  }
+  
+  // Funnel Definition Methods
+  
+  async getFunnelDefinition(id: number): Promise<FunnelDefinition | undefined> {
+    return this.funnelDefinitionsStore.get(id);
+  }
+  
+  async getFunnelDefinitionsByForum(forumId: number): Promise<FunnelDefinition[]> {
+    const funnels = [];
+    for (const funnel of this.funnelDefinitionsStore.values()) {
+      if (funnel.forumId === forumId) {
+        funnels.push(funnel);
+      }
+    }
+    return funnels;
+  }
+  
+  async createFunnelDefinition(funnel: InsertFunnelDefinition): Promise<FunnelDefinition> {
+    const id = this.funnelDefinitionId++;
+    const now = new Date();
+    
+    const newFunnel: FunnelDefinition = {
+      id,
+      createdAt: now,
+      updatedAt: now,
+      ...funnel
+    };
+    
+    this.funnelDefinitionsStore.set(id, newFunnel);
+    return newFunnel;
+  }
+  
+  async updateFunnelDefinition(id: number, data: Partial<InsertFunnelDefinition>): Promise<FunnelDefinition> {
+    const funnel = await this.getFunnelDefinition(id);
+    if (!funnel) {
+      throw new Error(`Funnel definition with ID ${id} not found`);
+    }
+    
+    const updatedFunnel = {
+      ...funnel,
+      ...data,
+      updatedAt: new Date()
+    };
+    
+    this.funnelDefinitionsStore.set(id, updatedFunnel);
+    return updatedFunnel;
+  }
+  
+  async deleteFunnelDefinition(id: number): Promise<void> {
+    // Delete all analytics associated with this funnel
+    const analytics = await this.getFunnelAnalyticsByDefinition(id);
+    for (const analytic of analytics) {
+      this.funnelAnalyticsStore.delete(analytic.id);
+    }
+    
+    // Then delete the funnel definition
+    this.funnelDefinitionsStore.delete(id);
+  }
+  
+  async getFunnelDefinitionWithStats(id: number): Promise<FunnelDefinitionWithStats | undefined> {
+    const funnel = await this.getFunnelDefinition(id);
+    if (!funnel) {
+      return undefined;
+    }
+    
+    const analytics = await this.getFunnelAnalyticsByDefinition(id);
+    
+    // Calculate stats
+    const totalEntries = analytics.length;
+    const completions = analytics.filter(a => a.completed).length;
+    const conversionRate = totalEntries > 0 ? (completions / totalEntries) * 100 : 0;
+    
+    // Calculate drop-off points
+    const dropOffPoints: Record<string, number> = {};
+    const funnelSteps = JSON.parse(funnel.steps);
+    
+    for (const analytic of analytics) {
+      const lastStep = analytic.lastStep;
+      if (!analytic.completed && lastStep) {
+        dropOffPoints[lastStep] = (dropOffPoints[lastStep] || 0) + 1;
+      }
+    }
+    
+    return {
+      ...funnel,
+      totalEntries,
+      completions,
+      conversionRate,
+      dropOffPoints
+    };
+  }
+  
+  // Funnel Analytics Methods
+  
+  async getFunnelAnalytic(id: number): Promise<FunnelAnalytic | undefined> {
+    return this.funnelAnalyticsStore.get(id);
+  }
+  
+  async getFunnelAnalyticsByDefinition(funnelId: number): Promise<FunnelAnalytic[]> {
+    const analytics = [];
+    for (const analytic of this.funnelAnalyticsStore.values()) {
+      if (analytic.funnelId === funnelId) {
+        analytics.push(analytic);
+      }
+    }
+    return analytics;
+  }
+  
+  async getFunnelAnalyticsByDateRange(
+    funnelId: number, 
+    startDate: string, 
+    endDate: string
+  ): Promise<FunnelAnalytic[]> {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    const analytics = await this.getFunnelAnalyticsByDefinition(funnelId);
+    return analytics.filter(a => {
+      const date = new Date(a.createdAt);
+      return date >= start && date <= end;
+    });
+  }
+  
+  async createFunnelAnalytic(analytic: InsertFunnelAnalytic): Promise<FunnelAnalytic> {
+    const id = this.funnelAnalyticId++;
+    const now = new Date();
+    
+    const newAnalytic: FunnelAnalytic = {
+      id,
+      createdAt: now,
+      updatedAt: now,
+      ...analytic
+    };
+    
+    this.funnelAnalyticsStore.set(id, newAnalytic);
+    return newAnalytic;
+  }
+  
+  async updateFunnelAnalytic(id: number, data: Partial<InsertFunnelAnalytic>): Promise<FunnelAnalytic> {
+    const analytic = await this.getFunnelAnalytic(id);
+    if (!analytic) {
+      throw new Error(`Funnel analytic with ID ${id} not found`);
+    }
+    
+    const updatedAnalytic = {
+      ...analytic,
+      ...data,
+      updatedAt: new Date()
+    };
+    
+    this.funnelAnalyticsStore.set(id, updatedAnalytic);
+    return updatedAnalytic;
   }
 }
 

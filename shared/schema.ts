@@ -524,6 +524,50 @@ export const insertAnalyticsEventSchema = createInsertSchema(analyticsEvents).pi
   pageUrl: true,
 });
 
+// Funnel Definitions schema - for defining conversion funnels
+export const funnelDefinitions = pgTable("funnel_definitions", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  steps: jsonb("steps").notNull(), // Array of step definitions with eventType and criteria
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertFunnelDefinitionSchema = createInsertSchema(funnelDefinitions).pick({
+  forumId: true,
+  name: true,
+  description: true,
+  steps: true,
+  isActive: true,
+});
+
+// Funnel Analytics schema - for storing funnel analytics data
+export const funnelAnalytics = pgTable("funnel_analytics", {
+  id: serial("id").primaryKey(),
+  funnelId: integer("funnel_id").notNull().references(() => funnelDefinitions.id),
+  date: date("date").notNull(),
+  totalEntries: integer("total_entries").default(0),
+  completions: integer("completions").default(0),
+  dropOffs: jsonb("drop_offs").notNull(), // Record drop-offs at each step
+  conversionRate: real("conversion_rate").default(0),
+  averageTimeToConvert: integer("average_time_to_convert"), // in seconds
+  segmentData: jsonb("segment_data"), // For segmentation analysis
+});
+
+export const insertFunnelAnalyticsSchema = createInsertSchema(funnelAnalytics).pick({
+  funnelId: true,
+  date: true,
+  totalEntries: true,
+  completions: true,
+  dropOffs: true,
+  conversionRate: true,
+  averageTimeToConvert: true,
+  segmentData: true,
+});
+
 // SEO Weekly reports schema
 export const seoWeeklyReports = pgTable("seo_weekly_reports", {
   id: serial("id").primaryKey(),
@@ -808,6 +852,21 @@ export type InsertContentPerformanceMetric = z.infer<typeof insertContentPerform
 
 export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
 export type InsertAnalyticsEvent = z.infer<typeof insertAnalyticsEventSchema>;
+
+// Funnel types
+export type FunnelDefinition = typeof funnelDefinitions.$inferSelect;
+export type InsertFunnelDefinition = z.infer<typeof insertFunnelDefinitionSchema>;
+
+export type FunnelAnalytic = typeof funnelAnalytics.$inferSelect;
+export type InsertFunnelAnalytic = z.infer<typeof insertFunnelAnalyticsSchema>;
+
+// Extended types for funnels
+export type FunnelDefinitionWithStats = FunnelDefinition & {
+  totalEntries: number;
+  completions: number;
+  conversionRate: number;
+  dropOffPoints: Record<string, number>;
+};
 
 // Content Schedule schema
 export const contentSchedules = pgTable("content_schedules", {
