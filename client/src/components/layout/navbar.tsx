@@ -91,42 +91,57 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-dark-100 py-4 px-4">
+        <div className="md:hidden bg-dark-100/95 backdrop-blur-md py-4 px-4 absolute left-0 right-0 top-full border-t border-primary-500/20 shadow-lg animate-in fade-in slide-in-from-top duration-300">
           <div className="flex flex-col space-y-4">
             <Link
               href="/#features"
-              className="text-gray-300 hover:text-white transition-colors"
+              className="text-gray-300 hover:text-white transition-colors py-3 px-2 rounded-lg hover:bg-dark-200"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Features
+              <span className="flex items-center">
+                <span className="material-icons mr-2 text-primary-400">star</span>
+                Features
+              </span>
             </Link>
             <Link
               href="/#how-it-works"
-              className="text-gray-300 hover:text-white transition-colors"
+              className="text-gray-300 hover:text-white transition-colors py-3 px-2 rounded-lg hover:bg-dark-200"
               onClick={() => setMobileMenuOpen(false)}
             >
-              How It Works
+              <span className="flex items-center">
+                <span className="material-icons mr-2 text-primary-400">info</span>
+                How It Works
+              </span>
             </Link>
             <Link
               href="/#benefits"
-              className="text-gray-300 hover:text-white transition-colors"
+              className="text-gray-300 hover:text-white transition-colors py-3 px-2 rounded-lg hover:bg-dark-200"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Benefits
+              <span className="flex items-center">
+                <span className="material-icons mr-2 text-primary-400">done_all</span>
+                Benefits
+              </span>
             </Link>
             <Link
               href="/#pricing"
-              className="text-gray-300 hover:text-white transition-colors"
+              className="text-gray-300 hover:text-white transition-colors py-3 px-2 rounded-lg hover:bg-dark-200"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Pricing
+              <span className="flex items-center">
+                <span className="material-icons mr-2 text-primary-400">attach_money</span>
+                Pricing
+              </span>
             </Link>
             <Link
               href="/login"
-              className="text-gray-300 hover:text-white transition-colors"
+              className="text-gray-300 hover:text-white transition-colors py-3 px-2 rounded-lg hover:bg-dark-200"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Log In
+              <span className="flex items-center">
+                <span className="material-icons mr-2 text-primary-400">login</span>
+                Log In
+              </span>
             </Link>
           </div>
         </div>
