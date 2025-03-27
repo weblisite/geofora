@@ -2,6 +2,33 @@ import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Roles schema with defined role types
+export const roles = pgTable("roles", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Individual permissions that can be assigned to roles
+export const permissions = pgTable("permissions", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  scope: text("scope").notNull(), // 'global', 'forum', 'category', 'thread'
+  action: text("action").notNull(), // 'create', 'read', 'update', 'delete', 'moderate'
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Junction table for role-permission relationships
+export const rolePermissions = pgTable("role_permissions", {
+  id: serial("id").primaryKey(),
+  roleId: integer("role_id").notNull().references(() => roles.id),
+  permissionId: integer("permission_id").notNull().references(() => permissions.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // User schema
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -10,9 +37,41 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   displayName: text("display_name"),
   avatar: text("avatar"),
-  isAdmin: boolean("is_admin").default(false),
+  isAdmin: boolean("is_admin").default(false), // Kept for backward compatibility
   isAI: boolean("is_ai").default(false),
-  role: text("role").default("user"),
+  roleId: integer("role_id").references(() => roles.id), // Reference to the roles table
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  lastLoginAt: timestamp("last_login_at"),
+  status: text("status").default("active"), // 'active', 'suspended', 'banned'
+});
+
+// User-forum role assignments for forum-specific roles
+export const userForumRoles = pgTable("user_forum_roles", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  roleId: integer("role_id").notNull().references(() => roles.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Insert schemas
+export const insertRoleSchema = createInsertSchema(roles).pick({
+  name: true,
+  description: true,
+});
+
+export const insertPermissionSchema = createInsertSchema(permissions).pick({
+  name: true,
+  description: true,
+  scope: true,
+  action: true,
+});
+
+export const insertRolePermissionSchema = createInsertSchema(rolePermissions).pick({
+  roleId: true,
+  permissionId: true,
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -22,7 +81,14 @@ export const insertUserSchema = createInsertSchema(users).pick({
   displayName: true,
   avatar: true,
   isAI: true,
-  role: true,
+  roleId: true,
+  status: true,
+});
+
+export const insertUserForumRoleSchema = createInsertSchema(userForumRoles).pick({
+  userId: true,
+  forumId: true,
+  roleId: true,
 });
 
 // Categories schema
@@ -111,8 +177,20 @@ export const insertAiPersonaSchema = createInsertSchema(aiPersonas).pick({
 });
 
 // Type exports
+export type Role = typeof roles.$inferSelect;
+export type InsertRole = z.infer<typeof insertRoleSchema>;
+
+export type Permission = typeof permissions.$inferSelect;
+export type InsertPermission = z.infer<typeof insertPermissionSchema>;
+
+export type RolePermission = typeof rolePermissions.$inferSelect;
+export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type UserForumRole = typeof userForumRoles.$inferSelect;
+export type InsertUserForumRole = z.infer<typeof insertUserForumRoleSchema>;
 
 export type Category = typeof categories.$inferSelect;
 export type InsertCategory = z.infer<typeof insertCategorySchema>;

@@ -1,5 +1,9 @@
 import { 
+  roles, type Role, type InsertRole,
+  permissions, type Permission, type InsertPermission,
+  rolePermissions, type RolePermission, type InsertRolePermission,
   users, type User, type InsertUser,
+  userForumRoles, type UserForumRole, type InsertUserForumRole,
   categories, type Category, type InsertCategory,
   questions, type Question, type InsertQuestion, type QuestionWithDetails,
   answers, type Answer, type InsertAnswer, type AnswerWithDetails,
@@ -25,10 +29,38 @@ const MemoryStore = memorystore(session);
 
 // Storage interface with CRUD methods
 export interface IStorage {
+  // Role and Permission methods
+  getRole(id: number): Promise<Role | undefined>;
+  getRoleByName(name: string): Promise<Role | undefined>;
+  getAllRoles(): Promise<Role[]>;
+  createRole(role: InsertRole): Promise<Role>;
+  updateRole(id: number, data: Partial<InsertRole>): Promise<Role>;
+  deleteRole(id: number): Promise<void>;
+  
+  getPermission(id: number): Promise<Permission | undefined>;
+  getPermissionByName(name: string): Promise<Permission | undefined>;
+  getPermissionsByScope(scope: string): Promise<Permission[]>;
+  getAllPermissions(): Promise<Permission[]>;
+  createPermission(permission: InsertPermission): Promise<Permission>;
+  updatePermission(id: number, data: Partial<InsertPermission>): Promise<Permission>;
+  deletePermission(id: number): Promise<void>;
+  
+  assignPermissionToRole(rolePermission: InsertRolePermission): Promise<RolePermission>;
+  removePermissionFromRole(roleId: number, permissionId: number): Promise<void>;
+  getRolePermissions(roleId: number): Promise<Permission[]>;
+  
+  // User Forum Role methods
+  assignUserForumRole(userForumRole: InsertUserForumRole): Promise<UserForumRole>;
+  removeUserForumRole(userId: number, forumId: number): Promise<void>;
+  getUserForumRoles(userId: number): Promise<UserForumRole[]>;
+  getUserForumRolesByForum(forumId: number): Promise<UserForumRole[]>;
+  
   // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserRole(userId: number, roleId: number): Promise<User>;
+  hasPermission(userId: number, permissionName: string, forumId?: number): Promise<boolean>;
 
   // Category methods
   getCategory(id: number): Promise<Category | undefined>;
@@ -141,7 +173,11 @@ export interface IStorage {
 
 // In-memory storage implementation
 export class MemStorage implements IStorage {
+  private rolesStore: Map<number, Role>;
+  private permissionsStore: Map<number, Permission>;
+  private rolePermissionsStore: Map<number, RolePermission>;
   private usersStore: Map<number, User>;
+  private userForumRolesStore: Map<number, UserForumRole>;
   private categoriesStore: Map<number, Category>;
   private questionsStore: Map<number, Question>;
   private answersStore: Map<number, Answer>;
@@ -158,7 +194,11 @@ export class MemStorage implements IStorage {
   private leadFormViewsStore: Map<number, LeadFormView>;
   private contentSchedulesStore: Map<number, ContentSchedule>;
   
+  private roleId: number;
+  private permissionId: number;
+  private rolePermissionId: number;
   private userId: number;
+  private userForumRoleId: number;
   private categoryId: number;
   private questionId: number;
   private answerId: number;
@@ -177,7 +217,12 @@ export class MemStorage implements IStorage {
   public sessionStore: any;
 
   constructor() {
+    // Initialize stores
+    this.rolesStore = new Map();
+    this.permissionsStore = new Map();
+    this.rolePermissionsStore = new Map();
     this.usersStore = new Map();
+    this.userForumRolesStore = new Map();
     this.categoriesStore = new Map();
     this.questionsStore = new Map();
     this.answersStore = new Map();
@@ -199,7 +244,12 @@ export class MemStorage implements IStorage {
       checkPeriod: 86400000 // prune expired entries every 24h
     });
 
+    // Initialize IDs
+    this.roleId = 1;
+    this.permissionId = 1;
+    this.rolePermissionId = 1;
     this.userId = 1;
+    this.userForumRoleId = 1;
     this.categoryId = 1;
     this.questionId = 1;
     this.answerId = 1;
@@ -220,7 +270,128 @@ export class MemStorage implements IStorage {
     this.initSampleData();
   }
 
-  private initSampleData() {
+  private async initSampleData() {
+    // Create predefined roles
+    const roles = [
+      {
+        name: "admin",
+        description: "System administrator with full access to all features"
+      },
+      {
+        name: "forum_owner",
+        description: "Owner of one or more forums with full control over their forums"
+      },
+      {
+        name: "moderator",
+        description: "Moderates content and user interactions within assigned forums"
+      },
+      {
+        name: "contributor",
+        description: "Regular user who can create and participate in discussions"
+      },
+      {
+        name: "reader",
+        description: "Can only read content, with limited interaction capabilities"
+      }
+    ];
+
+    // Create predefined permissions
+    const permissions = [
+      // Global permissions
+      { name: "access_dashboard", description: "Access the admin dashboard", scope: "global", action: "read" },
+      { name: "manage_users", description: "Create, update, and delete user accounts", scope: "global", action: "manage" },
+      { name: "manage_roles", description: "Create, update, and delete roles", scope: "global", action: "manage" },
+      
+      // Forum permissions
+      { name: "create_forum", description: "Create new forums", scope: "global", action: "create" },
+      { name: "edit_forum", description: "Edit forum details", scope: "forum", action: "update" },
+      { name: "delete_forum", description: "Delete forums", scope: "forum", action: "delete" },
+      { name: "manage_forum_settings", description: "Manage forum settings", scope: "forum", action: "manage" },
+      { name: "verify_domain", description: "Verify custom domains for forums", scope: "forum", action: "manage" },
+      
+      // Category permissions
+      { name: "create_category", description: "Create new categories", scope: "forum", action: "create" },
+      { name: "edit_category", description: "Edit category details", scope: "category", action: "update" },
+      { name: "delete_category", description: "Delete categories", scope: "category", action: "delete" },
+      
+      // Content permissions
+      { name: "create_question", description: "Create new questions", scope: "forum", action: "create" },
+      { name: "edit_question", description: "Edit questions", scope: "question", action: "update" },
+      { name: "delete_question", description: "Delete questions", scope: "question", action: "delete" },
+      { name: "create_answer", description: "Create new answers", scope: "question", action: "create" },
+      { name: "edit_answer", description: "Edit answers", scope: "answer", action: "update" },
+      { name: "delete_answer", description: "Delete answers", scope: "answer", action: "delete" },
+      
+      // Moderation permissions
+      { name: "moderate_content", description: "Approve or reject content", scope: "forum", action: "moderate" },
+      { name: "ban_user", description: "Ban users from forums", scope: "forum", action: "moderate" },
+      
+      // AI and SEO permissions
+      { name: "use_ai_generation", description: "Generate AI-powered content", scope: "forum", action: "use" },
+      { name: "schedule_content", description: "Schedule content publication", scope: "forum", action: "manage" },
+      { name: "view_analytics", description: "View forum analytics", scope: "forum", action: "read" },
+      
+      // Lead capture and CRM permissions
+      { name: "manage_lead_forms", description: "Create and manage lead capture forms", scope: "forum", action: "manage" },
+      { name: "view_leads", description: "View captured leads", scope: "forum", action: "read" },
+      { name: "export_leads", description: "Export leads to external systems", scope: "forum", action: "use" },
+      { name: "manage_crm", description: "Manage CRM integrations", scope: "forum", action: "manage" },
+      
+      // Gated content permissions
+      { name: "manage_gated_content", description: "Create and manage gated content", scope: "forum", action: "manage" },
+      { name: "access_gated_content", description: "Access gated content without submitting forms", scope: "forum", action: "read" }
+    ];
+
+    // Create sample role-permission mappings
+    const rolePermissionMappings = {
+      "admin": [
+        "access_dashboard", "manage_users", "manage_roles", "create_forum", "edit_forum", "delete_forum", 
+        "manage_forum_settings", "verify_domain", "create_category", "edit_category", "delete_category",
+        "create_question", "edit_question", "delete_question", "create_answer", "edit_answer", "delete_answer",
+        "moderate_content", "ban_user", "use_ai_generation", "schedule_content", "view_analytics",
+        "manage_lead_forms", "view_leads", "export_leads", "manage_crm", "manage_gated_content", "access_gated_content"
+      ],
+      "forum_owner": [
+        "access_dashboard", "edit_forum", "manage_forum_settings", "verify_domain", "create_category", 
+        "edit_category", "delete_category", "create_question", "edit_question", "delete_question", 
+        "create_answer", "edit_answer", "delete_answer", "moderate_content", "ban_user", "use_ai_generation",
+        "schedule_content", "view_analytics", "manage_lead_forms", "view_leads", "export_leads",
+        "manage_crm", "manage_gated_content", "access_gated_content"
+      ],
+      "moderator": [
+        "access_dashboard", "create_category", "edit_category", "create_question", "edit_question", 
+        "delete_question", "create_answer", "edit_answer", "delete_answer", "moderate_content", 
+        "ban_user", "view_analytics"
+      ],
+      "contributor": [
+        "create_question", "edit_question", "create_answer", "edit_answer", "use_ai_generation"
+      ],
+      "reader": []
+    };
+
+    // Insert roles
+    const roleMap: Record<string, number> = {};
+    for (const role of roles) {
+      const createdRole = await this.createRole(role);
+      roleMap[createdRole.name] = createdRole.id;
+    }
+
+    // Insert permissions
+    const permissionMap: Record<string, number> = {};
+    for (const permission of permissions) {
+      const createdPermission = await this.createPermission(permission);
+      permissionMap[createdPermission.name] = createdPermission.id;
+    }
+
+    // Assign permissions to roles
+    for (const [roleName, permissionNames] of Object.entries(rolePermissionMappings)) {
+      const roleId = roleMap[roleName];
+      for (const permissionName of permissionNames) {
+        const permissionId = permissionMap[permissionName];
+        await this.assignPermissionToRole({ roleId, permissionId });
+      }
+    }
+
     // Create sample users
     const users = [
       { 
@@ -230,7 +401,8 @@ export class MemStorage implements IStorage {
         displayName: "Admin",
         avatar: "https://i.pravatar.cc/150?img=1",
         isAdmin: true,
-        role: "admin"
+        roleId: roleMap["admin"],
+        status: "active"
       },
       { 
         username: "sarah_t", 
@@ -239,7 +411,8 @@ export class MemStorage implements IStorage {
         displayName: "Sarah T.",
         avatar: "https://i.pravatar.cc/150?img=5",
         isAdmin: false,
-        role: "expert"
+        roleId: roleMap["forum_owner"],
+        status: "active"
       },
       { 
         username: "michael_r", 
@@ -248,7 +421,8 @@ export class MemStorage implements IStorage {
         displayName: "Michael R.",
         avatar: "https://i.pravatar.cc/150?img=12",
         isAdmin: false,
-        role: "expert"
+        roleId: roleMap["moderator"],
+        status: "active"
       },
       { 
         username: "jennifer_l", 
@@ -257,7 +431,8 @@ export class MemStorage implements IStorage {
         displayName: "Jennifer L.",
         avatar: "https://i.pravatar.cc/150?img=16",
         isAdmin: false,
-        role: "premium"
+        roleId: roleMap["contributor"],
+        status: "active"
       },
       { 
         username: "ai_beginner", 
@@ -266,7 +441,8 @@ export class MemStorage implements IStorage {
         displayName: "AI Beginner",
         avatar: "https://i.pravatar.cc/150?img=25",
         isAdmin: false,
-        role: "beginner",
+        roleId: roleMap["contributor"],
+        status: "active",
         isAI: true
       },
       { 
@@ -276,12 +452,16 @@ export class MemStorage implements IStorage {
         displayName: "AI Expert",
         avatar: "https://i.pravatar.cc/150?img=35",
         isAdmin: false,
-        role: "expert",
+        roleId: roleMap["contributor"],
+        status: "active",
         isAI: true
       }
     ];
 
-    users.forEach(user => this.createUser(user));
+    // Create users one by one
+    for (const user of users) {
+      await this.createUser(user);
+    }
 
     // Create sample categories
     const categories = [
@@ -293,7 +473,10 @@ export class MemStorage implements IStorage {
       { name: "Industry News", slug: "industry-news", description: "Latest updates in the industry" }
     ];
 
-    categories.forEach(category => this.createCategory(category));
+    // Create categories one by one
+    for (const category of categories) {
+      await this.createCategory(category);
+    }
 
     // Create sample AI personas
     const personas = [
@@ -323,7 +506,10 @@ export class MemStorage implements IStorage {
       }
     ];
 
-    personas.forEach(persona => this.createAIPersona(persona));
+    // Create personas one by one
+    for (const persona of personas) {
+      await this.createAIPersona(persona);
+    }
 
     // Create sample questions
     const questions = [
@@ -356,7 +542,10 @@ export class MemStorage implements IStorage {
       }
     ];
 
-    questions.forEach(question => this.createQuestion(question));
+    // Create questions one by one
+    for (const question of questions) {
+      await this.createQuestion(question);
+    }
 
     // Create sample answers
     const answers = [
@@ -529,6 +718,284 @@ export class MemStorage implements IStorage {
     forums.forEach(forum => this.createForum(forum));
   }
 
+  // Role methods
+  async getRole(id: number): Promise<Role | undefined> {
+    return this.rolesStore.get(id);
+  }
+
+  async getRoleByName(name: string): Promise<Role | undefined> {
+    for (const role of this.rolesStore.values()) {
+      if (role.name === name) {
+        return role;
+      }
+    }
+    return undefined;
+  }
+
+  async getAllRoles(): Promise<Role[]> {
+    return Array.from(this.rolesStore.values());
+  }
+
+  async createRole(role: InsertRole): Promise<Role> {
+    const id = this.roleId++;
+    const now = new Date();
+    const newRole: Role = { 
+      ...role, 
+      id, 
+      createdAt: now,
+      updatedAt: now,
+      description: role.description || null
+    };
+    this.rolesStore.set(id, newRole);
+    return newRole;
+  }
+
+  async updateRole(id: number, data: Partial<InsertRole>): Promise<Role> {
+    const role = this.rolesStore.get(id);
+    if (!role) {
+      throw new Error(`Role with id ${id} not found`);
+    }
+
+    const updatedRole = { 
+      ...role, 
+      ...data, 
+      updatedAt: new Date() 
+    };
+    this.rolesStore.set(id, updatedRole);
+    return updatedRole;
+  }
+
+  async deleteRole(id: number): Promise<void> {
+    // First check if any users have this role
+    for (const user of this.usersStore.values()) {
+      if (user.roleId === id) {
+        throw new Error(`Cannot delete role with id ${id} because it is assigned to users`);
+      }
+    }
+
+    // Also check user forum roles
+    for (const userForumRole of this.userForumRolesStore.values()) {
+      if (userForumRole.roleId === id) {
+        throw new Error(`Cannot delete role with id ${id} because it is assigned to users in forums`);
+      }
+    }
+
+    // Delete all role-permission associations
+    for (const [permId, rolePermission] of this.rolePermissionsStore.entries()) {
+      if (rolePermission.roleId === id) {
+        this.rolePermissionsStore.delete(permId);
+      }
+    }
+
+    this.rolesStore.delete(id);
+  }
+
+  // Permission methods
+  async getPermission(id: number): Promise<Permission | undefined> {
+    return this.permissionsStore.get(id);
+  }
+
+  async getPermissionByName(name: string): Promise<Permission | undefined> {
+    for (const permission of this.permissionsStore.values()) {
+      if (permission.name === name) {
+        return permission;
+      }
+    }
+    return undefined;
+  }
+
+  async getPermissionsByScope(scope: string): Promise<Permission[]> {
+    const result: Permission[] = [];
+    for (const permission of this.permissionsStore.values()) {
+      if (permission.scope === scope) {
+        result.push(permission);
+      }
+    }
+    return result;
+  }
+
+  async getAllPermissions(): Promise<Permission[]> {
+    return Array.from(this.permissionsStore.values());
+  }
+
+  async createPermission(permission: InsertPermission): Promise<Permission> {
+    const id = this.permissionId++;
+    const now = new Date();
+    const newPermission: Permission = { 
+      ...permission, 
+      id,
+      createdAt: now,
+      description: permission.description || null
+    };
+    this.permissionsStore.set(id, newPermission);
+    return newPermission;
+  }
+
+  async updatePermission(id: number, data: Partial<InsertPermission>): Promise<Permission> {
+    const permission = this.permissionsStore.get(id);
+    if (!permission) {
+      throw new Error(`Permission with id ${id} not found`);
+    }
+
+    const updatedPermission = { 
+      ...permission, 
+      ...data, 
+      updatedAt: new Date()
+    };
+    this.permissionsStore.set(id, updatedPermission);
+    return updatedPermission;
+  }
+
+  async deletePermission(id: number): Promise<void> {
+    // First delete all role-permission associations
+    for (const [rpId, rolePermission] of this.rolePermissionsStore.entries()) {
+      if (rolePermission.permissionId === id) {
+        this.rolePermissionsStore.delete(rpId);
+      }
+    }
+
+    this.permissionsStore.delete(id);
+  }
+
+  // Role-Permission methods
+  async assignPermissionToRole(rolePermission: InsertRolePermission): Promise<RolePermission> {
+    // First check if this assignment already exists
+    for (const rp of this.rolePermissionsStore.values()) {
+      if (rp.roleId === rolePermission.roleId && rp.permissionId === rolePermission.permissionId) {
+        return rp;
+      }
+    }
+
+    const id = this.rolePermissionId++;
+    const newRolePermission: RolePermission = { 
+      ...rolePermission, 
+      id, 
+      createdAt: new Date() 
+    };
+    this.rolePermissionsStore.set(id, newRolePermission);
+    return newRolePermission;
+  }
+
+  async removePermissionFromRole(roleId: number, permissionId: number): Promise<void> {
+    for (const [id, rp] of this.rolePermissionsStore.entries()) {
+      if (rp.roleId === roleId && rp.permissionId === permissionId) {
+        this.rolePermissionsStore.delete(id);
+        return;
+      }
+    }
+  }
+
+  async getRolePermissions(roleId: number): Promise<Permission[]> {
+    const permissions: Permission[] = [];
+    for (const rp of this.rolePermissionsStore.values()) {
+      if (rp.roleId === roleId) {
+        const permission = this.permissionsStore.get(rp.permissionId);
+        if (permission) {
+          permissions.push(permission);
+        }
+      }
+    }
+    return permissions;
+  }
+
+  // User Forum Role methods
+  async assignUserForumRole(userForumRole: InsertUserForumRole): Promise<UserForumRole> {
+    // First check if this user already has a role in this forum
+    for (const ufr of this.userForumRolesStore.values()) {
+      if (ufr.userId === userForumRole.userId && ufr.forumId === userForumRole.forumId) {
+        // Update existing role
+        ufr.roleId = userForumRole.roleId;
+        ufr.updatedAt = new Date();
+        return ufr;
+      }
+    }
+
+    const id = this.userForumRoleId++;
+    const now = new Date();
+    const newUserForumRole: UserForumRole = {
+      ...userForumRole,
+      id,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.userForumRolesStore.set(id, newUserForumRole);
+    return newUserForumRole;
+  }
+
+  async removeUserForumRole(userId: number, forumId: number): Promise<void> {
+    for (const [id, ufr] of this.userForumRolesStore.entries()) {
+      if (ufr.userId === userId && ufr.forumId === forumId) {
+        this.userForumRolesStore.delete(id);
+        return;
+      }
+    }
+  }
+
+  async getUserForumRoles(userId: number): Promise<UserForumRole[]> {
+    const userForumRoles: UserForumRole[] = [];
+    for (const ufr of this.userForumRolesStore.values()) {
+      if (ufr.userId === userId) {
+        userForumRoles.push(ufr);
+      }
+    }
+    return userForumRoles;
+  }
+
+  async getUserForumRolesByForum(forumId: number): Promise<UserForumRole[]> {
+    const userForumRoles: UserForumRole[] = [];
+    for (const ufr of this.userForumRolesStore.values()) {
+      if (ufr.forumId === forumId) {
+        userForumRoles.push(ufr);
+      }
+    }
+    return userForumRoles;
+  }
+
+  async updateUserRole(userId: number, roleId: number): Promise<User> {
+    const user = this.usersStore.get(userId);
+    if (!user) {
+      throw new Error(`User with id ${userId} not found`);
+    }
+
+    user.roleId = roleId;
+    user.updatedAt = new Date();
+    return user;
+  }
+
+  async hasPermission(userId: number, permissionName: string, forumId?: number): Promise<boolean> {
+    const user = this.usersStore.get(userId);
+    if (!user) return false;
+
+    // Admin users have all permissions
+    if (user.isAdmin) return true;
+
+    // Get the user's global role
+    if (user.roleId) {
+      const permissions = await this.getRolePermissions(user.roleId);
+      for (const permission of permissions) {
+        if (permission.name === permissionName) {
+          return true;
+        }
+      }
+    }
+
+    // If a forum ID is provided, check forum-specific roles
+    if (forumId) {
+      for (const ufr of this.userForumRolesStore.values()) {
+        if (ufr.userId === userId && ufr.forumId === forumId) {
+          const permissions = await this.getRolePermissions(ufr.roleId);
+          for (const permission of permissions) {
+            if (permission.name === permissionName) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
   // User methods
   async getUser(id: number): Promise<User | undefined> {
     return this.usersStore.get(id);
@@ -545,7 +1012,15 @@ export class MemStorage implements IStorage {
 
   async createUser(user: InsertUser): Promise<User> {
     const id = this.userId++;
-    const newUser = { ...user, id };
+    const now = new Date();
+    const newUser: User = { 
+      ...user, 
+      id,
+      createdAt: now,
+      updatedAt: now,
+      lastLoginAt: null,
+      status: user.status || 'active'
+    };
     this.usersStore.set(id, newUser);
     return newUser;
   }
