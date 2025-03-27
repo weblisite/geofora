@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -13,12 +13,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { useAI } from "@/hooks/use-ai";
 import { FORUM_CATEGORIES } from "@/lib/constants";
 
 const questionSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters long").max(200, "Title cannot exceed 200 characters"),
   content: z.string().min(20, "Content must be at least 20 characters long"),
-  categoryId: z.string().transform(val => parseInt(val)),
+  categoryId: z.coerce.number(),
 });
 
 type QuestionFormValues = z.infer<typeof questionSchema>;
@@ -27,19 +30,55 @@ export default function QuestionForm() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [seoScore, setSeoScore] = useState(0);
+  const [seoAnalysis, setSeoAnalysis] = useState<null | {
+    keywords: string[];
+    suggestions: string[];
+    score: number;
+  }>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  
+  const { analyzeSeo } = useAI({
+    onSuccess: (data) => {
+      // Transform the API response to match our UI needs
+      const keywords = [...(data.secondaryKeywords || [])];
+      if (data.primaryKeyword) {
+        keywords.unshift(data.primaryKeyword);
+      }
+      
+      setSeoAnalysis({
+        keywords: keywords,
+        suggestions: data.improvementTips || [],
+        score: data.seoScore || 0
+      });
+      setSeoScore(data.seoScore || 0);
+      setIsAnalyzing(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "SEO Analysis Error",
+        description: error.message,
+        variant: "destructive"
+      });
+      setIsAnalyzing(false);
+    }
+  });
 
   const form = useForm<QuestionFormValues>({
     resolver: zodResolver(questionSchema),
     defaultValues: {
       title: "",
       content: "",
-      categoryId: "2", // Default to "Product Features"
+      categoryId: 2, // Default to "Product Features"
     },
   });
 
   const createQuestionMutation = useMutation({
     mutationFn: async (data: QuestionFormValues) => {
-      return apiRequest("POST", "/api/questions", data);
+      return apiRequest("/api/questions", {
+        method: "POST",
+        body: JSON.stringify(data)
+      });
     },
     onSuccess: async (response) => {
       const data = await response.json();
@@ -63,6 +102,30 @@ export default function QuestionForm() {
   const onSubmit = (data: QuestionFormValues) => {
     setIsSubmitting(true);
     createQuestionMutation.mutate(data);
+  };
+  
+  const handleSeoAnalysis = () => {
+    const title = form.getValues("title");
+    const content = form.getValues("content");
+    
+    if (title.length < 5 || content.length < 20) {
+      toast({
+        title: "Cannot analyze SEO",
+        description: "Please provide a longer title and content for SEO analysis",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsAnalyzing(true);
+    analyzeSeo.mutate({ title, content });
+  };
+
+  // Get SEO score color
+  const getSeoScoreColor = (score: number) => {
+    if (score >= 80) return "text-green-500";
+    if (score >= 60) return "text-yellow-500";
+    return "text-red-500";
   };
 
   return (
@@ -89,7 +152,7 @@ export default function QuestionForm() {
                   <FormLabel>Category</FormLabel>
                   <Select 
                     onValueChange={field.onChange} 
-                    defaultValue={field.value.toString()}
+                    defaultValue={"2"}
                   >
                     <FormControl>
                       <SelectTrigger className="bg-dark-300 border-dark-400 focus:border-primary-500">
@@ -144,6 +207,74 @@ export default function QuestionForm() {
                 </FormItem>
               )}
             />
+            
+            {/* SEO Analysis Tool */}
+            <div className="mt-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex items-center text-sm"
+                onClick={handleSeoAnalysis}
+                disabled={isAnalyzing}
+              >
+                {isAnalyzing ? (
+                  <>
+                    <span className="material-icons animate-spin mr-2">refresh</span>
+                    Analyzing SEO...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-icons mr-2">search</span>
+                    Analyze SEO Potential
+                  </>
+                )}
+              </Button>
+              
+              {seoAnalysis && (
+                <div className="mt-4 bg-dark-300/50 p-4 rounded-lg border border-dark-400">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium">SEO Analysis Results</h4>
+                    <div className="flex items-center">
+                      <span className="text-sm mr-2">SEO Score:</span>
+                      <span className={`text-lg font-bold ${getSeoScoreColor(seoScore)}`}>
+                        {seoScore}%
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="mb-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm text-gray-400">SEO Potential</span>
+                    </div>
+                    <Progress value={seoScore} className="h-2" />
+                  </div>
+                  
+                  {seoAnalysis.keywords.length > 0 && (
+                    <div className="mb-3">
+                      <h5 className="text-sm font-medium mb-2">Detected Keywords</h5>
+                      <div className="flex flex-wrap gap-2">
+                        {seoAnalysis.keywords.map((keyword, i) => (
+                          <Badge key={i} variant="outline" className="bg-dark-400">
+                            {keyword}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {seoAnalysis.suggestions.length > 0 && (
+                    <div>
+                      <h5 className="text-sm font-medium mb-2">Optimization Suggestions</h5>
+                      <ul className="text-sm space-y-1 list-disc pl-5">
+                        {seoAnalysis.suggestions.map((suggestion, i) => (
+                          <li key={i}>{suggestion}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div className="flex justify-end">
               <Button 

@@ -30,18 +30,44 @@ export default function AnswerForm({ questionId }: AnswerFormProps) {
   const [selectedPersona, setSelectedPersona] = useState<string>("expert");
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   
+  // States for interlinking
+  const [interlinkingSuggestions, setInterlinkingSuggestions] = useState<Array<{
+    questionId: number;
+    title: string;
+    relevanceScore: number;
+    anchorText: string;
+  }>>([]);
+  const [isAnalyzingLinks, setIsAnalyzingLinks] = useState(false);
+
   // Get AI helpers
-  const { generateAnswer } = useAI({
+  const { generateAnswer, generateInterlinking } = useAI({
     onSuccess: (data) => {
-      form.setValue("content", data);
-      setIsGeneratingAI(false);
-      toast({
-        title: "AI Answer Generated",
-        description: `A ${selectedPersona}-level answer has been generated.`,
-      });
+      if (typeof data === 'string') {
+        // Handle answer generation success
+        form.setValue("content", data);
+        setIsGeneratingAI(false);
+        toast({
+          title: "AI Answer Generated",
+          description: `A ${selectedPersona}-level answer has been generated.`,
+        });
+      } else if (Array.isArray(data)) {
+        // Handle interlinking suggestions success
+        setInterlinkingSuggestions(data);
+        setIsAnalyzingLinks(false);
+        toast({
+          title: "Interlinking Analysis Complete",
+          description: `Found ${data.length} relevant interlinking suggestions.`,
+        });
+      }
     },
-    onError: () => {
+    onError: (error) => {
       setIsGeneratingAI(false);
+      setIsAnalyzingLinks(false);
+      toast({
+        title: "AI Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   });
   
@@ -101,6 +127,39 @@ export default function AnswerForm({ questionId }: AnswerFormProps) {
       questionTitle: question.title, 
       questionContent: question.content,
       personaType: selectedPersona as "beginner" | "intermediate" | "expert" | "moderator" 
+    });
+  };
+  
+  // Handler for interlinking analysis
+  const handleInterlinkAnalysis = () => {
+    const content = form.getValues("content");
+    
+    if (content.length < 20) {
+      toast({
+        title: "Cannot analyze interlinking",
+        description: "Please provide at least 20 characters of content for analysis",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsAnalyzingLinks(true);
+    generateInterlinking.mutate({ content });
+  };
+  
+  // Apply a suggested interlink to the answer content
+  const applyInterlink = (suggestion: { anchorText: string; questionId: number; title: string }) => {
+    const content = form.getValues("content");
+    const linkText = `[${suggestion.anchorText}](/forum/${suggestion.questionId})`;
+    
+    // Simple replacement - in a real app, you might want to use a more sophisticated approach
+    // to avoid replacing only part of a word or inside markdown links
+    const newContent = content.replace(suggestion.anchorText, linkText);
+    form.setValue("content", newContent);
+    
+    toast({
+      title: "Link Applied",
+      description: `Added link to "${suggestion.title}"`,
     });
   };
 
@@ -216,6 +275,77 @@ export default function AnswerForm({ questionId }: AnswerFormProps) {
             </Button>
           </div>
         </div>
+      </Glassmorphism>
+      
+      {/* Interlinking Analysis */}
+      <Glassmorphism className="mt-4 p-4 rounded-lg border border-primary-900/30 bg-primary-900/10">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h5 className="text-sm font-medium mb-1 flex items-center">
+              <span className="material-icons text-sm mr-1 text-secondary-400">link</span>
+              SEO Interlinking Analysis
+            </h5>
+            <p className="text-xs text-gray-400">
+              Find internal link opportunities to boost SEO and keep users engaged
+            </p>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleInterlinkAnalysis}
+            disabled={isAnalyzingLinks || form.getValues("content").length < 20}
+            className="h-8 text-xs"
+          >
+            {isAnalyzingLinks ? (
+              <>
+                <span className="material-icons animate-spin mr-1 text-xs">refresh</span>
+                Analyzing...
+              </>
+            ) : (
+              <>
+                <span className="material-icons mr-1 text-xs">travel_explore</span>
+                Find Link Opportunities
+              </>
+            )}
+          </Button>
+        </div>
+        
+        {interlinkingSuggestions.length > 0 && (
+          <div className="mt-3 max-h-[200px] overflow-y-auto">
+            <div className="text-xs text-gray-400 mb-2">Suggested interlinking opportunities:</div>
+            <div className="space-y-2">
+              {interlinkingSuggestions
+                .sort((a, b) => b.relevanceScore - a.relevanceScore)
+                .map((suggestion, index) => (
+                  <div 
+                    key={index} 
+                    className="flex items-center justify-between bg-dark-300/50 p-2 rounded-md border border-dark-400"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center">
+                        <span className="text-xs font-medium truncate">{suggestion.title}</span>
+                        <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full bg-primary-900/50 text-primary-300">
+                          {suggestion.relevanceScore}%
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        <span className="font-mono bg-dark-400 px-1 py-0.5 rounded text-gray-300">{suggestion.anchorText}</span>
+                      </div>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="h-7 text-xs"
+                      onClick={() => applyInterlink(suggestion)}
+                    >
+                      <span className="material-icons text-xs mr-1">add_link</span>
+                      Apply
+                    </Button>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
       </Glassmorphism>
 
       <div className="mt-4 text-center">

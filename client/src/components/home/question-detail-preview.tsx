@@ -19,10 +19,8 @@ export default function QuestionDetailPreview() {
           {/* Question Header */}
           <div className="p-6 border-b border-dark-300">
             <div className="flex items-center space-x-3 mb-4">
-              <Link href="/forum">
-                <a className="text-primary-400 hover:text-primary-300">
-                  <span className="material-icons">arrow_back</span>
-                </a>
+              <Link href="/forum" className="text-primary-400 hover:text-primary-300">
+                <span className="material-icons">arrow_back</span>
               </Link>
               <div>
                 <div className="flex items-center text-xs text-gray-400 mb-2">

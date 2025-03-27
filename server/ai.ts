@@ -189,7 +189,7 @@ export async function generateInterlinkingSuggestions(
       excerpt: q.content.substring(0, 200) + "..."
     }));
 
-    const prompt = `Content: ${content}
+    const userPrompt = `Content: ${content}
     
     Analyze this content and identify opportunities for interlinking with these existing questions:
     ${JSON.stringify(questionsData)}
@@ -208,14 +208,41 @@ export async function generateInterlinkingSuggestions(
           "relevanceScore": number between 0-100,
           "anchorText": suggested anchor text for the link`
         },
-        { role: "user", content: prompt }
+        { role: "user", content: userPrompt }
       ],
       response_format: { type: "json_object" },
       temperature: 0.4,
     });
     
-    const result = JSON.parse(response.choices[0].message.content || "{}");
-    return Array.isArray(result.interlinkingSuggestions) ? result.interlinkingSuggestions : [];
+    const responseContent = response.choices[0].message.content || "{}";
+    
+    try {
+      const result = JSON.parse(responseContent);
+      // Handle different response structures based on the JSON returned from OpenAI
+      if (Array.isArray(result)) {
+        return result.map((item: any) => ({
+          questionId: item.questionId,
+          title: item.title,
+          relevanceScore: item.relevanceScore || 0,
+          anchorText: item.anchorText || ""
+        }));
+      } else if (result.suggestions && Array.isArray(result.suggestions)) {
+        return result.suggestions.map((item: any) => ({
+          questionId: item.questionId,
+          title: item.title,
+          relevanceScore: item.relevanceScore || 0,
+          anchorText: item.anchorText || ""
+        }));
+      } else if (result.interlinkingSuggestions && Array.isArray(result.interlinkingSuggestions)) {
+        return result.interlinkingSuggestions;
+      }
+      
+      // If we can't find a valid structure, return an empty array
+      return [];
+    } catch (parseError) {
+      console.error("Error parsing interlinking suggestions JSON:", parseError);
+      return [];
+    }
   } catch (error) {
     console.error("Error generating interlinking suggestions:", error);
     return [];
