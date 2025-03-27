@@ -86,6 +86,12 @@ export default {
       },
       boxShadow: {
         'glow': '0 0 15px rgba(59, 130, 246, 0.5), 0 0 30px rgba(147, 51, 234, 0.3)',
+        'glow-subtle': '0 0 10px rgba(59, 130, 246, 0.25), 0 0 15px rgba(147, 51, 234, 0.15)',
+        'glow-strong': '0 0 20px rgba(59, 130, 246, 0.7), 0 0 40px rgba(147, 51, 234, 0.5)',
+        'glass': '0 4px 16px rgba(17, 17, 26, 0.1), 0 8px 32px rgba(17, 17, 26, 0.05)',
+        'glass-accent': '0 4px 16px rgba(59, 130, 246, 0.1), 0 8px 32px rgba(147, 51, 234, 0.05)',
+        'glass-dark': '0 4px 16px rgba(0, 0, 0, 0.2), 0 8px 32px rgba(0, 0, 0, 0.15)',
+        'inner-glass': 'inset 0 2px 4px 0 rgba(255, 255, 255, 0.05)',
       },
     },
   },
