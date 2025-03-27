@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Globe, Edit, Server, Type, Palette, Link, Shield, AlertCircle, ExternalLink } from "lucide-react";
 import DomainVerification from "@/components/dashboard/domain-verification";
 import ForumPreviewCard from "@/components/dashboard/forum-preview-card";
+import IntegrationGuide from "@/components/dashboard/integration-guide";
 import {
   Dialog,
   DialogContent,
@@ -516,61 +517,96 @@ export default function ForumManagementPage() {
 
   // Domain settings form component
   const DomainForm = ({ forum }: { forum: Forum }) => (
-    <form onSubmit={(e) => handleDomainSubmit(e, forum.id)} className="p-6 space-y-4">
-      <h3 className="text-lg font-medium mb-4">Domain Settings</h3>
+    <div className="p-6 space-y-6">
+      <h3 className="text-lg font-medium mb-2">Domain & Integration Settings</h3>
+      <p className="text-sm text-gray-400 mb-4">
+        Configure how users will access your forum and how it integrates with your main website
+      </p>
       
-      <div className="space-y-2">
-        <Label htmlFor="subdomain">Subdomain</Label>
-        <div className="flex items-center">
-          <Input 
-            id="subdomain" 
-            name="subdomain" 
-            value={domainData.subdomain} 
-            onChange={handleDomainInputChange} 
-            placeholder="mysubdomain" 
-            className="rounded-r-none border-r-0"
-          />
-          <div className="bg-dark-400 text-gray-300 px-3 py-2 rounded-r-md border border-dark-400">
-            .formai.repl.app
+      {/* Integration guide component */}
+      <IntegrationGuide 
+        forumSlug={forum.slug}
+        forumSubdomain={domainData.subdomain || forum.subdomain} 
+        customDomain={domainData.customDomain || forum.customDomain}
+      />
+      
+      <form onSubmit={(e) => handleDomainSubmit(e, forum.id)} className="space-y-5">
+        <div className="space-y-2">
+          <Label htmlFor="subdomain" className="flex items-center">
+            <span className="mr-2">Subdomain</span>
+            <span className="text-xs px-2 py-0.5 bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200 rounded-full">Recommended</span>
+          </Label>
+          <div className="flex items-center">
+            <Input 
+              id="subdomain" 
+              name="subdomain" 
+              value={domainData.subdomain} 
+              onChange={handleDomainInputChange} 
+              placeholder="mysubdomain" 
+              className="rounded-r-none border-r-0"
+            />
+            <div className="bg-dark-400 text-gray-300 px-3 py-2 rounded-r-md border border-dark-400">
+              .formai.repl.app
+            </div>
           </div>
+          <p className="text-xs text-gray-400">
+            A subdomain gives your forum its own space while keeping your brand identity
+          </p>
         </div>
-      </div>
-      
-      <div className="space-y-2">
-        <Label htmlFor="customDomain">Custom Domain (optional)</Label>
-        <Input 
-          id="customDomain" 
-          name="customDomain" 
-          value={domainData.customDomain} 
-          onChange={handleDomainInputChange} 
-          placeholder="forum.mydomain.com" 
-        />
-        <p className="text-xs text-gray-400">
-          You'll need to configure DNS settings with your domain provider
-        </p>
-      </div>
-      
-      <div className="flex justify-end space-x-3 pt-3">
-        <Button 
-          type="button" 
-          variant="outline" 
-          onClick={() => setDomainFormVisible(null)}
-        >
-          Cancel
-        </Button>
-        <Button 
-          type="submit" 
-          disabled={updateDomainMutation.isPending}
-        >
-          {updateDomainMutation.isPending ? (
-            <>
-              <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-              Updating...
-            </>
-          ) : 'Save Domain Settings'}
-        </Button>
-      </div>
-    </form>
+        
+        <div className="space-y-2">
+          <Label htmlFor="customDomain" className="flex items-center">
+            <span className="mr-2">Custom Domain</span>
+            <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 rounded-full">Professional</span>
+          </Label>
+          <Input 
+            id="customDomain" 
+            name="customDomain" 
+            value={domainData.customDomain} 
+            onChange={handleDomainInputChange} 
+            placeholder="forum.mydomain.com" 
+          />
+          <p className="text-xs text-gray-400">
+            For complete branding control, use your own domain. You'll need to verify ownership via DNS.
+          </p>
+        </div>
+        
+        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-900 p-3 rounded-md my-4">
+          <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 flex items-center mb-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            Subdirectory Integration
+          </h4>
+          <p className="text-xs text-blue-700 dark:text-blue-400">
+            Want to host the forum under a subdirectory like <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">/forum/{forum.slug}</code>? See the integration guide above for proxy configuration instructions.
+          </p>
+        </div>
+        
+        <div className="flex justify-end space-x-3 pt-3">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={() => setDomainFormVisible(null)}
+          >
+            Cancel
+          </Button>
+          <Button 
+            type="submit" 
+            disabled={updateDomainMutation.isPending}
+          >
+            {updateDomainMutation.isPending ? (
+              <>
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                Updating...
+              </>
+            ) : 'Save Domain Settings'}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 
   // Function to handle domain verification
