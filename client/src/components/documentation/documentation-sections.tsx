@@ -1,0 +1,765 @@
+export const documentationSections = [
+  {
+    id: "getting-started",
+    title: "Getting Started",
+    content: `
+      <h1 class="text-2xl font-bold mb-4">Getting Started with SEO Forum Platform</h1>
+      
+      <p class="mb-4">
+        Welcome to the SEO Forum Platform! This powerful tool helps you create and manage topic-focused forum communities
+        that drive traffic to your main website through optimized content and intelligent interlinking.
+      </p>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">What You Can Do</h2>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li>Create SEO-optimized question and answer forums</li>
+        <li>Generate AI-powered content with different expertise levels</li>
+        <li>Track keyword rankings and performance</li>
+        <li>Capture leads with customizable forms</li>
+        <li>Host forums under your own domain</li>
+        <li>Schedule content for automatic publishing</li>
+        <li>Monitor comprehensive analytics</li>
+      </ul>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Quick Start Guide</h2>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li><strong>Create an account</strong> - Sign up to access all platform features</li>
+        <li><strong>Set up your forum</strong> - Configure your first forum with branding and categories</li>
+        <li><strong>Verify your domain</strong> - For custom domain hosting, verify ownership</li>
+        <li><strong>Create or generate questions</strong> - Start building content manually or with AI</li>
+        <li><strong>Set up lead capture</strong> - Create forms to capture visitor information</li>
+        <li><strong>Monitor performance</strong> - Track your SEO metrics from the dashboard</li>
+      </ol>
+      
+      <div class="bg-primary-500/10 p-4 rounded-lg border border-primary-500/30 mb-6">
+        <h3 class="text-lg font-medium mb-2 text-primary-400">Pro Tip</h3>
+        <p>Start by researching keywords relevant to your business and use our keyword analysis tools to identify high-opportunity topics with low competition.</p>
+      </div>
+    `
+  },
+  {
+    id: "forum-management",
+    title: "Forum Management",
+    content: `
+      <h1 class="text-2xl font-bold mb-4">Forum Management</h1>
+      
+      <p class="mb-4">
+        Managing your forums effectively is essential for driving traffic and engagement. This section covers all aspects of forum configuration, moderation, and management.
+      </p>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Creating Forums</h2>
+      
+      <p class="mb-4">
+        To create a new forum:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>Go to the Dashboard and click on "Forum Management"</li>
+        <li>Click "Create New Forum"</li>
+        <li>Enter a name, description, and slug (URL path)</li>
+        <li>Configure appearance settings (colors, fonts, etc.)</li>
+        <li>Set up categories relevant to your topic</li>
+        <li>Click "Create Forum" to save</li>
+      </ol>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Appearance Customization</h2>
+      
+      <p class="mb-4">
+        Customize your forum's appearance to match your brand:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li><strong>Theme Color</strong>: Set your primary brand color</li>
+        <li><strong>Secondary Color</strong>: For accents and highlights</li>
+        <li><strong>Typography</strong>: Choose font families for headings and body text</li>
+        <li><strong>Font Sizes</strong>: Adjust text sizes for various elements</li>
+        <li><strong>Logo</strong>: Upload your brand logo</li>
+        <li><strong>Header Image</strong>: Add a custom banner (optional)</li>
+      </ul>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Domain Configuration</h2>
+      
+      <p class="mb-4">
+        You can host your forum on a custom domain or subdomain:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>Go to "Domain Management" in your forum settings</li>
+        <li>Enter your desired domain (e.g., forum.yourdomain.com)</li>
+        <li>Copy the provided TXT record</li>
+        <li>Add the TXT record to your domain's DNS settings</li>
+        <li>Click "Verify Domain" to confirm ownership</li>
+        <li>Once verified, set up a CNAME record pointing to our servers</li>
+      </ol>
+      
+      <div class="bg-primary-500/10 p-4 rounded-lg border border-primary-500/30 mb-6">
+        <h3 class="text-lg font-medium mb-2 text-primary-400">Important Note</h3>
+        <p>DNS changes can take up to 48 hours to propagate globally. Your forum will remain accessible via the default URL while you wait for domain verification.</p>
+      </div>
+    `
+  },
+  {
+    id: "ai-features",
+    title: "AI Features",
+    content: `
+      <h1 class="text-2xl font-bold mb-4">AI-Powered Features</h1>
+      
+      <p class="mb-4">
+        Our platform offers advanced AI capabilities to help you create high-quality, SEO-optimized content at scale. This section explains how to leverage these features effectively.
+      </p>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">AI Persona Levels</h2>
+      
+      <p class="mb-4">
+        When generating content, you can choose from four expertise levels:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-4">
+        <li>
+          <strong>Beginner</strong>: Asks fundamental questions and provides basic answers. Good for establishing foundational content and addressing entry-level topics.
+        </li>
+        <li>
+          <strong>Intermediate</strong>: Demonstrates practical knowledge with some experience. Ideal for how-to content and practical implementation advice.
+        </li>
+        <li>
+          <strong>Expert</strong>: Provides in-depth, authoritative content with industry-specific terminology and advanced concepts. Best for technical topics and thorough analysis.
+        </li>
+        <li>
+          <strong>Moderator</strong>: Neutral, facilitating tone that summarizes viewpoints and maintains discussion quality. Perfect for controversial topics or synthesizing information.
+        </li>
+      </ul>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Generating SEO-Optimized Questions</h2>
+      
+      <p class="mb-4">
+        To generate questions that target specific keywords:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>Go to "Content Generation" in the dashboard</li>
+        <li>Select "Generate Questions"</li>
+        <li>Enter your target keyword or topic</li>
+        <li>Choose the number of questions to generate</li>
+        <li>Adjust advanced settings if needed (search intent, difficulty level)</li>
+        <li>Click "Generate Questions"</li>
+      </ol>
+      
+      <p class="mb-4">
+        Each generated question includes:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li>SEO-optimized title</li>
+        <li>Detailed question content</li>
+        <li>Target keywords</li>
+        <li>Search intent classification</li>
+        <li>Estimated search volume</li>
+        <li>Competitive difficulty score</li>
+      </ul>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">AI Answer Generation</h2>
+      
+      <p class="mb-4">
+        To generate answers to questions:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>Open a question from your forum</li>
+        <li>Click "Generate AI Answer"</li>
+        <li>Select the desired expertise level</li>
+        <li>Add any specific instructions (optional)</li>
+        <li>Click "Generate"</li>
+      </ol>
+      
+      <div class="bg-primary-500/10 p-4 rounded-lg border border-primary-500/30 mb-6">
+        <h3 class="text-lg font-medium mb-2 text-primary-400">Best Practice</h3>
+        <p>Mix different expertise levels for a natural discussion environment. Having various perspectives creates a more comprehensive resource for visitors and improves content depth.</p>
+      </div>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Keyword Analysis</h2>
+      
+      <p class="mb-4">
+        Use our AI-powered keyword analysis to identify content opportunities:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>Go to "SEO Tools" and select "Keyword Analysis"</li>
+        <li>Enter your website URL or industry</li>
+        <li>Adjust focus settings if needed</li>
+        <li>Click "Analyze"</li>
+      </ol>
+      
+      <p class="mb-4">
+        The analysis provides:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li>Keyword clusters by topic</li>
+        <li>Content gap analysis</li>
+        <li>Question-focused keywords</li>
+        <li>Difficulty scores</li>
+        <li>Search volume estimates</li>
+        <li>Content recommendations</li>
+      </ul>
+    `
+  },
+  {
+    id: "lead-capture",
+    title: "Lead Capture",
+    content: `
+      <h1 class="text-2xl font-bold mb-4">Lead Capture System</h1>
+      
+      <p class="mb-4">
+        Transform your forum visitors into valuable leads with our comprehensive lead capture system. This section explains how to create forms, manage submissions, and integrate with your CRM.
+      </p>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Creating Lead Capture Forms</h2>
+      
+      <p class="mb-4">
+        To create a new lead capture form:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>Go to "Lead Capture" in the dashboard</li>
+        <li>Click "Create New Form"</li>
+        <li>Enter a name and description for your form</li>
+        <li>Add and configure form fields (name, email, custom fields, etc.)</li>
+        <li>Customize the submit button text</li>
+        <li>Set up success message or redirect URL</li>
+        <li>Configure form styling to match your branding</li>
+        <li>Save your form</li>
+      </ol>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Form Field Types</h2>
+      
+      <p class="mb-4">
+        Available field types for your forms include:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li><strong>Text Input</strong>: Single line text (for names, etc.)</li>
+        <li><strong>Email</strong>: Validates email format</li>
+        <li><strong>Phone</strong>: With optional format validation</li>
+        <li><strong>Textarea</strong>: Multi-line text input</li>
+        <li><strong>Select</strong>: Dropdown with options</li>
+        <li><strong>Checkbox</strong>: For consent or boolean options</li>
+        <li><strong>Radio Buttons</strong>: For mutually exclusive choices</li>
+        <li><strong>Date Picker</strong>: Calendar selection</li>
+        <li><strong>Hidden Field</strong>: For tracking or storing values</li>
+      </ul>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Gated Content Management</h2>
+      
+      <p class="mb-4">
+        Create premium content accessible only after form submission:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>Go to "Gated Content" in the dashboard</li>
+        <li>Click "Create New Content"</li>
+        <li>Enter title, teaser, and full content</li>
+        <li>Select an associated lead form</li>
+        <li>Set visibility options (public teaser, full content after submission)</li>
+        <li>Save your gated content</li>
+      </ol>
+      
+      <p class="mb-4">
+        The system automatically:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li>Shows the teaser to all visitors</li>
+        <li>Displays the form when users attempt to access full content</li>
+        <li>Unlocks content after successful form submission</li>
+        <li>Tracks conversion rates</li>
+      </ul>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">CRM Integration</h2>
+      
+      <p class="mb-4">
+        Connect your forms to popular CRM systems:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>Go to "Integration Settings" in the dashboard</li>
+        <li>Select your CRM provider</li>
+        <li>Enter API credentials</li>
+        <li>Map form fields to CRM fields</li>
+        <li>Configure sync settings (real-time, batch, etc.)</li>
+        <li>Test the integration</li>
+        <li>Activate the integration</li>
+      </ol>
+      
+      <p class="mb-4">
+        Supported CRM platforms include:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li>HubSpot</li>
+        <li>Salesforce</li>
+        <li>Mailchimp</li>
+        <li>ActiveCampaign</li>
+        <li>Zoho CRM</li>
+        <li>Custom webhooks</li>
+      </ul>
+      
+      <div class="bg-primary-500/10 p-4 rounded-lg border border-primary-500/30 mb-6">
+        <h3 class="text-lg font-medium mb-2 text-primary-400">Lead Management Tips</h3>
+        <p>Always include a clear privacy policy with your forms and provide value in exchange for user information. Higher-value content typically results in better conversion rates.</p>
+      </div>
+    `
+  },
+  {
+    id: "interlinking",
+    title: "Interlinking System",
+    content: `
+      <h1 class="text-2xl font-bold mb-4">Intelligent Interlinking System</h1>
+      
+      <p class="mb-4">
+        Our semantic interlinking system enhances SEO by creating meaningful connections between forum content and your main website. This section explains how to use this powerful feature effectively.
+      </p>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Understanding Interlinking</h2>
+      
+      <p class="mb-4">
+        Interlinking serves several important purposes:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li>Improves search engine crawling and indexing</li>
+        <li>Distributes page authority throughout your site</li>
+        <li>Enhances user navigation</li>
+        <li>Increases time-on-site metrics</li>
+        <li>Establishes topical authority</li>
+        <li>Drives traffic between forum and main site</li>
+      </ul>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Automatic Interlinking</h2>
+      
+      <p class="mb-4">
+        The system can automatically generate relevant links:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>Go to "Interlinking" in the dashboard</li>
+        <li>Click "Generate Interlinking Suggestions"</li>
+        <li>Select your content source (forum questions, answers, or main site pages)</li>
+        <li>Set minimum relevance threshold (0-100%)</li>
+        <li>Choose maximum number of links per content item</li>
+        <li>Click "Generate Suggestions"</li>
+      </ol>
+      
+      <p class="mb-4">
+        For each suggestion, you can:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li>View relevance score based on semantic similarity</li>
+        <li>See recommended anchor text</li>
+        <li>Preview the target content</li>
+        <li>Accept or reject the suggestion</li>
+        <li>Edit the anchor text if needed</li>
+        <li>Apply selected links in bulk</li>
+      </ul>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Manual Interlinking</h2>
+      
+      <p class="mb-4">
+        Create manual interlinks for maximum control:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>Navigate to any content item (question, answer, or page)</li>
+        <li>Click "Add Interlink" in the editing interface</li>
+        <li>Search for related content by keyword</li>
+        <li>Select target content from search results</li>
+        <li>Choose or create anchor text</li>
+        <li>Set link position in your content</li>
+        <li>Save changes</li>
+      </ol>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Bidirectional Interlinking</h2>
+      
+      <p class="mb-4">
+        Create two-way connections between forum and main site:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>Go to "Advanced Interlinking" in the dashboard</li>
+        <li>Click "Bidirectional Analysis"</li>
+        <li>Enter your main website URL</li>
+        <li>Select forum content categories to include</li>
+        <li>Click "Analyze"</li>
+      </ol>
+      
+      <p class="mb-4">
+        The system will:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li>Analyze content on both your forum and main website</li>
+        <li>Identify optimal linking opportunities in both directions</li>
+        <li>Suggest anchor text based on keyword relevance</li>
+        <li>Provide instructions for implementing links on your main site</li>
+        <li>Automatically implement forum-side links with your approval</li>
+      </ul>
+      
+      <div class="bg-primary-500/10 p-4 rounded-lg border border-primary-500/30 mb-6">
+        <h3 class="text-lg font-medium mb-2 text-primary-400">SEO Best Practice</h3>
+        <p>Focus on quality over quantity. It's better to have fewer, highly relevant links than many low-quality ones. The system's relevance score helps identify the most valuable linking opportunities.</p>
+      </div>
+    `
+  },
+  {
+    id: "analytics",
+    title: "Analytics & Reporting",
+    content: `
+      <h1 class="text-2xl font-bold mb-4">Analytics and Reporting</h1>
+      
+      <p class="mb-4">
+        Our comprehensive analytics system helps you track performance, measure ROI, and optimize your forum strategy. This section explains the available metrics and how to interpret them.
+      </p>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Dashboard Overview</h2>
+      
+      <p class="mb-4">
+        The main dashboard provides a high-level view of key metrics:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li><strong>Total Questions</strong>: Number of questions posted</li>
+        <li><strong>Total Answers</strong>: Number of answers provided</li>
+        <li><strong>Organic Traffic</strong>: Visitors from search engines</li>
+        <li><strong>Conversion Rate</strong>: Percentage of visitors who complete lead forms</li>
+        <li><strong>Avg. Position</strong>: Average search ranking position</li>
+        <li><strong>Top Keywords</strong>: Best performing search terms</li>
+      </ul>
+      
+      <p class="mb-4">
+        Each metric shows:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li>Current value</li>
+        <li>Trend compared to previous period</li>
+        <li>Percentage change</li>
+        <li>Sparkline visualization</li>
+      </ul>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Traffic Analytics</h2>
+      
+      <p class="mb-4">
+        Detailed traffic metrics include:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li><strong>Traffic Sources</strong>: Breakdown by source (organic, direct, referral, social)</li>
+        <li><strong>Geographic Distribution</strong>: Traffic by country and region</li>
+        <li><strong>Device Types</strong>: Desktop, mobile, tablet usage</li>
+        <li><strong>Visit Duration</strong>: Average time on site</li>
+        <li><strong>Bounce Rate</strong>: Percentage of single-page sessions</li>
+        <li><strong>Page Views</strong>: Total and average per session</li>
+        <li><strong>New vs. Returning</strong>: Visitor type breakdown</li>
+      </ul>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">SEO Performance</h2>
+      
+      <p class="mb-4">
+        Track your search engine performance with:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li><strong>Keyword Rankings</strong>: Position tracking for target terms</li>
+        <li><strong>Position Changes</strong>: Tracking movement over time</li>
+        <li><strong>Impressions</strong>: How often your content appears in search results</li>
+        <li><strong>Click-Through Rate</strong>: Percentage of impressions that result in clicks</li>
+        <li><strong>Featured Snippets</strong>: Content appearing in special SERP features</li>
+        <li><strong>Indexed Pages</strong>: Content successfully added to search engines</li>
+      </ul>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Conversion Analytics</h2>
+      
+      <p class="mb-4">
+        Measure lead generation effectiveness with:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li><strong>Form Views</strong>: Number of times forms are displayed</li>
+        <li><strong>Form Submissions</strong>: Completed form entries</li>
+        <li><strong>Conversion Rate</strong>: Submission percentage</li>
+        <li><strong>Conversion by Source</strong>: Which traffic sources convert best</li>
+        <li><strong>Form Abandonment</strong>: Incomplete submission analysis</li>
+        <li><strong>Field Completion Time</strong>: Time spent on forms</li>
+      </ul>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Content Performance</h2>
+      
+      <p class="mb-4">
+        Analyze which content performs best:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li><strong>Top Questions</strong>: Most viewed questions</li>
+        <li><strong>Engagement Rate</strong>: Comments and answers per view</li>
+        <li><strong>Content Quality Score</strong>: AI-based quality assessment</li>
+        <li><strong>Traffic by Topic</strong>: Which categories attract most visitors</li>
+        <li><strong>AI vs. Human Content</strong>: Performance comparison</li>
+      </ul>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Custom Reports</h2>
+      
+      <p class="mb-4">
+        Create specialized reports for your needs:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>Go to "Reports" in the dashboard</li>
+        <li>Click "Create Custom Report"</li>
+        <li>Select metrics to include</li>
+        <li>Choose date range and comparison period</li>
+        <li>Set visualization preferences</li>
+        <li>Configure schedule (one-time or recurring)</li>
+        <li>Add recipients for automated delivery</li>
+        <li>Save report</li>
+      </ol>
+      
+      <div class="bg-primary-500/10 p-4 rounded-lg border border-primary-500/30 mb-6">
+        <h3 class="text-lg font-medium mb-2 text-primary-400">Analytics Tip</h3>
+        <p>Look for correlation between content topics, traffic, and conversions to identify your most valuable content types. This insight helps prioritize future content creation efforts.</p>
+      </div>
+    `
+  },
+  {
+    id: "content-scheduling",
+    title: "Content Scheduling",
+    content: `
+      <h1 class="text-2xl font-bold mb-4">Content Scheduling System</h1>
+      
+      <p class="mb-4">
+        Plan and automate your content publication with our scheduling system. This helps maintain a consistent posting cadence and targets specific keywords over time.
+      </p>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Scheduling Content</h2>
+      
+      <p class="mb-4">
+        To schedule content for future publication:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>Go to "Content Scheduling" in the dashboard</li>
+        <li>Click "Schedule New Content"</li>
+        <li>Select content type (question, answer, article)</li>
+        <li>Choose target forum and category</li>
+        <li>Enter keyword focus</li>
+        <li>Select AI persona type (for AI-generated content)</li>
+        <li>Set publication date and time</li>
+        <li>Add custom content or request AI generation</li>
+        <li>Save schedule</li>
+      </ol>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Recurring Schedules</h2>
+      
+      <p class="mb-4">
+        Create repeating content patterns:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>When scheduling content, check "Recurring Schedule"</li>
+        <li>Select frequency (daily, weekly, monthly)</li>
+        <li>Configure specific parameters (days of week, etc.)</li>
+        <li>Set total number of occurrences or end date</li>
+        <li>Configure content variation settings</li>
+        <li>Save schedule</li>
+      </ol>
+      
+      <p class="mb-4">
+        With recurring schedules, you can:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li>Maintain consistent posting frequency</li>
+        <li>Target related keywords over time</li>
+        <li>Automatically generate variations on a theme</li>
+        <li>Build content depth around specific topics</li>
+      </ul>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Content Calendar</h2>
+      
+      <p class="mb-4">
+        View and manage your content schedule:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li>Monthly, weekly, or list view options</li>
+        <li>Color-coding by content type or forum</li>
+        <li>Drag-and-drop rescheduling</li>
+        <li>Quick edit functionality</li>
+        <li>Bulk operations</li>
+        <li>Search and filtering</li>
+      </ul>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Keyword Planning</h2>
+      
+      <p class="mb-4">
+        Strategically schedule content based on keywords:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>Go to "Keyword Planning" in Content Scheduling</li>
+        <li>Import keywords from SEO analysis or enter manually</li>
+        <li>Set target content volume for each keyword</li>
+        <li>Configure distribution preferences</li>
+        <li>Click "Generate Schedule"</li>
+      </ol>
+      
+      <p class="mb-4">
+        The system will:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li>Create a balanced content schedule</li>
+        <li>Avoid keyword cannibalization</li>
+        <li>Distribute content evenly or by priority</li>
+        <li>Allocate appropriate AI personas by topic complexity</li>
+      </ul>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Schedule Management</h2>
+      
+      <p class="mb-4">
+        Manage your existing schedules:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li><strong>Edit</strong>: Modify any scheduled content before publication</li>
+        <li><strong>Pause</strong>: Temporarily halt recurring schedules</li>
+        <li><strong>Delete</strong>: Remove future scheduled items</li>
+        <li><strong>Duplicate</strong>: Copy existing schedules as templates</li>
+        <li><strong>Preview</strong>: See how generated content will appear</li>
+      </ul>
+      
+      <div class="bg-primary-500/10 p-4 rounded-lg border border-primary-500/30 mb-6">
+        <h3 class="text-lg font-medium mb-2 text-primary-400">Scheduling Strategy</h3>
+        <p>For maximum SEO impact, schedule related content in clusters. Start with a main question, then schedule follow-up questions and expert answers over the following days to build topic depth and authority.</p>
+      </div>
+    `
+  },
+  {
+    id: "api-integration",
+    title: "API & Integration",
+    content: `
+      <h1 class="text-2xl font-bold mb-4">API and Integration Options</h1>
+      
+      <p class="mb-4">
+        Extend the functionality of your forum by connecting it with other systems using our API and integration options. This section explains the available methods for developers and administrators.
+      </p>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">API Overview</h2>
+      
+      <p class="mb-4">
+        Our RESTful API provides programmatic access to:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li>Forum content (questions, answers)</li>
+        <li>User management</li>
+        <li>Analytics data</li>
+        <li>Lead submission handling</li>
+        <li>Content scheduling</li>
+        <li>SEO performance metrics</li>
+      </ul>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Authentication</h2>
+      
+      <p class="mb-4">
+        To authenticate API requests:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>Go to "API Settings" in the dashboard</li>
+        <li>Click "Generate API Key"</li>
+        <li>Set appropriate access permissions</li>
+        <li>Copy your API key</li>
+        <li>Include it in request headers as <code>X-API-Key: your_api_key</code></li>
+      </ol>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Website Embedding</h2>
+      
+      <p class="mb-4">
+        Embed forum components on your main website:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>Go to "Integration" in the dashboard</li>
+        <li>Select "Widget Generator"</li>
+        <li>Choose the widget type (question list, popular topics, etc.)</li>
+        <li>Configure appearance settings</li>
+        <li>Copy the generated code</li>
+        <li>Paste into your website's HTML</li>
+      </ol>
+      
+      <p class="mb-4">
+        Available widget types include:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li>Recent Questions</li>
+        <li>Popular Topics</li>
+        <li>Question Search</li>
+        <li>Category Browser</li>
+        <li>Lead Capture Form</li>
+        <li>Full Forum Embed</li>
+      </ul>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Webhook Integration</h2>
+      
+      <p class="mb-4">
+        Set up webhooks to notify external systems of events:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>Go to "Integration" in the dashboard</li>
+        <li>Select "Webhook Configuration"</li>
+        <li>Click "Add Webhook"</li>
+        <li>Enter destination URL</li>
+        <li>Select event types to monitor</li>
+        <li>Configure security settings</li>
+        <li>Save webhook</li>
+      </ol>
+      
+      <p class="mb-4">
+        Webhook events include:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li>New question posted</li>
+        <li>New answer submitted</li>
+        <li>Lead form submission</li>
+        <li>User registration</li>
+        <li>Keyword ranking changes</li>
+        <li>Traffic milestone reached</li>
+      </ul>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Third-Party Integrations</h2>
+      
+      <p class="mb-4">
+        Connect with popular services:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li><strong>Google Analytics</strong>: Track advanced metrics</li>
+        <li><strong>Google Search Console</strong>: Import ranking data</li>
+        <li><strong>Zapier</strong>: Connect with 3,000+ apps</li>
+        <li><strong>Slack</strong>: Notifications and updates</li>
+        <li><strong>Mailchimp</strong>: Email marketing</li>
+        <li><strong>CRM Systems</strong>: Lead management</li>
+      </ul>
+      
+      <div class="bg-primary-500/10 p-4 rounded-lg border border-primary-500/30 mb-6">
+        <h3 class="text-lg font-medium mb-2 text-primary-400">Developer Resources</h3>
+        <p>Access comprehensive API documentation, code samples, and SDKs in our <a href="#" class="text-primary-400 underline">Developer Portal</a>. We offer client libraries for JavaScript, PHP, Python, and Ruby.</p>
+      </div>
+    `
+  }
+];

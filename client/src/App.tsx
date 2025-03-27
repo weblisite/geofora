@@ -17,6 +17,7 @@ import LoginPage from "@/pages/auth/login";
 import RegisterPage from "@/pages/auth/register";
 import AuthPage from "@/pages/auth-page";
 import UIShowcasePage from "@/pages/ui-showcase";
+import DocumentationPage from "@/pages/documentation-page";
 import NotFound from "@/pages/not-found";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
@@ -59,6 +60,7 @@ function App() {
         <Route path="/register" component={RegisterPage} />
         <Route path="/auth" component={AuthPage} />
         <Route path="/ui-showcase" component={UIShowcasePage} />
+        <Route path="/documentation" component={DocumentationPage} />
         <Route component={NotFound} />
       </Switch>
       <Toaster />
