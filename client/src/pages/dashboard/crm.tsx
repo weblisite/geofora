@@ -79,7 +79,7 @@ export default function CrmIntegrationsPage() {
   const { data: forums, isLoading: isLoadingForums } = useQuery({
     queryKey: ["/api/user/forums"],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/user/forums");
+      const res = await apiRequest("/api/user/forums");
       return await res.json();
     },
     enabled: !!user,
@@ -90,7 +90,7 @@ export default function CrmIntegrationsPage() {
     queryKey: ["/api/forums", selectedForumId, "crm-integrations"],
     queryFn: async () => {
       if (!selectedForumId) return [];
-      const res = await apiRequest("GET", `/api/forums/${selectedForumId}/crm-integrations`);
+      const res = await apiRequest(`/api/forums/${selectedForumId}/crm-integrations`);
       return await res.json();
     },
     enabled: !!selectedForumId,
@@ -99,7 +99,13 @@ export default function CrmIntegrationsPage() {
   // Create CRM integration mutation
   const createIntegrationMutation = useMutation({
     mutationFn: async (data: IntegrationFormValues) => {
-      const res = await apiRequest("POST", `/api/forums/${data.forumId}/crm-integrations`, data);
+      const res = await apiRequest(`/api/forums/${data.forumId}/crm-integrations`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
       return await res.json();
     },
     onSuccess: () => {
@@ -125,7 +131,13 @@ export default function CrmIntegrationsPage() {
   const updateIntegrationMutation = useMutation({
     mutationFn: async (data: IntegrationFormValues & { id: number }) => {
       const { id, ...integrationData } = data;
-      const res = await apiRequest("PUT", `/api/crm-integrations/${id}`, integrationData);
+      const res = await apiRequest(`/api/crm-integrations/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(integrationData),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
       return await res.json();
     },
     onSuccess: () => {
@@ -150,7 +162,10 @@ export default function CrmIntegrationsPage() {
   // Delete CRM integration mutation
   const deleteIntegrationMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await apiRequest("DELETE", `/api/crm-integrations/${id}`);
+      const res = await apiRequest(`/api/crm-integrations/${id}`, {
+        method: "DELETE",
+        headers: {} // Adding empty headers to fix type issue
+      });
       return await res.json();
     },
     onSuccess: () => {

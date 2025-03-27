@@ -95,7 +95,7 @@ export default function GatedContentPage() {
     queryKey: ["/api/forums", selectedForumId, "lead-forms"],
     queryFn: async () => {
       if (!selectedForumId) return [];
-      const res = await apiRequest("GET", `/api/forums/${selectedForumId}/lead-forms`);
+      const res = await apiRequest(`/api/forums/${selectedForumId}/lead-forms`);
       return await res.json();
     },
     enabled: !!selectedForumId,
@@ -106,7 +106,7 @@ export default function GatedContentPage() {
     queryKey: ["/api/forums", selectedForumId, "gated-content"],
     queryFn: async () => {
       if (!selectedForumId) return [];
-      const res = await apiRequest("GET", `/api/forums/${selectedForumId}/gated-content`);
+      const res = await apiRequest(`/api/forums/${selectedForumId}/gated-content`);
       return await res.json();
     },
     enabled: !!selectedForumId,
@@ -117,7 +117,7 @@ export default function GatedContentPage() {
     queryKey: ["/api/gated-content", selectedContentId],
     queryFn: async () => {
       if (!selectedContentId) return null;
-      const res = await apiRequest("GET", `/api/gated-content/${selectedContentId}`);
+      const res = await apiRequest(`/api/gated-content/${selectedContentId}`);
       return await res.json();
     },
     enabled: !!selectedContentId && !!user,
@@ -126,7 +126,13 @@ export default function GatedContentPage() {
   // Create gated content mutation
   const createContentMutation = useMutation({
     mutationFn: async (data: ContentFormValues) => {
-      const res = await apiRequest("POST", `/api/forums/${data.forumId}/gated-content`, data);
+      const res = await apiRequest(`/api/forums/${data.forumId}/gated-content`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
       return await res.json();
     },
     onSuccess: () => {
@@ -152,7 +158,13 @@ export default function GatedContentPage() {
   const updateContentMutation = useMutation({
     mutationFn: async (data: ContentFormValues & { id: number }) => {
       const { id, ...contentData } = data;
-      const res = await apiRequest("PUT", `/api/gated-content/${id}`, contentData);
+      const res = await apiRequest(`/api/gated-content/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(contentData),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
       return await res.json();
     },
     onSuccess: () => {
@@ -180,7 +192,9 @@ export default function GatedContentPage() {
   // Delete gated content mutation
   const deleteContentMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await apiRequest("DELETE", `/api/gated-content/${id}`);
+      const res = await apiRequest(`/api/gated-content/${id}`, {
+        method: "DELETE"
+      });
       return await res.json();
     },
     onSuccess: () => {
