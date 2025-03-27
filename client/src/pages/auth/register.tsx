@@ -1,227 +1,132 @@
-import { useEffect } from "react";
-import { Link, useLocation } from "wouter";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useAuth } from "@/hooks/use-auth";
+import { Redirect, Link } from "wouter";
 import { Glassmorphism } from "@/components/ui/glassmorphism";
 import { GradientText } from "@/components/ui/gradient-text";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useAuth } from "@/hooks/use-auth";
-import { Loader2 } from "lucide-react";
-
-const registerSchema = z.object({
-  username: z.string()
-    .min(3, "Username must be at least 3 characters")
-    .max(20, "Username cannot exceed 20 characters")
-    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-    .regex(/[0-9]/, "Password must contain at least one number"),
-  confirmPassword: z.string(),
-  termsAccepted: z.boolean().refine(val => val === true, {
-    message: "You must accept the terms and conditions",
-  }),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
-
-type RegisterFormValues = z.infer<typeof registerSchema>;
+import { Separator } from "@/components/ui/separator";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { SITE_NAME } from "@/lib/constants";
+import RegisterForm from "@/components/auth/register-form";
 
 export default function RegisterPage() {
-  const [, navigate] = useLocation();
-  const { user, registerMutation } = useAuth();
+  const { user, isLoading } = useAuth();
   
-  // Redirect if already logged in
-  useEffect(() => {
-    if (user) {
-      navigate("/dashboard");
-    }
-  }, [user, navigate]);
-
-  const form = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      username: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      termsAccepted: false,
-    },
-  });
-
-  const onSubmit = (data: RegisterFormValues) => {
-    // Remove confirmPassword and termsAccepted before sending to API
-    const { confirmPassword, termsAccepted, ...userInfo } = data;
-    registerMutation.mutate(userInfo, {
-      onSuccess: () => {
-        navigate("/login");
-      }
-    });
-  };
+  // Redirect to home if already logged in
+  if (!isLoading && user) {
+    return <Redirect to="/" />;
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center animated-gradient-bg py-12 px-4 sm:px-6 lg:px-8">
-      <div className="absolute inset-0 z-0 opacity-30">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-primary-500/20 rounded-full filter blur-3xl"></div>
-        <div className="absolute bottom-20 right-10 w-80 h-80 bg-secondary-500/20 rounded-full filter blur-3xl"></div>
-      </div>
+    <div className="min-h-screen flex flex-col">
+      <div className="animated-gradient-bg fixed inset-0 z-[-1]" />
       
-      <Glassmorphism className="max-w-md w-full p-8 relative z-10 shadow-glow">
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center justify-center mb-6">
-            <div className="text-primary-500 flex items-center justify-center w-10 h-10 rounded-full bg-dark-100 shadow-glow mr-2">
-              <span className="material-icons">forum</span>
-            </div>
-            <span className="text-2xl font-bold">
-              <GradientText>ForumAI</GradientText>
-            </span>
-          </Link>
+      <div className="flex-1 container grid md:grid-cols-2 gap-6 items-center py-12">
+        {/* Registration Form */}
+        <div className="flex flex-col space-y-6">
+          <div className="space-y-2">
+            <GradientText className="text-4xl font-bold tracking-tighter">
+              Join {SITE_NAME}
+            </GradientText>
+            <p className="text-muted-foreground">
+              Create an account to start asking questions and get answers
+            </p>
+          </div>
           
-          <h2 className="text-2xl font-bold mb-2">Create Your Account</h2>
-          <p className="text-gray-400">Join the AI-powered forum revolution</p>
+          <Glassmorphism className="p-1 rounded-lg">
+            <Card>
+              <CardHeader>
+                <CardTitle>Create an Account</CardTitle>
+                <CardDescription>
+                  Join our community to access all features
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <RegisterForm />
+              </CardContent>
+              <CardFooter className="flex flex-col items-start gap-2">
+                <p className="text-sm text-muted-foreground">
+                  Already have an account?{" "}
+                  <Button variant="link" className="p-0 h-auto" asChild>
+                    <Link href="/login">Sign In</Link>
+                  </Button>
+                </p>
+              </CardFooter>
+            </Card>
+          </Glassmorphism>
         </div>
         
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Username</FormLabel>
-                  <FormControl>
-                    <Input 
-                      className="bg-dark-300 border-dark-400 focus:border-primary-500"
-                      placeholder="Enter a username" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        {/* Hero Section */}
+        <div className="hidden md:flex flex-col space-y-6 p-6">
+          <Glassmorphism className="p-6 rounded-lg space-y-6">
+            <div>
+              <GradientText className="text-3xl font-bold mb-2">
+                AI-Powered SEO Optimization
+              </GradientText>
+              <p className="text-lg text-foreground/80">
+                Our AI-powered platform helps you generate traffic-driving content for maximum SEO impact
+              </p>
+            </div>
             
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input 
-                      className="bg-dark-300 border-dark-400 focus:border-primary-500"
-                      type="email" 
-                      placeholder="your@email.com" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <Separator />
             
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input 
-                      className="bg-dark-300 border-dark-400 focus:border-primary-500"
-                      type="password" 
-                      placeholder="Create a password" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormDescription className="text-xs text-gray-500">
-                    At least 8 characters with uppercase, lowercase, and a number
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid gap-4">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 mt-1 rounded-full bg-primary/10 p-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                    <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-5 0v-15A2.5 2.5 0 0 1 9.5 2Z"></path>
+                    <path d="M14.5 8A2.5 2.5 0 0 1 17 10.5v9a2.5 2.5 0 0 1-5 0v-9A2.5 2.5 0 0 1 14.5 8Z"></path>
+                    <path d="M19.5 5A2.5 2.5 0 0 1 22 7.5v12a2.5 2.5 0 0 1-5 0v-12A2.5 2.5 0 0 1 19.5 5Z"></path>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-medium">Traffic Analytics</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Track your forum's performance with comprehensive analytics dashboard
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 mt-1 rounded-full bg-primary/10 p-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                    <path d="M12 17h.01"></path>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-medium">AI Question Suggestions</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Get AI-generated question ideas that are optimized for search engines
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 mt-1 rounded-full bg-primary/10 p-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-medium">Community Engagement</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Build a knowledge base with engaged users and AI-assisted moderation
+                  </p>
+                </div>
+              </div>
+            </div>
             
-            <FormField
-              control={form.control}
-              name="confirmPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
-                  <FormControl>
-                    <Input 
-                      className="bg-dark-300 border-dark-400 focus:border-primary-500"
-                      type="password" 
-                      placeholder="Confirm your password" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="termsAccepted"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-2 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="text-sm leading-tight">
-                    <FormLabel className="font-normal cursor-pointer">
-                      I agree to the{" "}
-                      <Link href="/terms" className="text-primary-400 hover:text-primary-300">
-                        Terms of Service
-                      </Link>{" "}
-                      and{" "}
-                      <Link href="/privacy" className="text-primary-400 hover:text-primary-300">
-                        Privacy Policy
-                      </Link>
-                    </FormLabel>
-                    <FormMessage />
-                  </div>
-                </FormItem>
-              )}
-            />
-            
-            <Button 
-              type="submit" 
-              className="w-full bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 shadow-glow"
-              disabled={registerMutation.isPending}
-            >
-              {registerMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating account...
-                </>
-              ) : (
-                "Create Account"
-              )}
-            </Button>
-          </form>
-        </Form>
-        
-        <div className="mt-6 text-center">
-          <p className="text-gray-400 text-sm">
-            Already have an account?{" "}
-            <Link href="/login" className="text-primary-400 hover:text-primary-300 font-medium">
-              Log in
-            </Link>
-          </p>
+            <div className="flex justify-center">
+              <Button asChild variant="secondary" className="mt-4">
+                <Link href="/">
+                  See How It Works
+                </Link>
+              </Button>
+            </div>
+          </Glassmorphism>
         </div>
-      </Glassmorphism>
+      </div>
     </div>
   );
 }

@@ -40,19 +40,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     error,
     isLoading,
   } = useQuery<User | null, Error>({
-    queryKey: ["/api/auth/user"],
+    queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      return apiRequest("/api/auth/login", {
+      const res = await apiRequest("/api/login", {
         method: "POST", 
         body: JSON.stringify(credentials)
       });
+      return await res.json();
     },
     onSuccess: (userData: User) => {
-      queryClient.setQueryData(["/api/auth/user"], userData);
+      queryClient.setQueryData(["/api/user"], userData);
       toast({
         title: "Login successful",
         description: `Welcome back, ${userData.username}!`,
@@ -69,12 +70,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const registerMutation = useMutation({
     mutationFn: async (userData: RegisterData) => {
-      return apiRequest("/api/auth/register", {
+      const res = await apiRequest("/api/register", {
         method: "POST", 
         body: JSON.stringify(userData)
       });
+      return await res.json();
     },
     onSuccess: (userData: User) => {
+      queryClient.setQueryData(["/api/user"], userData);
       toast({
         title: "Registration successful",
         description: "Your account has been created successfully.",
@@ -91,12 +94,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("/api/auth/logout", {
+      await apiRequest("/api/logout", {
         method: "POST"
       });
     },
     onSuccess: () => {
-      queryClient.setQueryData(["/api/auth/user"], null);
+      queryClient.setQueryData(["/api/user"], null);
       toast({
         title: "Logged out",
         description: "You have been logged out successfully",

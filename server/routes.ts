@@ -36,70 +36,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication with passport
   setupAuth(app);
   
-  // User authentication routes
-  app.post("/api/auth/register", async (req, res) => {
-    try {
-      const validatedData = insertUserSchema.parse(req.body);
-      const user = await storage.createUser(validatedData);
-      res.status(201).json({ success: true, user: { ...user, password: undefined } });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ message: error.errors[0].message });
-      } else {
-        res.status(500).json({ message: "Failed to create user" });
-      }
-    }
-  });
-
-  app.post("/api/auth/login", async (req, res) => {
-    try {
-      const { username, password } = req.body;
-      const user = await storage.getUserByUsername(username);
-      
-      if (!user || user.password !== password) {
-        return res.status(401).json({ message: "Invalid username or password" });
-      }
-      
-      // Set up session
-      if (req.session) {
-        req.session.userId = user.id;
-      }
-      
-      res.json({ success: true, user: { ...user, password: undefined } });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to log in" });
-    }
-  });
-
-  app.post("/api/auth/logout", (req, res) => {
-    if (req.session) {
-      req.session.destroy((err: Error | null) => {
-        if (err) {
-          return res.status(500).json({ message: "Failed to log out" });
-        }
-        res.json({ success: true });
-      });
-    } else {
-      res.json({ success: true });
-    }
-  });
-
-  app.get("/api/auth/user", async (req, res) => {
-    try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-      
-      const user = await storage.getUser(req.session.userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      res.json({ ...user, password: undefined });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to get user data" });
-    }
-  });
+  // Authentication routes are handled in auth.ts
 
   // Categories routes
   app.get("/api/categories", async (req, res) => {
