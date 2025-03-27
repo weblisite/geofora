@@ -1,8 +1,12 @@
 import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, real, primaryKey } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, type SQL } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import type { Json } from "drizzle-orm/pg-core";
+
+// =============================================
+// TABLE DEFINITIONS - ALL TABLES DEFINED FIRST
+// =============================================
 
 // Roles schema with defined role types
 export const roles = pgTable("roles", {
@@ -48,6 +52,27 @@ export const users = pgTable("users", {
   status: text("status").default("active"), // 'active', 'suspended', 'banned'
 });
 
+// Forums schema (moved earlier in the file to avoid circular references)
+export const forums = pgTable("forums", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description"),
+  themeColor: text("theme_color").default("#3B82F6"),
+  primaryFont: text("primary_font").default("Inter"),
+  secondaryFont: text("secondary_font").default("Roboto"),
+  headingFontSize: text("heading_font_size").default("1.5rem"),
+  bodyFontSize: text("body_font_size").default("1rem"),
+  mainWebsiteUrl: text("main_website_url"),
+  subdomain: text("subdomain").unique(),
+  customDomain: text("custom_domain").unique(),
+  isPublic: boolean("is_public").default(true),
+  requiresApproval: boolean("requires_approval").default(false),
+  userId: integer("user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // User-forum role assignments for forum-specific roles
 export const userForumRoles = pgTable("user_forum_roles", {
   id: serial("id").primaryKey(),
@@ -58,7 +83,382 @@ export const userForumRoles = pgTable("user_forum_roles", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Insert schemas
+// Categories schema
+export const categories = pgTable("categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Questions schema for forum questions
+export const questions = pgTable("questions", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  categoryId: integer("category_id").notNull().references(() => categories.id),
+  views: integer("views").default(0),
+  isAiGenerated: boolean("is_ai_generated").default(false),
+  aiPersonaType: text("ai_persona_type"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Answers to questions
+export const answers = pgTable("answers", {
+  id: serial("id").primaryKey(),
+  content: text("content").notNull(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  questionId: integer("question_id").notNull().references(() => questions.id),
+  isAiGenerated: boolean("is_ai_generated").default(false),
+  aiPersonaType: text("ai_persona_type"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Votes (upvotes/downvotes) for answers
+export const votes = pgTable("votes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  answerId: integer("answer_id").notNull().references(() => answers.id),
+  isUpvote: boolean("is_upvote").default(true),
+});
+
+// AI personas configuration
+export const aiPersonas = pgTable("ai_personas", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // 'beginner', 'intermediate', 'expert', 'moderator'
+  avatar: text("avatar"),
+  description: text("description"),
+});
+
+// Main site pages schema
+export const mainSitePages = pgTable("main_site_pages", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
+  content: text("content").notNull(),
+  metaDescription: text("meta_description"),
+  metaKeywords: text("meta_keywords"),
+  pageType: text("page_type").notNull(), // e.g., 'product', 'blog', 'landing', etc.
+  featuredImage: text("featured_image"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Content interlinking schema (for bidirectional links between forum content and main site)
+export const contentInterlinks = pgTable("content_interlinks", {
+  id: serial("id").primaryKey(),
+  sourceType: text("source_type").notNull(), // 'question', 'answer', 'main_page'
+  sourceId: integer("source_id").notNull(),
+  targetType: text("target_type").notNull(), // 'question', 'answer', 'main_page'
+  targetId: integer("target_id").notNull(),
+  anchorText: text("anchor_text"),
+  relevanceScore: integer("relevance_score"),
+  createdAt: timestamp("created_at").defaultNow(),
+  createdByUserId: integer("created_by_user_id").references(() => users.id),
+  automatic: boolean("automatic").default(false), // Whether link was auto-generated
+});
+
+// Forum domain verification schema
+export const domainVerifications = pgTable("domain_verifications", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  domain: text("domain").notNull().unique(),
+  verificationToken: text("verification_token").notNull(),
+  isVerified: boolean("is_verified").default(false),
+  verifiedAt: timestamp("verified_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// SEO Keywords tracking schema
+export const seoKeywords = pgTable("seo_keywords", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  keyword: text("keyword").notNull(),
+  url: text("url").notNull(), // URL being tracked for this keyword
+  searchVolume: integer("search_volume"),
+  difficulty: integer("difficulty"), // 0-100 scale indicating how competitive the keyword is
+  priority: integer("priority").default(0), // 0-10 scale for prioritizing keywords
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  lastCheckedAt: timestamp("last_checked_at"),
+  notes: text("notes"),
+  serp_features: text("serp_features"), // JSON string of SERP features (featured snippets, image packs, etc.)
+  intent: text("intent"), // informational, navigational, commercial, transactional
+  stage: text("stage"), // awareness, consideration, decision
+});
+
+// SEO Positions tracking schema - historical record of keyword positions
+export const seoPositions = pgTable("seo_positions", {
+  id: serial("id").primaryKey(),
+  keywordId: integer("keyword_id").notNull().references(() => seoKeywords.id),
+  position: integer("position").notNull(),
+  date: date("date").notNull(),
+  previousPosition: integer("previous_position"),
+  change: integer("change"), // + or - number indicating the change from previous check
+  clicks: integer("clicks"), // Estimated clicks from this keyword (from Search Console)
+  impressions: integer("impressions"), // Estimated impressions
+  ctr: real("ctr"), // Click-through rate
+  device: text("device"), // mobile, desktop, tablet
+  location: text("location"), // Country or region
+});
+
+// SEO Page Metrics
+export const seoPageMetrics = pgTable("seo_page_metrics", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  url: text("url").notNull(),
+  incomingLinks: integer("incoming_links"),
+  outgoingLinks: integer("outgoing_links"),
+  totalWordCount: integer("total_word_count"),
+  metaQualityScore: integer("meta_quality_score"), // 0-100 scoring of meta tags quality
+  keywordDensity: jsonb("keyword_density"), // JSON of keyword:density pairs
+  pageSpeed: integer("page_speed"), // 0-100 page speed score
+  mainKeyword: text("main_keyword"),
+  semanticScore: integer("semantic_score"), // 0-100 semantic relevance score
+  lastAnalyzed: timestamp("last_analyzed"),
+  contentQualityScore: integer("content_quality_score"), // 0-100 content quality score
+});
+
+// SEO Content Gaps - identifies content that should be created based on competitor coverage
+export const seoContentGaps = pgTable("seo_content_gaps", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  topic: text("topic").notNull(),
+  searchVolume: integer("search_volume"),
+  competitorCoverage: text("competitor_coverage"),
+  opportunityScore: integer("opportunity_score"), // 0-100 score indicating the value of covering this topic
+  recommendedKeywords: text("recommended_keywords"),
+  contentSuggestion: text("content_suggestion"),
+  isAddressed: boolean("is_addressed").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// SEO Weekly Reports
+export const seoWeeklyReports = pgTable("seo_weekly_reports", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  reportDate: date("report_date").notNull(),
+  organicTraffic: integer("organic_traffic"),
+  avgPosition: real("avg_position"),
+  topTenKeywords: integer("top_ten_keywords"),
+  topThreeKeywords: integer("top_three_keywords"),
+  newKeywords: integer("new_keywords"),
+  lostKeywords: integer("lost_keywords"),
+  rankingImproved: integer("ranking_improved"),
+  rankingDeclined: integer("ranking_declined"),
+  impressions: integer("impressions"),
+  clicks: integer("clicks"),
+  ctr: real("ctr"),
+  reportData: jsonb("report_data"), // Additional data in JSON format
+});
+
+// User engagement metrics
+export const userEngagementMetrics = pgTable("user_engagement_metrics", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  date: date("date").notNull(),
+  totalVisits: integer("total_visits"),
+  uniqueVisitors: integer("unique_visitors"),
+  pageViews: integer("page_views"),
+  avgSessionDuration: real("avg_session_duration"),
+  bounceRate: real("bounce_rate"),
+  newUsers: integer("new_users"),
+  returningUsers: integer("returning_users"),
+  topReferrers: jsonb("top_referrers"), // JSON array of referrers
+  deviceBreakdown: jsonb("device_breakdown"), // JSON of device:percentage pairs
+  eventsTriggered: jsonb("events_triggered"), // JSON of event:count pairs
+  activeUsers: integer("active_users"),
+  conversionRate: real("conversion_rate"),
+  questionViews: integer("question_views"),
+  answerEngagements: integer("answer_engagements"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Content performance metrics
+export const contentPerformanceMetrics = pgTable("content_performance_metrics", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  contentType: text("content_type").notNull(), // 'question', 'answer', 'page'
+  contentId: integer("content_id").notNull(),
+  title: text("title"),
+  url: text("url"),
+  impressions: integer("impressions"),
+  clicks: integer("clicks"),
+  ctr: real("ctr"),
+  avgPosition: real("avg_position"),
+  socialShares: integer("social_shares"),
+  backlinks: integer("backlinks"),
+  engagementRate: real("engagement_rate"),
+  conversionRate: real("conversion_rate"),
+  avgTimeOnContent: real("avg_time_on_content"),
+  scoreDate: date("score_date").notNull(),
+  performance: jsonb("performance"), // JSON with various performance metrics
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Analytics events for tracking user behavior
+export const analyticsEvents = pgTable("analytics_events", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  userId: integer("user_id").references(() => users.id),
+  eventType: text("event_type").notNull(), // 'page_view', 'click', 'search', etc.
+  eventCategory: text("event_category"), // 'navigation', 'content', 'form', etc.
+  eventAction: text("event_action"), // 'submit', 'view', 'click', etc.
+  eventLabel: text("event_label"), // Additional context
+  eventValue: integer("event_value"), // Numeric value if applicable
+  sessionId: text("session_id"),
+  timestamp: timestamp("timestamp").defaultNow(),
+  deviceType: text("device_type"),
+  browserInfo: text("browser_info"),
+  ipAddress: text("ip_address"),
+  referrer: text("referrer"),
+  pageUrl: text("page_url"),
+  additionalData: jsonb("additional_data"), // Any additional event data
+});
+
+// Funnel definition for conversion tracking
+export const funnelDefinitions = pgTable("funnel_definitions", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  steps: jsonb("steps").notNull(), // JSON array of step definitions
+  conversionGoal: text("conversion_goal").notNull(), // e.g., 'form_submit', 'question_ask'
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  targetConversionRate: real("target_conversion_rate"),
+  funnelType: text("funnel_type"), // 'lead_generation', 'engagement', etc.
+  additionalSettings: jsonb("additional_settings"),
+});
+
+// Funnel analytics for tracking performance of defined funnels
+export const funnelAnalytics = pgTable("funnel_analytics", {
+  id: serial("id").primaryKey(),
+  funnelId: integer("funnel_id").notNull().references(() => funnelDefinitions.id),
+  date: date("date").notNull(),
+  entrances: integer("entrances"),
+  stepConversions: jsonb("step_conversions"), // JSON with conversion counts per step
+  completions: integer("completions"),
+  conversionRate: real("conversion_rate"),
+  avgTimeToConversion: real("avg_time_to_conversion"),
+  dropOffPoints: jsonb("drop_off_points"), // JSON with info about where users drop off
+  segmentData: jsonb("segment_data"), // JSON for user segment performance
+  revenueGenerated: real("revenue_generated"),
+  costPerConversion: real("cost_per_conversion"),
+  deviceBreakdown: jsonb("device_breakdown"),
+  sourceBreakdown: jsonb("source_breakdown"),
+  notes: text("notes"),
+});
+
+// Gated content - defined before leadCaptureForms to avoid circular reference
+export const gatedContents = pgTable("gated_contents", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  content: text("content").notNull(),
+  teaser: text("teaser").notNull(), // Preview content shown before form submission
+  slug: text("slug").notNull().unique(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  contentType: text("content_type"), // 'whitepaper', 'ebook', 'webinar', etc.
+  featuredImage: text("featured_image"),
+  downloadFile: text("download_file"),
+  metaDescription: text("meta_description"),
+  metaKeywords: text("meta_keywords"),
+  formId: integer("form_id"),  // Will be set up with proper relation later
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Lead capture forms
+export const leadCaptureForms = pgTable("lead_capture_forms", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  isActive: boolean("is_active").default(true),
+  formFields: text("form_fields").notNull(), // JSON string of field definitions
+  submitButtonText: text("submit_button_text"),
+  successMessage: text("success_message"),
+  redirectUrl: text("redirect_url"),
+  formType: text("form_type"), // 'popup', 'inline', 'sidebar', etc.
+  gatedContentId: integer("gated_content_id").references(() => gatedContents.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Lead submissions
+export const leadSubmissions = pgTable("lead_submissions", {
+  id: serial("id").primaryKey(),
+  formId: integer("form_id").notNull().references(() => leadCaptureForms.id),
+  email: text("email").notNull(),
+  formData: text("form_data").notNull(), // JSON string of form data
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  userAgent: text("user_agent"),
+  ipAddress: text("ip_address"),
+  isExported: boolean("is_exported").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// CRM integrations
+export const crmIntegrations = pgTable("crm_integrations", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  provider: text("provider").notNull(), // 'mailchimp', 'hubspot', 'salesforce', etc.
+  isActive: boolean("is_active").default(true),
+  apiKey: text("api_key"),
+  apiSecret: text("api_secret"),
+  listId: text("list_id"),
+  webhookUrl: text("webhook_url"),
+  mappingRules: text("mapping_rules"), // JSON string of field mappings
+  lastSyncedAt: timestamp("last_synced_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Lead form views (for tracking conversion rates)
+export const leadFormViews = pgTable("lead_form_views", {
+  id: serial("id").primaryKey(),
+  formId: integer("form_id").notNull().references(() => leadCaptureForms.id),
+  referrer: text("referrer"),
+  userAgent: text("user_agent"),
+  ipAddress: text("ip_address"),
+  isConversion: boolean("is_conversion").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Content scheduling
+export const contentSchedules = pgTable("content_schedules", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  categoryId: integer("category_id").references(() => categories.id),
+  title: text("title").notNull(),
+  contentType: text("content_type").notNull(), // 'question', 'answer', 'both'
+  keyword: text("keyword").notNull(), // Target keyword for the content
+  content: text("content"), // Draft or template content
+  scheduledFor: timestamp("scheduled_for").notNull(),
+  publishedAt: timestamp("published_at"),
+  status: text("status").default("scheduled"), // 'scheduled', 'published', 'failed'
+  aiPersonaType: text("ai_persona_type"), // Type of AI persona to use if AI-generated
+  qualitySettings: jsonb("quality_settings"), // JSON of quality settings
+  targetWordCount: integer("target_word_count"),
+  numberOfAnswers: integer("number_of_answers").default(1), // How many AI answers to generate
+  questionIds: text("question_ids"), // Comma-separated IDs of generated questions
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ================================================
+// INSERT SCHEMAS - AFTER ALL TABLES ARE DEFINED
+// ================================================
+
 export const insertRoleSchema = createInsertSchema(roles).pick({
   name: true,
   description: true,
@@ -93,82 +493,33 @@ export const insertUserForumRoleSchema = createInsertSchema(userForumRoles).pick
   roleId: true,
 });
 
-// Categories schema
-export const categories = pgTable("categories", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  slug: text("slug").notNull().unique(),
-  description: text("description"),
-});
-
 export const insertCategorySchema = createInsertSchema(categories).pick({
   name: true,
   slug: true,
   description: true,
 });
 
-// Questions schema
-export const questions = pgTable("questions", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  categoryId: integer("category_id").notNull(),
-  title: text("title").notNull(),
-  content: text("content").notNull(),
-  views: integer("views").default(0),
-  isAiGenerated: boolean("is_ai_generated").default(false),
-  aiPersonaType: text("ai_persona_type"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
 export const insertQuestionSchema = createInsertSchema(questions).pick({
-  userId: true,
-  categoryId: true,
   title: true,
   content: true,
+  userId: true,
+  categoryId: true,
   isAiGenerated: true,
   aiPersonaType: true,
-});
-
-// Answers schema
-export const answers = pgTable("answers", {
-  id: serial("id").primaryKey(),
-  questionId: integer("question_id").notNull(),
-  userId: integer("user_id").notNull(),
-  content: text("content").notNull(),
-  isAiGenerated: boolean("is_ai_generated").default(false),
-  aiPersonaType: text("ai_persona_type"),
-  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertAnswerSchema = createInsertSchema(answers).pick({
-  questionId: true,
-  userId: true,
   content: true,
+  userId: true,
+  questionId: true,
   isAiGenerated: true,
   aiPersonaType: true,
-});
-
-// Votes schema
-export const votes = pgTable("votes", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  answerId: integer("answer_id").notNull(),
-  isUpvote: boolean("is_upvote").default(true),
 });
 
 export const insertVoteSchema = createInsertSchema(votes).pick({
   userId: true,
   answerId: true,
   isUpvote: true,
-});
-
-// AI Personas schema
-export const aiPersonas = pgTable("ai_personas", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  type: text("type").notNull(), // beginner, intermediate, expert
-  avatar: text("avatar"),
-  description: text("description"),
 });
 
 export const insertAiPersonaSchema = createInsertSchema(aiPersonas).pick({
@@ -178,7 +529,430 @@ export const insertAiPersonaSchema = createInsertSchema(aiPersonas).pick({
   description: true,
 });
 
-// Schema relations
+export const insertMainSitePageSchema = createInsertSchema(mainSitePages).pick({
+  title: true,
+  slug: true,
+  content: true,
+  metaDescription: true,
+  metaKeywords: true,
+  pageType: true,
+  featuredImage: true,
+});
+
+export const insertContentInterlinkSchema = createInsertSchema(contentInterlinks).pick({
+  sourceType: true,
+  sourceId: true,
+  targetType: true, 
+  targetId: true,
+  anchorText: true,
+  relevanceScore: true,
+  createdByUserId: true,
+  automatic: true,
+});
+
+export const insertForumSchema = createInsertSchema(forums).pick({
+  name: true,
+  slug: true,
+  description: true,
+  themeColor: true,
+  primaryFont: true,
+  secondaryFont: true,
+  headingFontSize: true,
+  bodyFontSize: true,
+  mainWebsiteUrl: true,
+  subdomain: true,
+  customDomain: true,
+  isPublic: true,
+  requiresApproval: true,
+  userId: true,
+});
+
+export const insertDomainVerificationSchema = createInsertSchema(domainVerifications).pick({
+  forumId: true,
+  domain: true,
+  verificationToken: true,
+  isVerified: true,
+  verifiedAt: true,
+});
+
+export const insertLeadCaptureFormSchema = createInsertSchema(leadCaptureForms).pick({
+  name: true,
+  description: true,
+  forumId: true,
+  isActive: true,
+  formFields: true,
+  submitButtonText: true,
+  successMessage: true,
+  redirectUrl: true,
+  formType: true,
+  gatedContentId: true,
+});
+
+export const insertLeadSubmissionSchema = createInsertSchema(leadSubmissions).pick({
+  formId: true,
+  email: true,
+  formData: true,
+  firstName: true,
+  lastName: true,
+  userAgent: true,
+  ipAddress: true,
+  isExported: true,
+});
+
+export const insertGatedContentSchema = createInsertSchema(gatedContents).pick({
+  title: true,
+  description: true,
+  content: true,
+  teaser: true,
+  slug: true,
+  forumId: true,
+  contentType: true,
+  featuredImage: true,
+  downloadFile: true,
+  metaDescription: true,
+  metaKeywords: true,
+  formId: true,
+});
+
+export const insertCrmIntegrationSchema = createInsertSchema(crmIntegrations).pick({
+  forumId: true,
+  provider: true,
+  isActive: true,
+  apiKey: true,
+  apiSecret: true,
+  listId: true,
+  webhookUrl: true,
+  mappingRules: true,
+});
+
+export const insertLeadFormViewSchema = createInsertSchema(leadFormViews).pick({
+  formId: true,
+  referrer: true,
+  userAgent: true,
+  ipAddress: true,
+  isConversion: true,
+});
+
+export const insertContentScheduleSchema = createInsertSchema(contentSchedules).pick({
+  userId: true,
+  forumId: true,
+  categoryId: true,
+  title: true,
+  contentType: true,
+  keyword: true,
+  content: true,
+  scheduledFor: true,
+  status: true,
+  aiPersonaType: true,
+  qualitySettings: true,
+  targetWordCount: true,
+  numberOfAnswers: true,
+});
+
+export const insertSeoKeywordSchema = createInsertSchema(seoKeywords).pick({
+  forumId: true,
+  keyword: true,
+  url: true,
+  searchVolume: true,
+  difficulty: true,
+  priority: true,
+  isActive: true,
+  notes: true,
+  serp_features: true,
+  intent: true,
+  stage: true,
+});
+
+export const insertSeoPositionSchema = createInsertSchema(seoPositions).pick({
+  keywordId: true,
+  position: true,
+  date: true,
+  previousPosition: true,
+  change: true,
+  clicks: true,
+  impressions: true,
+  ctr: true,
+  device: true,
+  location: true,
+});
+
+export const insertSeoPageMetricSchema = createInsertSchema(seoPageMetrics).pick({
+  forumId: true,
+  url: true,
+  incomingLinks: true,
+  outgoingLinks: true,
+  totalWordCount: true,
+  metaQualityScore: true,
+  keywordDensity: true,
+  pageSpeed: true,
+  mainKeyword: true,
+  semanticScore: true,
+  lastAnalyzed: true,
+  contentQualityScore: true,
+});
+
+export const insertSeoContentGapSchema = createInsertSchema(seoContentGaps).pick({
+  forumId: true,
+  topic: true,
+  searchVolume: true,
+  competitorCoverage: true,
+  opportunityScore: true,
+  recommendedKeywords: true,
+  contentSuggestion: true,
+  isAddressed: true,
+});
+
+export const insertSeoWeeklyReportSchema = createInsertSchema(seoWeeklyReports).pick({
+  forumId: true,
+  reportDate: true,
+  organicTraffic: true,
+  avgPosition: true,
+  topTenKeywords: true,
+  topThreeKeywords: true,
+  newKeywords: true,
+  lostKeywords: true,
+  rankingImproved: true,
+  rankingDeclined: true,
+  impressions: true,
+  clicks: true,
+  ctr: true,
+  reportData: true,
+});
+
+export const insertUserEngagementMetricsSchema = createInsertSchema(userEngagementMetrics).pick({
+  forumId: true,
+  date: true,
+  totalVisits: true,
+  uniqueVisitors: true,
+  pageViews: true,
+  avgSessionDuration: true,
+  bounceRate: true,
+  newUsers: true,
+  returningUsers: true,
+  topReferrers: true,
+  deviceBreakdown: true,
+  eventsTriggered: true,
+  activeUsers: true,
+  conversionRate: true,
+  questionViews: true,
+  answerEngagements: true,
+});
+
+export const insertContentPerformanceMetricsSchema = createInsertSchema(contentPerformanceMetrics).pick({
+  forumId: true,
+  contentType: true,
+  contentId: true,
+  title: true,
+  url: true,
+  impressions: true,
+  clicks: true,
+  ctr: true,
+  avgPosition: true,
+  socialShares: true,
+  backlinks: true,
+  engagementRate: true,
+  conversionRate: true,
+  avgTimeOnContent: true,
+  scoreDate: true,
+  performance: true,
+});
+
+export const insertAnalyticsEventSchema = createInsertSchema(analyticsEvents).pick({
+  forumId: true,
+  userId: true,
+  eventType: true,
+  eventCategory: true,
+  eventAction: true,
+  eventLabel: true,
+  eventValue: true,
+  sessionId: true,
+  timestamp: true,
+  deviceType: true,
+  browserInfo: true,
+  ipAddress: true,
+  referrer: true,
+  pageUrl: true,
+  additionalData: true,
+});
+
+export const insertFunnelDefinitionSchema = createInsertSchema(funnelDefinitions).pick({
+  forumId: true,
+  name: true,
+  description: true,
+  steps: true,
+  conversionGoal: true,
+  isActive: true,
+  targetConversionRate: true,
+  funnelType: true,
+  additionalSettings: true,
+});
+
+export const insertFunnelAnalyticsSchema = createInsertSchema(funnelAnalytics).pick({
+  funnelId: true,
+  date: true,
+  entrances: true,
+  stepConversions: true,
+  completions: true,
+  conversionRate: true,
+  avgTimeToConversion: true,
+  dropOffPoints: true,
+  segmentData: true,
+  revenueGenerated: true,
+  costPerConversion: true,
+  deviceBreakdown: true,
+  sourceBreakdown: true,
+  notes: true,
+});
+
+// =======================================
+// TYPE DEFINITIONS - AFTER INSERT SCHEMAS
+// =======================================
+
+export type Role = typeof roles.$inferSelect;
+export type InsertRole = z.infer<typeof insertRoleSchema>;
+
+export type Permission = typeof permissions.$inferSelect;
+export type InsertPermission = z.infer<typeof insertPermissionSchema>;
+
+export type RolePermission = typeof rolePermissions.$inferSelect;
+export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
+
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type UserForumRole = typeof userForumRoles.$inferSelect;
+export type InsertUserForumRole = z.infer<typeof insertUserForumRoleSchema>;
+
+export type Category = typeof categories.$inferSelect;
+export type InsertCategory = z.infer<typeof insertCategorySchema>;
+
+export type Question = typeof questions.$inferSelect;
+export type InsertQuestion = z.infer<typeof insertQuestionSchema>;
+
+export type Answer = typeof answers.$inferSelect;
+export type InsertAnswer = z.infer<typeof insertAnswerSchema>;
+
+export type Vote = typeof votes.$inferSelect;
+export type InsertVote = z.infer<typeof insertVoteSchema>;
+
+export type AiPersona = typeof aiPersonas.$inferSelect;
+export type InsertAiPersona = z.infer<typeof insertAiPersonaSchema>;
+
+export type MainSitePage = typeof mainSitePages.$inferSelect;
+export type InsertMainSitePage = z.infer<typeof insertMainSitePageSchema>;
+
+export type ContentInterlink = typeof contentInterlinks.$inferSelect;
+export type InsertContentInterlink = z.infer<typeof insertContentInterlinkSchema>;
+
+export type Forum = typeof forums.$inferSelect;
+export type InsertForum = z.infer<typeof insertForumSchema>;
+
+export type DomainVerification = typeof domainVerifications.$inferSelect;
+export type InsertDomainVerification = z.infer<typeof insertDomainVerificationSchema>;
+
+export type SeoKeyword = typeof seoKeywords.$inferSelect;
+export type InsertSeoKeyword = z.infer<typeof insertSeoKeywordSchema>;
+
+export type SeoPosition = typeof seoPositions.$inferSelect;
+export type InsertSeoPosition = z.infer<typeof insertSeoPositionSchema>;
+
+export type SeoPageMetric = typeof seoPageMetrics.$inferSelect;
+export type InsertSeoPageMetric = z.infer<typeof insertSeoPageMetricSchema>;
+
+export type SeoContentGap = typeof seoContentGaps.$inferSelect;
+export type InsertSeoContentGap = z.infer<typeof insertSeoContentGapSchema>;
+
+export type SeoWeeklyReport = typeof seoWeeklyReports.$inferSelect;
+export type InsertSeoWeeklyReport = z.infer<typeof insertSeoWeeklyReportSchema>;
+
+export type LeadCaptureForm = typeof leadCaptureForms.$inferSelect;
+export type InsertLeadCaptureForm = z.infer<typeof insertLeadCaptureFormSchema>;
+
+export type LeadSubmission = typeof leadSubmissions.$inferSelect;
+export type InsertLeadSubmission = z.infer<typeof insertLeadSubmissionSchema>;
+
+export type GatedContent = typeof gatedContents.$inferSelect;
+export type InsertGatedContent = z.infer<typeof insertGatedContentSchema>;
+
+export type CrmIntegration = typeof crmIntegrations.$inferSelect;
+export type InsertCrmIntegration = z.infer<typeof insertCrmIntegrationSchema>;
+
+export type LeadFormView = typeof leadFormViews.$inferSelect;
+export type InsertLeadFormView = z.infer<typeof insertLeadFormViewSchema>;
+
+export type UserEngagementMetric = typeof userEngagementMetrics.$inferSelect;
+export type InsertUserEngagementMetric = z.infer<typeof insertUserEngagementMetricsSchema>;
+
+export type ContentPerformanceMetric = typeof contentPerformanceMetrics.$inferSelect;
+export type InsertContentPerformanceMetric = z.infer<typeof insertContentPerformanceMetricsSchema>;
+
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+export type InsertAnalyticsEvent = z.infer<typeof insertAnalyticsEventSchema>;
+
+export type FunnelDefinition = typeof funnelDefinitions.$inferSelect;
+export type InsertFunnelDefinition = z.infer<typeof insertFunnelDefinitionSchema>;
+
+export type FunnelAnalytic = typeof funnelAnalytics.$inferSelect;
+export type InsertFunnelAnalytic = z.infer<typeof insertFunnelAnalyticsSchema>;
+
+export type ContentSchedule = typeof contentSchedules.$inferSelect;
+export type InsertContentSchedule = z.infer<typeof insertContentScheduleSchema>;
+
+// Extended types for frontend use
+export type QuestionWithDetails = Question & {
+  user: User;
+  category: Category;
+  answers: number;
+};
+
+export type AnswerWithDetails = Answer & {
+  user: User;
+  votes: number;
+};
+
+export type MainSitePageWithLinks = MainSitePage & {
+  incomingLinks: ContentInterlink[];
+  outgoingLinks: ContentInterlink[];
+};
+
+export type ForumWithStats = Forum & {
+  totalQuestions: number;
+  totalAnswers: number;
+};
+
+export type SeoKeywordWithPositionHistory = SeoKeyword & {
+  positionHistory: SeoPosition[];
+  latestPosition?: SeoPosition;
+};
+
+export type SeoWeeklyReportWithDetails = SeoWeeklyReport & {
+  parsedReportData: Record<string, any>;
+};
+
+export type LeadCaptureFormWithStats = LeadCaptureForm & {
+  totalViews: number;
+  totalSubmissions: number;
+  conversionRate: number;
+};
+
+export type FunnelDefinitionWithStats = FunnelDefinition & {
+  totalEntries: number;
+  completions: number;
+  conversionRate: number;
+  dropOffPoints: Record<string, number>;
+};
+
+export type ContentScheduleWithDetails = ContentSchedule & {
+  forum: Forum;
+  category?: Category;
+  questionsGenerated?: number;
+  answersGenerated?: number;
+};
+
+// ==================================================
+// RELATIONS - ALL TABLES AND TYPES MUST BE DEFINED ABOVE
+// ==================================================
+
 // Role relations
 export const rolesRelations = relations(roles, ({ many }) => ({
   permissions: many(rolePermissions),
@@ -251,8 +1025,6 @@ export const questionsRelations = relations(questions, ({ one, many }) => ({
     references: [categories.id],
   }),
   answers: many(answers),
-  sourceInterlinks: many(contentInterlinks, { relationName: "questionSource" }),
-  targetInterlinks: many(contentInterlinks, { relationName: "questionTarget" }),
 }));
 
 // Answer relations
@@ -266,8 +1038,6 @@ export const answersRelations = relations(answers, ({ one, many }) => ({
     references: [users.id],
   }),
   votes: many(votes),
-  sourceInterlinks: many(contentInterlinks, { relationName: "answerSource" }),
-  targetInterlinks: many(contentInterlinks, { relationName: "answerTarget" }),
 }));
 
 // Vote relations
@@ -460,742 +1230,3 @@ export const funnelAnalyticsRelations = relations(funnelAnalytics, ({ one }) => 
     references: [funnelDefinitions.id],
   }),
 }));
-
-// Type exports
-export type Role = typeof roles.$inferSelect;
-export type InsertRole = z.infer<typeof insertRoleSchema>;
-
-export type Permission = typeof permissions.$inferSelect;
-export type InsertPermission = z.infer<typeof insertPermissionSchema>;
-
-export type RolePermission = typeof rolePermissions.$inferSelect;
-export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
-
-export type User = typeof users.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>;
-
-export type UserForumRole = typeof userForumRoles.$inferSelect;
-export type InsertUserForumRole = z.infer<typeof insertUserForumRoleSchema>;
-
-export type Category = typeof categories.$inferSelect;
-export type InsertCategory = z.infer<typeof insertCategorySchema>;
-
-export type Question = typeof questions.$inferSelect;
-export type InsertQuestion = z.infer<typeof insertQuestionSchema>;
-
-export type Answer = typeof answers.$inferSelect;
-export type InsertAnswer = z.infer<typeof insertAnswerSchema>;
-
-export type Vote = typeof votes.$inferSelect;
-export type InsertVote = z.infer<typeof insertVoteSchema>;
-
-export type AiPersona = typeof aiPersonas.$inferSelect;
-export type InsertAiPersona = z.infer<typeof insertAiPersonaSchema>;
-
-// Extended types for frontend use
-export type QuestionWithDetails = Question & {
-  user: User;
-  category: Category;
-  answers: number;
-};
-
-export type AnswerWithDetails = Answer & {
-  user: User;
-  votes: number;
-};
-
-// Main site pages schema
-export const mainSitePages = pgTable("main_site_pages", {
-  id: serial("id").primaryKey(),
-  title: text("title").notNull(),
-  slug: text("slug").notNull().unique(),
-  content: text("content").notNull(),
-  metaDescription: text("meta_description"),
-  metaKeywords: text("meta_keywords"),
-  pageType: text("page_type").notNull(), // e.g., 'product', 'blog', 'landing', etc.
-  featuredImage: text("featured_image"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertMainSitePageSchema = createInsertSchema(mainSitePages).pick({
-  title: true,
-  slug: true,
-  content: true,
-  metaDescription: true,
-  metaKeywords: true,
-  pageType: true,
-  featuredImage: true,
-});
-
-// Content interlinking schema (for bidirectional links between forum content and main site)
-export const contentInterlinks = pgTable("content_interlinks", {
-  id: serial("id").primaryKey(),
-  sourceType: text("source_type").notNull(), // 'question', 'answer', 'main_page'
-  sourceId: integer("source_id").notNull(),
-  targetType: text("target_type").notNull(), // 'question', 'answer', 'main_page'
-  targetId: integer("target_id").notNull(),
-  anchorText: text("anchor_text"),
-  relevanceScore: integer("relevance_score"),
-  createdAt: timestamp("created_at").defaultNow(),
-  createdByUserId: integer("created_by_user_id").references(() => users.id),
-  automatic: boolean("automatic").default(false), // Whether link was auto-generated
-});
-
-export const insertContentInterlinkSchema = createInsertSchema(contentInterlinks).pick({
-  sourceType: true,
-  sourceId: true,
-  targetType: true, 
-  targetId: true,
-  anchorText: true,
-  relevanceScore: true,
-  createdByUserId: true,
-  automatic: true,
-});
-
-export type MainSitePage = typeof mainSitePages.$inferSelect;
-export type InsertMainSitePage = z.infer<typeof insertMainSitePageSchema>;
-
-export type ContentInterlink = typeof contentInterlinks.$inferSelect;
-export type InsertContentInterlink = z.infer<typeof insertContentInterlinkSchema>;
-
-// Extended type for pages with interlinked content
-export type MainSitePageWithLinks = MainSitePage & {
-  incomingLinks: ContentInterlink[];
-  outgoingLinks: ContentInterlink[];
-};
-
-// Forums schema
-export const forums = pgTable("forums", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  slug: text("slug").notNull().unique(),
-  description: text("description"),
-  themeColor: text("theme_color").default("#3B82F6"),
-  primaryFont: text("primary_font").default("Inter"),
-  secondaryFont: text("secondary_font").default("Roboto"),
-  headingFontSize: text("heading_font_size").default("1.5rem"),
-  bodyFontSize: text("body_font_size").default("1rem"),
-  mainWebsiteUrl: text("main_website_url"),
-  subdomain: text("subdomain").unique(),
-  customDomain: text("custom_domain").unique(),
-  isPublic: boolean("is_public").default(true),
-  requiresApproval: boolean("requires_approval").default(false),
-  userId: integer("user_id").notNull().references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertForumSchema = createInsertSchema(forums).pick({
-  name: true,
-  slug: true,
-  description: true,
-  themeColor: true,
-  primaryFont: true,
-  secondaryFont: true,
-  headingFontSize: true,
-  bodyFontSize: true,
-  mainWebsiteUrl: true,
-  subdomain: true,
-  customDomain: true,
-  isPublic: true,
-  requiresApproval: true,
-  userId: true,
-});
-
-// Forum domain verification schema
-export const domainVerifications = pgTable("domain_verifications", {
-  id: serial("id").primaryKey(),
-  forumId: integer("forum_id").notNull().references(() => forums.id),
-  domain: text("domain").notNull().unique(),
-  verificationToken: text("verification_token").notNull(),
-  isVerified: boolean("is_verified").default(false),
-  verifiedAt: timestamp("verified_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const insertDomainVerificationSchema = createInsertSchema(domainVerifications).pick({
-  forumId: true,
-  domain: true,
-  verificationToken: true,
-  isVerified: true,
-  verifiedAt: true,
-});
-
-// Type exports for forums
-export type Forum = typeof forums.$inferSelect;
-export type InsertForum = z.infer<typeof insertForumSchema>;
-
-export type DomainVerification = typeof domainVerifications.$inferSelect;
-export type InsertDomainVerification = z.infer<typeof insertDomainVerificationSchema>;
-
-// Extended type for forums with stats
-export type ForumWithStats = Forum & {
-  totalQuestions: number;
-  totalAnswers: number;
-};
-
-// SEO Keywords tracking schema
-export const seoKeywords = pgTable("seo_keywords", {
-  id: serial("id").primaryKey(),
-  forumId: integer("forum_id").notNull().references(() => forums.id),
-  keyword: text("keyword").notNull(),
-  url: text("url").notNull(), // URL being tracked for this keyword
-  searchVolume: integer("search_volume"),
-  difficulty: integer("difficulty"), // 0-100 scale indicating how competitive the keyword is
-  priority: integer("priority").default(0), // 0-10 scale for prioritizing keywords
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  lastCheckedAt: timestamp("last_checked_at"),
-  notes: text("notes"),
-  serp_features: text("serp_features"), // JSON string of SERP features (featured snippets, image packs, etc.)
-  intent: text("intent"), // informational, navigational, commercial, transactional
-  stage: text("stage"), // awareness, consideration, decision
-});
-
-// SEO Positions tracking schema - historical record of keyword positions
-export const seoPositions = pgTable("seo_positions", {
-  id: serial("id").primaryKey(),
-  keywordId: integer("keyword_id").notNull().references(() => seoKeywords.id),
-  position: integer("position").notNull(),
-  date: date("date").notNull(),
-  previousPosition: integer("previous_position"),
-  change: integer("change"), // + or - number indicating the change from previous check
-  clicks: integer("clicks"), // Estimated clicks from this keyword (from Search Console)
-  impressions: integer("impressions"), // Estimated impressions from this keyword
-  ctr: real("ctr"), // Click-through rate as a decimal (0.0-1.0)
-  device: text("device").default("desktop"), // desktop, mobile, tablet
-  location: text("location").default("global"), // Country or region code
-});
-
-// SEO Page metrics schema
-export const seoPageMetrics = pgTable("seo_page_metrics", {
-  id: serial("id").primaryKey(),
-  forumId: integer("forum_id").notNull().references(() => forums.id),
-  url: text("url").notNull(), // Relative URL of the page
-  incomingLinks: integer("incoming_links").default(0), // Count of internal links to this page
-  outgoingLinks: integer("outgoing_links").default(0), // Count of internal links from this page
-  totalWordCount: integer("total_word_count"), 
-  metaQualityScore: real("meta_quality_score"), // Score 0-1 for meta title/description quality
-  keywordDensity: jsonb("keyword_density"), // JSON of keyword density data
-  readabilityScore: real("readability_score"), // Score 0-100 based on readability metrics
-  pageSpeed: jsonb("page_speed"), // JSON object with page speed metrics
-  organicTraffic: integer("organic_traffic"), // Estimated monthly organic traffic
-  lastAnalyzedAt: timestamp("last_analyzed_at"),
-  contentQualityScore: real("content_quality_score"), // AI-scored metric for overall content quality
-});
-
-// SEO Content gaps schema
-export const seoContentGaps = pgTable("seo_content_gaps", {
-  id: serial("id").primaryKey(),
-  forumId: integer("forum_id").notNull().references(() => forums.id),
-  topic: text("topic").notNull(), // The topic with identified gap
-  competitorCoverage: text("competitor_coverage"), // How competitors are covering this topic
-  searchVolume: integer("search_volume"), 
-  opportunityScore: integer("opportunity_score"), // 0-100 scale for potential impact
-  recommendedKeywords: text("recommended_keywords"), // JSON string of recommended keywords
-  contentSuggestion: text("content_suggestion"), // AI suggestion for content to fill gap
-  isAddressed: boolean("is_addressed").default(false), // Whether this gap has been addressed
-  targetUrl: text("target_url"), // URL of created content addressing the gap (if any)
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// User Engagement Tracking schema
-export const userEngagementMetrics = pgTable("user_engagement_metrics", {
-  id: serial("id").primaryKey(),
-  forumId: integer("forum_id").notNull().references(() => forums.id),
-  date: date("date").notNull(),
-  pageViews: integer("page_views").default(0),
-  uniqueVisitors: integer("unique_visitors").default(0),
-  avgSessionDuration: integer("avg_session_duration").default(0), // in seconds
-  bounceRate: real("bounce_rate").default(0), // as a decimal (0.0-1.0)
-  returnVisitorRate: real("return_visitor_rate").default(0), // as a decimal (0.0-1.0)
-  deviceDistribution: jsonb("device_distribution"), // JSON with device breakdown
-  trafficSources: jsonb("traffic_sources"), // JSON with traffic source breakdown
-  popularPages: jsonb("popular_pages"), // JSON with most visited pages
-  userJourneys: jsonb("user_journeys"), // JSON with common navigation paths
-  exitPages: jsonb("exit_pages"), // JSON with common exit pages
-  interactionEvents: jsonb("interaction_events"), // JSON with click, scroll, etc. events
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const insertUserEngagementMetricsSchema = createInsertSchema(userEngagementMetrics).pick({
-  forumId: true,
-  date: true,
-  pageViews: true,
-  uniqueVisitors: true,
-  avgSessionDuration: true,
-  bounceRate: true,
-  returnVisitorRate: true,
-  deviceDistribution: true,
-  trafficSources: true,
-  popularPages: true,
-  userJourneys: true,
-  exitPages: true,
-  interactionEvents: true,
-});
-
-// Content Performance Metrics schema
-export const contentPerformanceMetrics = pgTable("content_performance_metrics", {
-  id: serial("id").primaryKey(),
-  forumId: integer("forum_id").notNull().references(() => forums.id),
-  contentType: text("content_type").notNull(), // question, answer, category, etc.
-  contentId: integer("content_id").notNull(),
-  date: date("date").notNull(),
-  pageViews: integer("page_views").default(0),
-  uniqueVisitors: integer("unique_visitors").default(0),
-  avgTimeOnPage: integer("avg_time_on_page").default(0), // in seconds
-  bounceRate: real("bounce_rate").default(0), // as a decimal (0.0-1.0)
-  entrances: integer("entrances").default(0), // number of times this was the first page
-  exits: integer("exits").default(0), // number of times this was the last page
-  interactionRate: real("interaction_rate").default(0), // percentage of visitors who interacted
-  socialShares: integer("social_shares").default(0),
-  clickthroughRate: real("clickthrough_rate").default(0), // for interlinking effectiveness
-  scrollDepth: jsonb("scroll_depth"), // JSON with scroll depth percentages
-  heatmapData: jsonb("heatmap_data"), // JSON with click/hover heatmap data
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const insertContentPerformanceMetricsSchema = createInsertSchema(contentPerformanceMetrics).pick({
-  forumId: true,
-  contentType: true,
-  contentId: true,
-  date: true,
-  pageViews: true,
-  uniqueVisitors: true,
-  avgTimeOnPage: true,
-  bounceRate: true,
-  entrances: true,
-  exits: true,
-  interactionRate: true,
-  socialShares: true,
-  clickthroughRate: true,
-  scrollDepth: true,
-  heatmapData: true,
-});
-
-// Real-time Analytics Events schema
-export const analyticsEvents = pgTable("analytics_events", {
-  id: serial("id").primaryKey(),
-  forumId: integer("forum_id").notNull().references(() => forums.id),
-  eventType: text("event_type").notNull(), // pageview, click, scroll, form_submission, etc.
-  userId: integer("user_id"), // nullable for anonymous users
-  anonymousId: text("anonymous_id"), // cookie or session ID for anonymous users
-  targetId: text("target_id"), // ID of the target element/page/content
-  targetType: text("target_type"), // type of the target (button, link, page, etc.)
-  properties: jsonb("properties"), // JSON with additional event properties
-  referrer: text("referrer"), // where user came from
-  userAgent: text("user_agent"), // browser/device info
-  ipAddress: text("ip_address"),
-  timestamp: timestamp("timestamp").defaultNow(),
-  sessionId: text("session_id"), // to group events by session
-  pageUrl: text("page_url"), // URL where event occurred
-});
-
-export const insertAnalyticsEventSchema = createInsertSchema(analyticsEvents).pick({
-  forumId: true,
-  eventType: true,
-  userId: true,
-  anonymousId: true,
-  targetId: true,
-  targetType: true,
-  properties: true,
-  referrer: true,
-  userAgent: true,
-  ipAddress: true,
-  sessionId: true,
-  pageUrl: true,
-});
-
-// Funnel Definitions schema - for defining conversion funnels
-export const funnelDefinitions = pgTable("funnel_definitions", {
-  id: serial("id").primaryKey(),
-  forumId: integer("forum_id").notNull().references(() => forums.id),
-  name: text("name").notNull(),
-  description: text("description"),
-  steps: jsonb("steps").notNull(), // Array of step definitions with eventType and criteria
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertFunnelDefinitionSchema = createInsertSchema(funnelDefinitions).pick({
-  forumId: true,
-  name: true,
-  description: true,
-  steps: true,
-  isActive: true,
-});
-
-// Funnel Analytics schema - for storing funnel analytics data
-export const funnelAnalytics = pgTable("funnel_analytics", {
-  id: serial("id").primaryKey(),
-  funnelId: integer("funnel_id").notNull().references(() => funnelDefinitions.id),
-  date: date("date").notNull(),
-  totalEntries: integer("total_entries").default(0),
-  completions: integer("completions").default(0),
-  dropOffs: jsonb("drop_offs").notNull(), // Record drop-offs at each step
-  conversionRate: real("conversion_rate").default(0),
-  averageTimeToConvert: integer("average_time_to_convert"), // in seconds
-  segmentData: jsonb("segment_data"), // For segmentation analysis
-});
-
-export const insertFunnelAnalyticsSchema = createInsertSchema(funnelAnalytics).pick({
-  funnelId: true,
-  date: true,
-  totalEntries: true,
-  completions: true,
-  dropOffs: true,
-  conversionRate: true,
-  averageTimeToConvert: true,
-  segmentData: true,
-});
-
-// SEO Weekly reports schema
-export const seoWeeklyReports = pgTable("seo_weekly_reports", {
-  id: serial("id").primaryKey(),
-  forumId: integer("forum_id").notNull().references(() => forums.id),
-  reportDate: date("report_date").notNull(),
-  avgPosition: real("avg_position"), 
-  topTenKeywords: integer("top_ten_keywords"), // Count of keywords in top 10
-  topThreeKeywords: integer("top_three_keywords"), // Count of keywords in top 3
-  totalKeywords: integer("total_keywords"), 
-  organicTraffic: integer("organic_traffic"),
-  previousOrganicTraffic: integer("previous_organic_traffic"),
-  trafficChange: real("traffic_change"), // Percentage change in traffic
-  topPerformingUrls: jsonb("top_performing_urls"), // JSON object of top URLs
-  topRisingKeywords: jsonb("top_rising_keywords"), // JSON object of keywords with biggest gains
-  topDecliningKeywords: jsonb("top_declining_keywords"), // JSON object of keywords with biggest losses
-  recommendedActions: text("recommended_actions"), // AI-generated recommendations
-  reportData: jsonb("report_data"), // Full JSON data for the report
-});
-
-// Schemas for inserting data
-export const insertSeoKeywordSchema = createInsertSchema(seoKeywords).pick({
-  forumId: true,
-  keyword: true,
-  url: true,
-  searchVolume: true,
-  difficulty: true,
-  priority: true,
-  isActive: true,
-  notes: true,
-  serp_features: true,
-  intent: true,
-  stage: true,
-});
-
-export const insertSeoPositionSchema = createInsertSchema(seoPositions).pick({
-  keywordId: true,
-  position: true,
-  date: true,
-  previousPosition: true,
-  change: true,
-  clicks: true,
-  impressions: true,
-  ctr: true,
-  device: true,
-  location: true,
-});
-
-export const insertSeoPageMetricSchema = createInsertSchema(seoPageMetrics).pick({
-  forumId: true,
-  url: true,
-  incomingLinks: true,
-  outgoingLinks: true,
-  totalWordCount: true,
-  metaQualityScore: true,
-  keywordDensity: true,
-  readabilityScore: true,
-  pageSpeed: true,
-  organicTraffic: true,
-  contentQualityScore: true,
-});
-
-export const insertSeoContentGapSchema = createInsertSchema(seoContentGaps).pick({
-  forumId: true,
-  topic: true,
-  competitorCoverage: true,
-  searchVolume: true,
-  opportunityScore: true,
-  recommendedKeywords: true,
-  contentSuggestion: true,
-  isAddressed: true,
-  targetUrl: true,
-});
-
-export const insertSeoWeeklyReportSchema = createInsertSchema(seoWeeklyReports).pick({
-  forumId: true,
-  reportDate: true,
-  avgPosition: true,
-  topTenKeywords: true,
-  topThreeKeywords: true,
-  totalKeywords: true,
-  organicTraffic: true,
-  previousOrganicTraffic: true,
-  trafficChange: true,
-  topPerformingUrls: true,
-  topRisingKeywords: true,
-  topDecliningKeywords: true,
-  recommendedActions: true,
-  reportData: true,
-});
-
-// Type exports for SEO
-export type SeoKeyword = typeof seoKeywords.$inferSelect;
-export type InsertSeoKeyword = z.infer<typeof insertSeoKeywordSchema>;
-
-export type SeoPosition = typeof seoPositions.$inferSelect;
-export type InsertSeoPosition = z.infer<typeof insertSeoPositionSchema>;
-
-export type SeoPageMetric = typeof seoPageMetrics.$inferSelect;
-export type InsertSeoPageMetric = z.infer<typeof insertSeoPageMetricSchema>;
-
-export type SeoContentGap = typeof seoContentGaps.$inferSelect;
-export type InsertSeoContentGap = z.infer<typeof insertSeoContentGapSchema>;
-
-export type SeoWeeklyReport = typeof seoWeeklyReports.$inferSelect;
-export type InsertSeoWeeklyReport = z.infer<typeof insertSeoWeeklyReportSchema>;
-
-// Extended types for frontend use
-export type SeoKeywordWithPositionHistory = SeoKeyword & {
-  positionHistory: SeoPosition[];
-  latestPosition?: SeoPosition;
-};
-
-export type SeoWeeklyReportWithDetails = SeoWeeklyReport & {
-  parsedReportData: Record<string, any>;
-};
-
-// Lead Capture Forms schema
-export const leadCaptureForms = pgTable("lead_capture_forms", {
-  id: serial("id").primaryKey(),
-  forumId: integer("forum_id").notNull().references(() => forums.id),
-  name: text("name").notNull(),
-  description: text("description"),
-  formFields: text("form_fields").notNull(), // JSON encoded string of field definitions
-  submitButtonText: text("submit_button_text").default("Submit"),
-  successMessage: text("success_message").default("Thank you for your submission!"),
-  redirectUrl: text("redirect_url"), // Optional URL to redirect after form submission
-  isActive: boolean("is_active").default(true),
-  formType: text("form_type").default("inline"), // inline, popup, gated
-  gatedContentId: integer("gated_content_id"), // If this is a gated content form, reference to content
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertLeadCaptureFormSchema = createInsertSchema(leadCaptureForms).pick({
-  forumId: true,
-  name: true,
-  description: true,
-  formFields: true,
-  submitButtonText: true,
-  successMessage: true,
-  redirectUrl: true,
-  isActive: true,
-  formType: true,
-  gatedContentId: true,
-});
-
-// Lead Capture Submissions schema
-export const leadSubmissions = pgTable("lead_submissions", {
-  id: serial("id").primaryKey(),
-  formId: integer("form_id").notNull().references(() => leadCaptureForms.id),
-  formData: text("form_data").notNull(), // JSON encoded string of form submission data
-  email: text("email").notNull(),
-  firstName: text("first_name"),
-  lastName: text("last_name"),
-  ipAddress: text("ip_address"),
-  userAgent: text("user_agent"),
-  isExported: boolean("is_exported").default(false), // Track if exported to CRM
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const insertLeadSubmissionSchema = createInsertSchema(leadSubmissions).pick({
-  formId: true,
-  formData: true,
-  email: true,
-  firstName: true,
-  lastName: true,
-  ipAddress: true,
-  userAgent: true,
-  isExported: true,
-});
-
-// Gated Content schema
-export const gatedContents = pgTable("gated_contents", {
-  id: serial("id").primaryKey(),
-  forumId: integer("forum_id").notNull().references(() => forums.id),
-  title: text("title").notNull(),
-  description: text("description"),
-  teaser: text("teaser").notNull(), // Content preview shown before form submission
-  content: text("content").notNull(), // Full content revealed after form submission
-  formId: integer("form_id").references(() => leadCaptureForms.id),
-  isActive: boolean("is_active").default(true),
-  contentType: text("content_type").default("article"), // article, guide, whitepaper, video, etc.
-  featuredImage: text("featured_image"),
-  metaDescription: text("meta_description"),
-  metaKeywords: text("meta_keywords"),
-  slug: text("slug").notNull().unique(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertGatedContentSchema = createInsertSchema(gatedContents).pick({
-  forumId: true,
-  title: true,
-  description: true,
-  teaser: true,
-  content: true,
-  formId: true,
-  isActive: true,
-  contentType: true,
-  featuredImage: true,
-  metaDescription: true,
-  metaKeywords: true,
-  slug: true,
-});
-
-// CRM Integration schema
-export const crmIntegrations = pgTable("crm_integrations", {
-  id: serial("id").primaryKey(),
-  forumId: integer("forum_id").notNull().references(() => forums.id),
-  provider: text("provider").notNull(), // mailchimp, hubspot, salesforce, etc.
-  apiKey: text("api_key"), // Encrypted API key
-  apiSecret: text("api_secret"), // Encrypted API secret if needed
-  listId: text("list_id"), // Target list or audience ID in the CRM
-  webhookUrl: text("webhook_url"), // Optional webhook for data sync
-  mappingRules: text("mapping_rules"), // JSON encoded field mapping rules
-  isActive: boolean("is_active").default(true),
-  lastSyncedAt: timestamp("last_synced_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertCrmIntegrationSchema = createInsertSchema(crmIntegrations).pick({
-  forumId: true,
-  provider: true,
-  apiKey: true,
-  apiSecret: true,
-  listId: true,
-  webhookUrl: true,
-  mappingRules: true,
-  isActive: true,
-  lastSyncedAt: true,
-});
-
-// Lead Form View Tracking schema
-export const leadFormViews = pgTable("lead_form_views", {
-  id: serial("id").primaryKey(),
-  formId: integer("form_id").notNull().references(() => leadCaptureForms.id),
-  ipAddress: text("ip_address"),
-  userAgent: text("user_agent"),
-  referrer: text("referrer"),
-  isConversion: boolean("is_conversion").default(false), // Whether view led to submission
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const insertLeadFormViewSchema = createInsertSchema(leadFormViews).pick({
-  formId: true,
-  ipAddress: true,
-  userAgent: true,
-  referrer: true,
-  isConversion: true,
-});
-
-// Type exports for lead capture
-export type LeadCaptureForm = typeof leadCaptureForms.$inferSelect;
-export type InsertLeadCaptureForm = z.infer<typeof insertLeadCaptureFormSchema>;
-
-export type LeadSubmission = typeof leadSubmissions.$inferSelect;
-export type InsertLeadSubmission = z.infer<typeof insertLeadSubmissionSchema>;
-
-export type GatedContent = typeof gatedContents.$inferSelect;
-export type InsertGatedContent = z.infer<typeof insertGatedContentSchema>;
-
-export type CrmIntegration = typeof crmIntegrations.$inferSelect;
-export type InsertCrmIntegration = z.infer<typeof insertCrmIntegrationSchema>;
-
-export type LeadFormView = typeof leadFormViews.$inferSelect;
-export type InsertLeadFormView = z.infer<typeof insertLeadFormViewSchema>;
-
-// Extended types for lead capture forms with stats
-export type LeadCaptureFormWithStats = LeadCaptureForm & {
-  totalViews: number;
-  totalSubmissions: number;
-  conversionRate: number;
-};
-
-// Export types for user engagement tracking
-export type UserEngagementMetric = typeof userEngagementMetrics.$inferSelect;
-export type InsertUserEngagementMetric = z.infer<typeof insertUserEngagementMetricsSchema>;
-
-export type ContentPerformanceMetric = typeof contentPerformanceMetrics.$inferSelect;
-export type InsertContentPerformanceMetric = z.infer<typeof insertContentPerformanceMetricsSchema>;
-
-export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
-export type InsertAnalyticsEvent = z.infer<typeof insertAnalyticsEventSchema>;
-
-// Funnel types
-export type FunnelDefinition = typeof funnelDefinitions.$inferSelect;
-export type InsertFunnelDefinition = z.infer<typeof insertFunnelDefinitionSchema>;
-
-export type FunnelAnalytic = typeof funnelAnalytics.$inferSelect;
-export type InsertFunnelAnalytic = z.infer<typeof insertFunnelAnalyticsSchema>;
-
-// Extended types for funnels
-export type FunnelDefinitionWithStats = FunnelDefinition & {
-  totalEntries: number;
-  completions: number;
-  conversionRate: number;
-  dropOffPoints: Record<string, number>;
-};
-
-// Content Schedule schema
-export const contentSchedules = pgTable("content_schedules", {
-  id: serial("id").primaryKey(),
-  forumId: integer("forum_id").notNull().references(() => forums.id),
-  title: text("title").notNull(),
-  contentType: text("content_type").notNull(), // "question", "answer", "both"
-  keyword: text("keyword").notNull(),
-  scheduledFor: timestamp("scheduled_for").notNull(),
-  personaType: text("persona_type").default("expert"), // "beginner", "intermediate", "expert", "moderator"
-  status: text("status").default("scheduled"), // "scheduled", "published", "failed", "cancelled"
-  isRecurring: boolean("is_recurring").default(false),
-  recurrencePattern: text("recurrence_pattern"), // JSON string with recurrence details
-  categoryId: integer("category_id").references(() => categories.id),
-  questionsCount: integer("questions_count").default(1),
-  userId: integer("user_id").notNull().references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  publishedAt: timestamp("published_at"),
-  questionIds: text("question_ids"), // JSON array of created question IDs
-});
-
-export const insertContentScheduleSchema = createInsertSchema(contentSchedules).pick({
-  forumId: true,
-  title: true,
-  contentType: true,
-  keyword: true,
-  scheduledFor: true,
-  personaType: true,
-  status: true,
-  isRecurring: true,
-  recurrencePattern: true,
-  categoryId: true,
-  questionsCount: true,
-  userId: true,
-});
-
-export type ContentSchedule = typeof contentSchedules.$inferSelect;
-export type InsertContentSchedule = z.infer<typeof insertContentScheduleSchema>;
-
-// Extended type for content schedules with status info
-export type ContentScheduleWithDetails = ContentSchedule & {
-  forum: Forum;
-  category?: Category;
-  questionsGenerated?: number;
-  answersGenerated?: number;
-};
