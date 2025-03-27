@@ -684,6 +684,75 @@ export const documentationSections = [
         <li>Include it in request headers as <code>X-API-Key: your_api_key</code></li>
       </ol>
       
+      <div class="bg-dark-300/50 p-4 rounded-md font-mono text-sm mb-6 overflow-x-auto">
+        <pre>// Example API request with authentication
+fetch('https://yourforum.com/api/questions', {
+  method: 'GET',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': 'your_api_key_here'
+  }
+})
+.then(response => response.json())
+.then(data => console.log(data))
+.catch(error => console.error('Error:', error));</pre>
+      </div>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Common API Endpoints</h2>
+      
+      <p class="mb-4">
+        Here are some of the most commonly used API endpoints:
+      </p>
+      
+      <div class="overflow-x-auto mb-6">
+        <table class="w-full border-collapse">
+          <thead>
+            <tr class="bg-primary-500/20">
+              <th class="border border-gray-600 px-4 py-2 text-left">Endpoint</th>
+              <th class="border border-gray-600 px-4 py-2 text-left">Method</th>
+              <th class="border border-gray-600 px-4 py-2 text-left">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="border border-gray-600 px-4 py-2"><code>/api/questions</code></td>
+              <td class="border border-gray-600 px-4 py-2">GET</td>
+              <td class="border border-gray-600 px-4 py-2">List all questions with pagination</td>
+            </tr>
+            <tr>
+              <td class="border border-gray-600 px-4 py-2"><code>/api/questions/{id}</code></td>
+              <td class="border border-gray-600 px-4 py-2">GET</td>
+              <td class="border border-gray-600 px-4 py-2">Get a specific question by ID</td>
+            </tr>
+            <tr>
+              <td class="border border-gray-600 px-4 py-2"><code>/api/questions</code></td>
+              <td class="border border-gray-600 px-4 py-2">POST</td>
+              <td class="border border-gray-600 px-4 py-2">Create a new question</td>
+            </tr>
+            <tr>
+              <td class="border border-gray-600 px-4 py-2"><code>/api/questions/{id}/answers</code></td>
+              <td class="border border-gray-600 px-4 py-2">GET</td>
+              <td class="border border-gray-600 px-4 py-2">Get all answers for a question</td>
+            </tr>
+            <tr>
+              <td class="border border-gray-600 px-4 py-2"><code>/api/analytics/traffic</code></td>
+              <td class="border border-gray-600 px-4 py-2">GET</td>
+              <td class="border border-gray-600 px-4 py-2">Get traffic analytics data</td>
+            </tr>
+            <tr>
+              <td class="border border-gray-600 px-4 py-2"><code>/api/keywords/rankings</code></td>
+              <td class="border border-gray-600 px-4 py-2">GET</td>
+              <td class="border border-gray-600 px-4 py-2">Get keyword ranking data</td>
+            </tr>
+            <tr>
+              <td class="border border-gray-600 px-4 py-2"><code>/api/leads/submissions</code></td>
+              <td class="border border-gray-600 px-4 py-2">GET</td>
+              <td class="border border-gray-600 px-4 py-2">List lead form submissions</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
       <h2 class="text-xl font-semibold mb-3 mt-6">Website Embedding</h2>
       
       <p class="mb-4">
@@ -711,6 +780,60 @@ export const documentationSections = [
         <li>Lead Capture Form</li>
         <li>Full Forum Embed</li>
       </ul>
+      
+      <div class="bg-dark-300/50 p-4 rounded-md font-mono text-sm mb-6 overflow-x-auto">
+        <pre>&lt;!-- Example: Recent Questions Widget -->
+&lt;div id="seo-forum-recent-questions" data-forum-id="your_forum_id" data-count="5" data-theme="light">&lt;/div>
+&lt;script src="https://yourforum.com/embed/forum-widget.js">&lt;/script></pre>
+      </div>
+      
+      <h3 class="text-lg font-semibold mb-2 mt-4">Widget Customization Options</h3>
+      
+      <p class="mb-4">
+        All widgets support these common customization attributes:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li><code>data-theme</code>: "light" or "dark"</li>
+        <li><code>data-accent-color</code>: Hex color code (e.g., "#4f46e5")</li>
+        <li><code>data-font</code>: "system", "serif", or "sans-serif"</li>
+        <li><code>data-radius</code>: Border radius in pixels</li>
+        <li><code>data-width</code>: Width in pixels or percentage</li>
+        <li><code>data-max-height</code>: Maximum height in pixels</li>
+      </ul>
+      
+      <h3 class="text-lg font-semibold mb-2 mt-4">JavaScript API for Widgets</h3>
+      
+      <p class="mb-4">
+        You can also interact with widgets programmatically:
+      </p>
+      
+      <div class="bg-dark-300/50 p-4 rounded-md font-mono text-sm mb-6 overflow-x-auto">
+        <pre>// Initialize widget with options
+const widget = SEOForum.createWidget('recent-questions', {
+  forumId: 'your_forum_id',
+  container: '#widget-container',
+  count: 5,
+  theme: 'dark',
+  accentColor: '#4f46e5',
+  onQuestionClick: (question) => {
+    console.log('Question clicked:', question);
+    // Custom handling
+  }
+});
+
+// Refresh widget data
+widget.refresh();
+
+// Update widget options
+widget.updateOptions({
+  count: 10,
+  theme: 'light'
+});
+
+// Get widget data
+const questions = widget.getData();</pre>
+      </div>
       
       <h2 class="text-xl font-semibold mb-3 mt-6">Webhook Integration</h2>
       
@@ -741,25 +864,292 @@ export const documentationSections = [
         <li>Traffic milestone reached</li>
       </ul>
       
+      <h3 class="text-lg font-semibold mb-2 mt-4">Webhook Payload Example</h3>
+      
+      <div class="bg-dark-300/50 p-4 rounded-md font-mono text-sm mb-6 overflow-x-auto">
+        <pre>{
+  "event": "new_question",
+  "timestamp": "2025-03-27T14:35:42Z",
+  "forum_id": "forum_123456",
+  "data": {
+    "question_id": 789,
+    "title": "How to improve SEO for e-commerce product pages?",
+    "user_id": 456,
+    "category_id": 12,
+    "created_at": "2025-03-27T14:35:42Z",
+    "is_ai_generated": false
+  }
+}</pre>
+      </div>
+      
+      <h3 class="text-lg font-semibold mb-2 mt-4">Webhook Security</h3>
+      
+      <p class="mb-4">
+        Each webhook includes a signature header for verification:
+      </p>
+      
+      <div class="bg-dark-300/50 p-4 rounded-md font-mono text-sm mb-6 overflow-x-auto">
+        <pre>// Verify webhook signature (Node.js example)
+const crypto = require('crypto');
+
+function verifyWebhookSignature(payload, signature, secret) {
+  const hmac = crypto.createHmac('sha256', secret);
+  const calculatedSignature = hmac.update(payload).digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(calculatedSignature, 'hex'),
+    Buffer.from(signature, 'hex')
+  );
+}
+
+// In your webhook handler
+app.post('/webhook', (req, res) => {
+  const signature = req.headers['x-seo-forum-signature'];
+  const payload = JSON.stringify(req.body);
+  const webhookSecret = 'your_webhook_secret';
+  
+  if (!verifyWebhookSignature(payload, signature, webhookSecret)) {
+    return res.status(401).send('Invalid signature');
+  }
+  
+  // Process valid webhook
+  const event = req.body.event;
+  const data = req.body.data;
+  // ...
+});</pre>
+      </div>
+      
       <h2 class="text-xl font-semibold mb-3 mt-6">Third-Party Integrations</h2>
       
       <p class="mb-4">
         Connect with popular services:
       </p>
       
+      <h3 class="text-lg font-semibold mb-2 mt-4">Google Analytics Integration</h3>
+      
+      <p class="mb-4">
+        Set up Google Analytics to track advanced metrics:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>Go to "Integration" > "Google Analytics" in the dashboard</li>
+        <li>Enter your Google Analytics Measurement ID (G-XXXXXXXX)</li>
+        <li>Choose which events to track</li>
+        <li>Enable enhanced e-commerce tracking if needed</li>
+        <li>Save changes</li>
+      </ol>
+      
+      <div class="bg-dark-300/50 p-4 rounded-md font-mono text-sm mb-6 overflow-x-auto">
+        <pre>// Custom events are tracked automatically
+// Example custom GA4 event implementation
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+
+// Track question view with custom dimensions
+gtag('event', 'view_question', {
+  'question_id': '789',
+  'question_category': 'SEO',
+  'user_type': 'member',
+  'is_mobile': true
+});</pre>
+      </div>
+      
+      <h3 class="text-lg font-semibold mb-2 mt-4">Zapier Integration</h3>
+      
+      <p class="mb-4">
+        Common Zapier automation recipes:
+      </p>
+      
       <ul class="list-disc pl-6 mb-6 space-y-2">
-        <li><strong>Google Analytics</strong>: Track advanced metrics</li>
-        <li><strong>Google Search Console</strong>: Import ranking data</li>
-        <li><strong>Zapier</strong>: Connect with 3,000+ apps</li>
-        <li><strong>Slack</strong>: Notifications and updates</li>
-        <li><strong>Mailchimp</strong>: Email marketing</li>
-        <li><strong>CRM Systems</strong>: Lead management</li>
+        <li><strong>New Lead to CRM</strong>: When a lead form is submitted, create a new contact in your CRM</li>
+        <li><strong>Question to Slack</strong>: Post a notification to Slack when a new question is asked</li>
+        <li><strong>Content to Social Media</strong>: Share top-performing questions on social media</li>
+        <li><strong>Rankings to Spreadsheet</strong>: Log keyword ranking changes to Google Sheets</li>
+        <li><strong>New Question to Email</strong>: Send notification emails for new questions in specific categories</li>
       </ul>
+      
+      <h3 class="text-lg font-semibold mb-2 mt-4">Mailchimp Integration</h3>
+      
+      <p class="mb-4">
+        Connect with Mailchimp for email marketing:
+      </p>
+      
+      <ol class="list-decimal pl-6 mb-6 space-y-2">
+        <li>Go to "Integration" > "Mailchimp" in the dashboard</li>
+        <li>Enter your Mailchimp API Key</li>
+        <li>Select the audience (list) to use</li>
+        <li>Map form fields to Mailchimp fields</li>
+        <li>Configure tags and groups</li>
+        <li>Enable double opt-in if required</li>
+        <li>Save configuration</li>
+      </ol>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Custom Forum Embedding</h2>
+      
+      <p class="mb-4">
+        For advanced integration scenarios, you can fully embed the forum in an iframe:
+      </p>
+      
+      <div class="bg-dark-300/50 p-4 rounded-md font-mono text-sm mb-6 overflow-x-auto">
+        <pre>&lt;!-- Full forum embed -->
+&lt;iframe 
+  src="https://yourforum.com/embed?theme=dark&accent=4f46e5&hideHeader=true" 
+  width="100%" 
+  height="600" 
+  frameborder="0"
+  allow="clipboard-write"
+  id="forum-embed">
+&lt;/iframe>
+
+&lt;script>
+  // Cross-domain communication with the forum
+  window.addEventListener('message', function(event) {
+    // Verify origin
+    if (event.origin !== 'https://yourforum.com') return;
+    
+    const data = event.data;
+    
+    // Handle events from the forum
+    switch(data.type) {
+      case 'forum:loaded':
+        console.log('Forum loaded');
+        break;
+      case 'forum:question-viewed':
+        console.log('Question viewed:', data.questionId);
+        break;
+      case 'forum:user-authenticated':
+        console.log('User authenticated:', data.userId);
+        break;
+      case 'forum:lead-captured':
+        console.log('Lead captured:', data.formId, data.email);
+        // Process lead in parent page
+        break;
+    }
+  });
+  
+  // Send commands to the forum
+  function sendToForum(message) {
+    document.getElementById('forum-embed').contentWindow.postMessage(
+      message, 'https://yourforum.com'
+    );
+  }
+  
+  // Example: Navigate to a specific question
+  sendToForum({
+    type: 'navigate',
+    path: '/questions/789'
+  });
+  
+  // Example: Set user data from parent page
+  sendToForum({
+    type: 'set-user-data',
+    userData: {
+      email: 'user@example.com',
+      name: 'John Doe',
+      customFields: {
+        company: 'Acme Inc',
+        plan: 'enterprise'
+      }
+    }
+  });
+&lt;/script></pre>
+      </div>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">Mobile SDK Integration</h2>
+      
+      <p class="mb-4">
+        For mobile app developers, we offer native SDKs:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li><strong>iOS SDK</strong>: Native Swift framework for iOS 14+</li>
+        <li><strong>Android SDK</strong>: Kotlin library for Android API 21+</li>
+        <li><strong>React Native</strong>: Cross-platform module</li>
+        <li><strong>Flutter</strong>: Dart package for Flutter apps</li>
+      </ul>
+      
+      <div class="bg-dark-300/50 p-4 rounded-md font-mono text-sm mb-6 overflow-x-auto">
+        <pre>// React Native example
+import { SEOForumView, SEOForumClient } from 'react-native-seo-forum';
+
+// Initialize client
+const forumClient = new SEOForumClient({
+  apiKey: 'your_api_key',
+  forumId: 'your_forum_id'
+});
+
+// In your component
+function ForumScreen() {
+  return (
+    &lt;SEOForumView
+      client={forumClient}
+      theme="dark"
+      accentColor="#4f46e5"
+      showHeader={true}
+      initialPath="/questions"
+      onQuestionSelected={(question) => {
+        console.log('Selected question:', question);
+      }}
+      onLeadCaptured={(data) => {
+        console.log('Lead captured:', data);
+      }}
+    />
+  );
+}</pre>
+      </div>
       
       <div class="bg-primary-500/10 p-4 rounded-lg border border-primary-500/30 mb-6">
         <h3 class="text-lg font-medium mb-2 text-primary-400">Developer Resources</h3>
-        <p>Access comprehensive API documentation, code samples, and SDKs in our <a href="#" class="text-primary-400 underline">Developer Portal</a>. We offer client libraries for JavaScript, PHP, Python, and Ruby.</p>
+        <p>Access comprehensive API documentation, code samples, and SDKs in our <a href="#" class="text-primary-400 underline">Developer Portal</a>. We offer client libraries for JavaScript, PHP, Python, Ruby, and mobile platforms.</p>
       </div>
+      
+      <h2 class="text-xl font-semibold mb-3 mt-6">API Rate Limits</h2>
+      
+      <p class="mb-4">
+        API usage is subject to rate limits based on your plan:
+      </p>
+      
+      <div class="overflow-x-auto mb-6">
+        <table class="w-full border-collapse">
+          <thead>
+            <tr class="bg-primary-500/20">
+              <th class="border border-gray-600 px-4 py-2 text-left">Plan</th>
+              <th class="border border-gray-600 px-4 py-2 text-left">Requests/minute</th>
+              <th class="border border-gray-600 px-4 py-2 text-left">Requests/day</th>
+              <th class="border border-gray-600 px-4 py-2 text-left">Concurrent requests</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="border border-gray-600 px-4 py-2">Basic</td>
+              <td class="border border-gray-600 px-4 py-2">60</td>
+              <td class="border border-gray-600 px-4 py-2">10,000</td>
+              <td class="border border-gray-600 px-4 py-2">5</td>
+            </tr>
+            <tr>
+              <td class="border border-gray-600 px-4 py-2">Pro</td>
+              <td class="border border-gray-600 px-4 py-2">300</td>
+              <td class="border border-gray-600 px-4 py-2">50,000</td>
+              <td class="border border-gray-600 px-4 py-2">15</td>
+            </tr>
+            <tr>
+              <td class="border border-gray-600 px-4 py-2">Enterprise</td>
+              <td class="border border-gray-600 px-4 py-2">1,000</td>
+              <td class="border border-gray-600 px-4 py-2">Unlimited</td>
+              <td class="border border-gray-600 px-4 py-2">50</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <p class="mb-4">
+        The API returns specific headers to help track your usage:
+      </p>
+      
+      <ul class="list-disc pl-6 mb-6 space-y-2">
+        <li><code>X-RateLimit-Limit</code>: Your rate limit</li>
+        <li><code>X-RateLimit-Remaining</code>: Requests remaining</li>
+        <li><code>X-RateLimit-Reset</code>: Timestamp when limit resets</li>
+      </ul>
     `
   }
 ];
