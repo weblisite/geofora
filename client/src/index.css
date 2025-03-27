@@ -87,7 +87,8 @@
   }
   
   .animated-gradient-bg {
-    @apply bg-[length:200%_200%] bg-gradient-to-br from-blue-900 via-[#121526] to-blue-800 animate-gradient;
+    @apply bg-[length:200%_200%] bg-gradient-to-br from-blue-900 via-[#121526] to-blue-800;
+    animation: gradient 15s ease infinite;
   }
   
   @keyframes gradient {
@@ -100,10 +101,6 @@
     100% {
       background-position: 0% 50%;
     }
-  }
-  
-  .animate-gradient {
-    animation: gradient 15s ease infinite;
   }
 }
 
