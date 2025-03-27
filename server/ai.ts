@@ -1,11 +1,29 @@
 import OpenAI from "openai";
-import { AiPersona } from "@shared/schema";
+// Define types locally rather than importing from schema
+type AiPersona = "beginner" | "intermediate" | "expert" | "moderator";
+import { aiCache } from "./ai-cache";
+import { 
+  personaSystemPrompts, 
+  seoQuestionsSystemPrompt, 
+  seoAnalysisSystemPrompt,
+  answerGenerationSystemPrompt,
+  expertiseGuidelines,
+  interlinkingSystemPrompt
+} from "./ai-prompts";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const AI_MODELS = {
   default: "gpt-4o",
   vision: "gpt-4o",
   entry: "gpt-3.5-turbo"
+};
+
+// Constants for caching
+const CACHE_TTL = {
+  SHORT: 1000 * 60 * 10,        // 10 minutes
+  MEDIUM: 1000 * 60 * 60,       // 1 hour
+  LONG: 1000 * 60 * 60 * 24,    // 24 hours
+  VERY_LONG: 1000 * 60 * 60 * 24 * 7  // 1 week
 };
 
 // Initialize the OpenAI client with API key from environment variables
@@ -16,28 +34,34 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
  */
 export async function generateAiContent(prompt: string, personaType: "beginner" | "intermediate" | "expert" | "moderator"): Promise<string> {
   try {
-    // Define persona-specific instructions
-    const personaInstructions = {
-      beginner: "You are a beginner in the industry asking questions. Be curious but show limited knowledge. Ask open-ended questions that invite detailed answers.",
-      intermediate: "You have moderate experience in the industry. Your questions and answers show good understanding but still seeking deeper insights.",
-      expert: "You are an industry expert with deep knowledge. Provide comprehensive, authoritative answers with specific examples, data, and best practices.",
-      moderator: "You are a forum moderator focused on maintaining quality discussions. Guide conversations, clarify points, and ensure accuracy."
-    };
+    // Check cache first
+    const cacheParams = { prompt, personaType };
+    const cachedResponse = aiCache.get<string>('generate-content', cacheParams);
+    
+    if (cachedResponse) {
+      console.log(`[AI Cache] Hit for generate-content with persona ${personaType}`);
+      return cachedResponse;
+    }
+    
+    // Use enhanced prompts from the ai-prompts module
+    const systemPrompt = personaSystemPrompts[personaType];
 
     const response = await openai.chat.completions.create({
       model: AI_MODELS.default,
       messages: [
-        { 
-          role: "system", 
-          content: personaInstructions[personaType] + " Format your response in markdown for better readability."
-        },
+        { role: "system", content: systemPrompt },
         { role: "user", content: prompt }
       ],
       temperature: personaType === "beginner" ? 0.9 : personaType === "expert" ? 0.3 : 0.7,
       max_tokens: personaType === "expert" ? 1000 : 500,
     });
 
-    return response.choices[0].message.content || "I don't have a specific response for that.";
+    const result = response.choices[0].message.content || "I don't have a specific response for that.";
+    
+    // Cache the result
+    aiCache.set('generate-content', cacheParams, result, CACHE_TTL.MEDIUM);
+    
+    return result;
   } catch (error) {
     console.error("Error generating AI content:", error);
     return "Sorry, I couldn't generate a response at this time.";
@@ -53,20 +77,27 @@ export async function generateSeoQuestions(
   personaType: "beginner" | "intermediate" | "expert" | "moderator" = "beginner"
 ): Promise<Array<{ title: string; content: string }>> {
   try {
+    // Check cache first
+    const cacheParams = { topic, count, personaType };
+    const cachedResponse = aiCache.get<Array<{ title: string; content: string }>>('generate-questions', cacheParams);
+    
+    if (cachedResponse) {
+      console.log(`[AI Cache] Hit for generate-questions on topic: ${topic}`);
+      return cachedResponse;
+    }
+    
+    // Prepare the prompt
     const prompt = `Generate ${count} SEO-optimized questions about "${topic}" that would rank well on Google. 
     Each question should include a detailed description that demonstrates E-E-A-T principles.
     The questions should be comprehensive yet specific, addressing key aspects that searchers would want to know.`;
 
+    // Use enhanced prompt from the ai-prompts module
+    const systemPrompt = seoQuestionsSystemPrompt.replace('{personaType}', personaType);
+
     const response = await openai.chat.completions.create({
       model: AI_MODELS.default,
       messages: [
-        { 
-          role: "system", 
-          content: `You are an SEO expert who creates high-ranking forum questions. 
-          Provide output in JSON format as an array of objects with "title" and "content" fields.
-          Make questions sound natural while incorporating relevant keywords.
-          Tailor the style to a ${personaType} level user.`
-        },
+        { role: "system", content: systemPrompt },
         { role: "user", content: prompt }
       ],
       response_format: { type: "json_object" },
@@ -74,7 +105,14 @@ export async function generateSeoQuestions(
     });
     
     const result = JSON.parse(response.choices[0].message.content || "{}");
-    return Array.isArray(result.questions) ? result.questions : [];
+    const questions = Array.isArray(result.questions) ? result.questions : [];
+    
+    // Cache the result if we got valid questions
+    if (questions.length > 0) {
+      aiCache.set('generate-questions', cacheParams, questions, CACHE_TTL.VERY_LONG);
+    }
+    
+    return questions;
   } catch (error) {
     console.error("Error generating SEO questions:", error);
     return [];
@@ -92,24 +130,36 @@ export async function analyzeQuestionSeo(questionTitle: string, questionContent:
   improvementTips: string[];
 }> {
   try {
+    // Check cache first
+    const cacheParams = { 
+      questionTitle, 
+      // Use a hash of content instead of full content to keep cache key size reasonable
+      contentHash: Buffer.from(questionContent).toString('base64').substring(0, 20) 
+    };
+    const cachedResponse = aiCache.get<{
+      primaryKeyword: string;
+      secondaryKeywords: string[];
+      suggestedTags: string[];
+      seoScore: number;
+      improvementTips: string[];
+    }>('analyze-seo', cacheParams);
+    
+    if (cachedResponse) {
+      console.log(`[AI Cache] Hit for analyze-seo with title: ${questionTitle}`);
+      return cachedResponse;
+    }
+    
     const prompt = `Analyze this question for SEO optimization:
     Title: ${questionTitle}
     Content: ${questionContent}
     
     Identify the primary keyword, secondary keywords, suggested tags, and provide an SEO score (0-100) with improvement tips.`;
 
+    // Use enhanced prompt from the ai-prompts module
     const response = await openai.chat.completions.create({
       model: AI_MODELS.default,
       messages: [
-        { 
-          role: "system", 
-          content: `You are an SEO analysis tool. Provide output in JSON format with the following properties:
-          "primaryKeyword": string,
-          "secondaryKeywords": string array (3-5 keywords),
-          "suggestedTags": string array (3-5 tags),
-          "seoScore": number between 0-100,
-          "improvementTips": string array (2-4 tips)`
-        },
+        { role: "system", content: seoAnalysisSystemPrompt },
         { role: "user", content: prompt }
       ],
       response_format: { type: "json_object" },
@@ -117,13 +167,18 @@ export async function analyzeQuestionSeo(questionTitle: string, questionContent:
     });
     
     const result = JSON.parse(response.choices[0].message.content || "{}");
-    return {
+    const analysisResult = {
       primaryKeyword: result.primaryKeyword || "",
       secondaryKeywords: Array.isArray(result.secondaryKeywords) ? result.secondaryKeywords : [],
       suggestedTags: Array.isArray(result.suggestedTags) ? result.suggestedTags : [],
       seoScore: typeof result.seoScore === "number" ? result.seoScore : 0,
       improvementTips: Array.isArray(result.improvementTips) ? result.improvementTips : []
     };
+    
+    // Cache the result
+    aiCache.set('analyze-seo', cacheParams, analysisResult, CACHE_TTL.LONG);
+    
+    return analysisResult;
   } catch (error) {
     console.error("Error analyzing question SEO:", error);
     return {
@@ -145,30 +200,46 @@ export async function generateAnswer(
   personaType: "beginner" | "intermediate" | "expert" | "moderator" = "expert"
 ): Promise<string> {
   try {
+    // Check cache first
+    const cacheParams = { 
+      questionTitle, 
+      personaType,
+      // Use a hash of content instead of full content to keep cache key size reasonable
+      contentHash: Buffer.from(questionContent).toString('base64').substring(0, 20) 
+    };
+    const cachedResponse = aiCache.get<string>('generate-answer', cacheParams);
+    
+    if (cachedResponse) {
+      console.log(`[AI Cache] Hit for generate-answer with title: ${questionTitle} (${personaType} level)`);
+      return cachedResponse;
+    }
+    
     const prompt = `Question Title: ${questionTitle}
     Question Content: ${questionContent}
     
     Please provide a comprehensive, helpful answer to this question.`;
 
+    // Use enhanced prompts from the ai-prompts module
+    const systemPrompt = answerGenerationSystemPrompt
+      .replace('{personaType}', personaType)
+      .replace('{expertiseSpecificGuidelines}', expertiseGuidelines[personaType]);
+    
     const response = await openai.chat.completions.create({
       model: AI_MODELS.default,
       messages: [
-        { 
-          role: "system", 
-          content: `You are a ${personaType}-level expert providing answers on a Q&A forum.
-          ${personaType === "expert" ? "Provide authoritative, detailed answers with examples and cite sources when possible." : ""}
-          ${personaType === "intermediate" ? "Provide solid answers with some detail and examples." : ""}
-          ${personaType === "beginner" ? "Provide basic but helpful answers in simple terms." : ""}
-          ${personaType === "moderator" ? "Provide balanced, neutral answers that clarify misunderstandings and point to reliable sources." : ""}
-          Format your response in markdown for better readability.`
-        },
+        { role: "system", content: systemPrompt },
         { role: "user", content: prompt }
       ],
       temperature: personaType === "expert" ? 0.3 : 0.7,
       max_tokens: personaType === "expert" ? 1000 : personaType === "beginner" ? 300 : 600,
     });
 
-    return response.choices[0].message.content || "I don't have a specific answer for that question.";
+    const result = response.choices[0].message.content || "I don't have a specific answer for that question.";
+    
+    // Cache the result
+    aiCache.set('generate-answer', cacheParams, result, CACHE_TTL.LONG);
+    
+    return result;
   } catch (error) {
     console.error("Error generating AI answer:", error);
     return "Sorry, I couldn't generate an answer at this time.";
@@ -212,6 +283,26 @@ export async function generateInterlinkingSuggestions(
   limit: number = 3
 ): Promise<InterlinkingSuggestion[]> {
   try {
+    // Create a cache key based on source content hash and target IDs
+    const contentHash = Buffer.from(sourceContent).toString('base64').substring(0, 20);
+    const targetIds = targetContents.map(t => t.id).sort().join(',');
+    
+    // Check cache first
+    const cacheParams = { 
+      sourceTitle,
+      sourceType,
+      contentHash,
+      targetIds,
+      limit
+    };
+    
+    const cachedResponse = aiCache.get<InterlinkingSuggestion[]>('interlinks', cacheParams);
+    
+    if (cachedResponse) {
+      console.log(`[AI Cache] Hit for interlinks with source: ${sourceTitle}`);
+      return cachedResponse;
+    }
+    
     // Map content items to a format suitable for OpenAI prompt
     const contentsData = targetContents.map(c => ({
       id: c.id,
@@ -233,45 +324,11 @@ export async function generateInterlinkingSuggestions(
     3. Enhance the user journey between forum content and main site content
     4. Create a context-aware web of information that feels natural, not forced`;
 
+    // Use enhanced prompt from the ai-prompts module
     const response = await openai.chat.completions.create({
       model: AI_MODELS.default,
       messages: [
-        { 
-          role: "system", 
-          content: `You are an advanced interlinking analysis tool for a content platform that includes both a Q&A forum and a main website. 
-          Your job is to analyze user-provided content and identify opportunities for interlinking between forum questions/answers and main site pages.
-          
-          Provide output as a JSON object with a key called "suggestions" containing an array of objects with these exact properties:
-          {
-            "suggestions": [
-              {
-                "contentId": number,            // The ID of the content to link to
-                "contentType": string,          // The type of content ("question", "answer", or "main_page")
-                "title": string,                // The title of the content
-                "relevanceScore": number,       // A score from 0-100 indicating relevance
-                "anchorText": string,           // The text in the source content that should become the link
-                "contextRelevance": string,     // Brief explanation of why this link is relevant in this context
-                "semanticSimilarity": number,   // Score from 0-1 indicating semantic similarity
-                "userIntentAlignment": number,  // Score from 0-1 indicating alignment with likely user intent
-                "seoImpact": number,            // Score from 0-1 indicating potential SEO impact
-                "preview": string               // Short preview of the target content (max 100 chars)
-              },
-              ...
-            ]
-          }
-          
-          Important guidelines:
-          1. The "anchorText" MUST be an exact substring that exists in the original content.
-          2. Only provide suggestions where the anchorText appears exactly in the content.
-          3. Focus on creating meaningful connections that help users navigate between related topics.
-          4. Consider user intent and journey when suggesting interlinks - only suggest links a user would genuinely want to click.
-          5. Prefer higher relevance scores (75+) for the most valuable connections.
-          6. The contextRelevance field should explain why this specific link makes sense in this location.
-          7. Calculate semantic similarity based on conceptual overlap between source and target.
-          8. Calculate userIntentAlignment based on how well the target content satisfies the likely next question/need of someone reading the source.
-          9. Calculate seoImpact based on keyword relevance and potential for building topical authority.
-          10. Limit results to only the most valuable links that add real value (max ${limit}).`
-        },
+        { role: "system", content: interlinkingSystemPrompt },
         { role: "user", content: userPrompt }
       ],
       response_format: { type: "json_object" },
@@ -283,9 +340,11 @@ export async function generateInterlinkingSuggestions(
     try {
       const result = JSON.parse(responseContent);
       
+      let processedResults: InterlinkingSuggestion[] = [];
+      
       // Primary expected format is a JSON object with a "suggestions" array
       if (result.suggestions && Array.isArray(result.suggestions)) {
-        return result.suggestions
+        processedResults = result.suggestions
           .map((item: any) => ({
             contentId: item.contentId || item.id || 0,
             contentType: item.contentType || item.type || "",
@@ -297,7 +356,7 @@ export async function generateInterlinkingSuggestions(
             userIntentAlignment: typeof item.userIntentAlignment === 'number' ? item.userIntentAlignment : 0,
             seoImpact: typeof item.seoImpact === 'number' ? item.seoImpact : 0,
             preview: item.preview || ""
-          }))
+          }) as InterlinkingSuggestion)
           .filter((item: InterlinkingSuggestion) => 
             // Filter out invalid suggestions with higher threshold (75 vs 50 previously)
             item.contentId > 0 && 
@@ -321,8 +380,8 @@ export async function generateInterlinkingSuggestions(
       } 
       // Fallback formats - maintain backward compatibility
       else if (Array.isArray(result)) {
-        return result
-          .map((item: any) => ({
+        processedResults = result
+          .map((item) => ({
             contentId: item.contentId || item.id || 0,
             contentType: item.contentType || item.type || "",
             title: item.title || "",
@@ -334,7 +393,7 @@ export async function generateInterlinkingSuggestions(
             userIntentAlignment: typeof item.userIntentAlignment === 'number' ? item.userIntentAlignment : 0,
             seoImpact: typeof item.seoImpact === 'number' ? item.seoImpact : 0,
             preview: item.preview || ""
-          }))
+          }) as InterlinkingSuggestion)
           .filter((item: InterlinkingSuggestion) => 
             item.contentId > 0 && 
             item.anchorText.length > 0 && 
@@ -349,7 +408,7 @@ export async function generateInterlinkingSuggestions(
       }
       // Another alternate format
       else if (result.interlinkingSuggestions && Array.isArray(result.interlinkingSuggestions)) {
-        return result.interlinkingSuggestions
+        processedResults = result.interlinkingSuggestions
           .map((item: any) => ({
             contentId: item.contentId || item.id || 0,
             contentType: item.contentType || item.type || "",
@@ -362,7 +421,7 @@ export async function generateInterlinkingSuggestions(
             userIntentAlignment: typeof item.userIntentAlignment === 'number' ? item.userIntentAlignment : 0,
             seoImpact: typeof item.seoImpact === 'number' ? item.seoImpact : 0,
             preview: item.preview || ""
-          }))
+          }) as InterlinkingSuggestion)
           .filter((item: InterlinkingSuggestion) => 
             item.contentId > 0 && 
             item.anchorText.length > 0 && 
@@ -374,10 +433,16 @@ export async function generateInterlinkingSuggestions(
             b.relevanceScore - a.relevanceScore
           )
           .slice(0, limit);
+      } else {
+        console.warn("Unexpected response format from OpenAI:", result);
       }
       
-      console.warn("Unexpected response format from OpenAI:", result);
-      return [];
+      // Cache the processed results if we got any
+      if (processedResults.length > 0) {
+        aiCache.set('interlinks', cacheParams, processedResults, CACHE_TTL.VERY_LONG);
+      }
+      
+      return processedResults;
     } catch (parseError) {
       console.error("Error parsing interlinking suggestions JSON:", parseError);
       return [];
@@ -546,7 +611,18 @@ export async function generateBidirectionalInterlinkingSuggestions(
           contextRelevance: item.contextRelevance || "",
           bidirectional: !!item.bidirectional
         }))
-        .filter(item => 
+        .filter((item: {
+          sourceId: number;
+          sourceType: string;
+          sourceTitle: string;
+          targetId: number;
+          targetType: string;
+          targetTitle: string;
+          anchorText: string;
+          relevanceScore: number;
+          contextRelevance: string;
+          bidirectional: boolean;
+        }) => 
           // Filter out invalid suggestions
           item.sourceId > 0 && 
           item.targetId > 0 && 
@@ -555,7 +631,7 @@ export async function generateBidirectionalInterlinkingSuggestions(
           ["question", "answer", "main_page"].includes(item.sourceType) &&
           ["question", "answer", "main_page"].includes(item.targetType)
         )
-        .sort((a, b) => b.relevanceScore - a.relevanceScore);
+        .sort((a: any, b: any) => b.relevanceScore - a.relevanceScore);
     }
     
     console.warn("Unexpected response format from OpenAI:", result);
