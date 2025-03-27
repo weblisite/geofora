@@ -276,6 +276,16 @@ export interface IStorage {
   getFunnelAnalyticsByDateRange(funnelId: number, startDate: string, endDate: string): Promise<FunnelAnalytic[]>;
   createFunnelAnalytic(analytic: InsertFunnelAnalytic): Promise<FunnelAnalytic>;
   updateFunnelAnalytic(id: number, data: Partial<InsertFunnelAnalytic>): Promise<FunnelAnalytic>;
+  
+  // User registration methods
+  createUser(userData: {
+    username: string;
+    email: string;
+    password: string;
+    displayName?: string;
+  }): Promise<any>;
+  getUserByEmail(email: string): Promise<any>;
+  getUserByUsername(username: string): Promise<any>;
 }
 
 // In-memory storage implementation

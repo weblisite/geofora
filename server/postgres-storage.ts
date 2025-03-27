@@ -41,7 +41,7 @@ export class PostgresStorage implements IStorage {
 
   constructor() {
     const PgSessionStore = connectPgSimple(session);
-    
+
     this.sessionStore = new PgSessionStore({
       conObject: {
         connectionString: process.env.DATABASE_URL,
@@ -121,14 +121,14 @@ export class PostgresStorage implements IStorage {
     const rolePerms = await db.select()
       .from(rolePermissions)
       .where(eq(rolePermissions.roleId, roleId));
-    
+
     const permIds = rolePerms.map(rp => rp.permissionId);
     if (permIds.length === 0) return [];
-    
+
     const perms = await Promise.all(
       permIds.map(id => this.getPermission(id))
     );
-    
+
     return perms.filter(Boolean) as Permission[];
   }
 
@@ -201,6 +201,28 @@ export class PostgresStorage implements IStorage {
         eq(userForumRoles.forumId, forumId),
         eq(userForumRoles.roleId, roleId)
       ));
+  }
+
+  async createUser(userData: { username: string; email: string; password: string; displayName?: string }) {
+    const result = await db.insert(users).values({
+      username: userData.username,
+      email: userData.email,
+      password: userData.password,
+      displayName: userData.displayName || userData.username,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
+    return result[0];
+  }
+
+  async getUserByEmail(email: string) {
+    const result = await db.select().from(users).where(eq(users.email, email));
+    return result[0];
+  }
+
+  async getUserByUsername(username: string) {
+    const result = await db.select().from(users).where(eq(users.username, username));
+    return result[0];
   }
 
   // Category methods
@@ -571,7 +593,7 @@ async getForumBySlug(slug: string): Promise<Forum | undefined> {
     const questions = await db.select({ value: sql`count(*)` })
       .from(questions)
       .where(eq(questions.categoryId, id));
-    
+
     const answers = await db.select({ value: sql`count(*)` })
       .from(answers)
       .join(questions, eq(answers.questionId, questions.id))
@@ -637,7 +659,7 @@ async getForumBySlug(slug: string): Promise<Forum | undefined> {
     const viewsResult = await db.select({ value: sql`count(*)` })
       .from(leadFormViews)
       .where(eq(leadFormViews.formId, id));
-    
+
     // Count submissions
     const submissionsResult = await db.select({ value: sql`count(*)` })
       .from(leadSubmissions)
@@ -645,7 +667,7 @@ async getForumBySlug(slug: string): Promise<Forum | undefined> {
 
     const views = Number(viewsResult[0]?.value || 0);
     const submissions = Number(submissionsResult[0]?.value || 0);
-    
+
     return {
       ...form,
       totalViews: views,
@@ -660,47 +682,47 @@ async getForumBySlug(slug: string): Promise<Forum | undefined> {
 
   async getUserEngagementMetrics(forumId: number, startDate?: Date, endDate?: Date): Promise<UserEngagementMetric[]> {
     let query = db.select().from(userEngagementMetrics).where(eq(userEngagementMetrics.forumId, forumId));
-    
+
     if (startDate) {
       query = query.where(gte(userEngagementMetrics.date, startDate));
     }
-    
+
     if (endDate) {
       query = query.where(lte(userEngagementMetrics.date, endDate));
     }
-    
+
     return await query.orderBy(asc(userEngagementMetrics.date));
   }
 
   async getContentPerformanceMetrics(forumId: number, contentType?: string, contentId?: number): Promise<ContentPerformanceMetric[]> {
     let query = db.select().from(contentPerformanceMetrics).where(eq(contentPerformanceMetrics.forumId, forumId));
-    
+
     if (contentType) {
       query = query.where(eq(contentPerformanceMetrics.contentType, contentType));
     }
-    
+
     if (contentId) {
       query = query.where(eq(contentPerformanceMetrics.contentId, contentId));
     }
-    
+
     return await query;
   }
 
   async getAnalyticsEvents(forumId: number, eventType?: string, startDate?: Date, endDate?: Date): Promise<AnalyticsEvent[]> {
     let query = db.select().from(analyticsEvents).where(eq(analyticsEvents.forumId, forumId));
-    
+
     if (eventType) {
       query = query.where(eq(analyticsEvents.eventType, eventType));
     }
-    
+
     if (startDate) {
       query = query.where(gte(analyticsEvents.timestamp, startDate));
     }
-    
+
     if (endDate) {
       query = query.where(lte(analyticsEvents.timestamp, endDate));
     }
-    
+
     return await query.orderBy(desc(analyticsEvents.timestamp));
   }
 
@@ -712,28 +734,28 @@ async getForumBySlug(slug: string): Promise<Forum | undefined> {
 
   async getAnalyticsEventsByForum(forumId: number, eventType?: string, startDate?: string, endDate?: string): Promise<AnalyticsEvent[]> {
     let query = db.select().from(analyticsEvents).where(eq(analyticsEvents.forumId, forumId));
-    
+
     if (eventType) {
       query = query.where(eq(analyticsEvents.eventType, eventType));
     }
-    
+
     if (startDate) {
       const startDateTime = new Date(startDate);
       query = query.where(gte(analyticsEvents.timestamp, startDateTime));
     }
-    
+
     if (endDate) {
       const endDateTime = new Date(endDate);
       query = query.where(lte(analyticsEvents.timestamp, endDateTime));
     }
-    
+
     return await query;
   }
 
   async getEventCountsByType(forumId: number, days: number = 30): Promise<{ eventType: string, count: number }[]> {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
-    
+
     const result = await db
       .select({
         eventType: analyticsEvents.eventType,
@@ -747,7 +769,7 @@ async getForumBySlug(slug: string): Promise<Forum | undefined> {
         )
       )
       .groupBy(analyticsEvents.eventType);
-    
+
     return result;
   }
 
@@ -760,23 +782,23 @@ async getForumBySlug(slug: string): Promise<Forum | undefined> {
       })
       .from(analyticsEvents)
       .where(eq(analyticsEvents.forumId, forumId));
-    
+
     if (eventType) {
       query = query.where(eq(analyticsEvents.eventType, eventType));
     }
-    
+
     const result = await query
       .groupBy(analyticsEvents.eventLabel, analyticsEvents.eventCategory)
       .orderBy(desc(sql`count(*)`))
       .limit(limit);
-    
+
     return result.map(item => ({
       targetId: item.targetId || '',
       targetType: item.targetType || '',
       count: item.count
     }));
   }
-  
+
   async trackAnalyticsEvent(eventData: InsertAnalyticsEvent): Promise<AnalyticsEvent> {
     // Reuse the existing createAnalyticsEvent method
     return this.createAnalyticsEvent(eventData);
@@ -792,7 +814,7 @@ async getForumBySlug(slug: string): Promise<Forum | undefined> {
           eq(userEngagementMetrics.date, date)
         )
       );
-    
+
     return result;
   }
 
@@ -802,7 +824,7 @@ async getForumBySlug(slug: string): Promise<Forum | undefined> {
       .set(data)
       .where(eq(userEngagementMetrics.id, id))
       .returning();
-    
+
     return result;
   }
 
@@ -811,7 +833,7 @@ async getForumBySlug(slug: string): Promise<Forum | undefined> {
       .insert(userEngagementMetrics)
       .values(metrics)
       .returning();
-    
+
     return result;
   }
 }
