@@ -384,3 +384,184 @@ export async function generateQuestionInterlinkingSuggestions(
     return [];
   }
 }
+
+/**
+ * Interface for keyword analysis results
+ */
+export interface KeywordAnalysisResult {
+  primaryKeywords: string[];
+  secondaryKeywords: string[];
+  questions: Array<{
+    title: string;
+    content: string;
+    keywords: string[];
+    difficulty: 'beginner' | 'intermediate' | 'expert';
+    estimatedSearchVolume: string;
+  }>;
+  topicsToTarget: string[];
+  contentGaps: string[];
+  competitorInsights: string[];
+}
+
+/**
+ * Analyze a website URL to extract keywords and generate SEO-optimized question ideas
+ * @param websiteUrl The URL to analyze for keywords
+ * @param questionCount Number of questions to generate (default: 10)
+ */
+export async function analyzeWebsiteForKeywords(
+  websiteUrl: string,
+  questionCount: number = 10
+): Promise<KeywordAnalysisResult> {
+  try {
+    const prompt = `Analyze this website URL: ${websiteUrl}
+    
+    Imagine you've done a complete SEO analysis of this website and its industry. Based on your expert knowledge:
+    
+    1. Identify primary and secondary keywords this website should target
+    2. Generate ${questionCount} SEO-optimized question ideas for a forum that would:
+       - Drive traffic through search
+       - Fill content gaps on the main website
+       - Create opportunities for internal linking
+       - Cover different levels of difficulty (beginner, intermediate, expert)
+    3. Suggest topics the website should target
+    4. Identify potential content gaps
+    5. Provide competitor insights
+    
+    Note: Since you can't actually crawl the website, provide a realistic analysis based on the URL, domain name, and your knowledge of best practices for similar websites.`;
+
+    const response = await openai.chat.completions.create({
+      model: AI_MODELS.default,
+      messages: [
+        { 
+          role: "system", 
+          content: `You are an advanced SEO analysis engine specializing in keyword extraction and question generation.
+          Provide output in JSON format with the following structure:
+          {
+            "primaryKeywords": string[],
+            "secondaryKeywords": string[],
+            "questions": [
+              {
+                "title": string,
+                "content": string,
+                "keywords": string[],
+                "difficulty": "beginner" | "intermediate" | "expert",
+                "estimatedSearchVolume": string
+              }
+            ],
+            "topicsToTarget": string[],
+            "contentGaps": string[],
+            "competitorInsights": string[]
+          }
+          
+          Make your analysis as realistic and useful as possible. If I provide you with a website URL like 'codingchallenges.com', you should analyze it as if it's a website about programming challenges and provide relevant keywords and questions.`
+        },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.5,
+    });
+    
+    const content = response.choices[0].message.content || "{}";
+    const result = JSON.parse(content);
+
+    return {
+      primaryKeywords: Array.isArray(result.primaryKeywords) ? result.primaryKeywords : [],
+      secondaryKeywords: Array.isArray(result.secondaryKeywords) ? result.secondaryKeywords : [],
+      questions: Array.isArray(result.questions) 
+        ? result.questions.map((q: any) => ({
+            title: q.title || "",
+            content: q.content || "",
+            keywords: Array.isArray(q.keywords) ? q.keywords : [],
+            difficulty: (q.difficulty === 'beginner' || q.difficulty === 'intermediate' || q.difficulty === 'expert') 
+              ? q.difficulty 
+              : 'intermediate',
+            estimatedSearchVolume: q.estimatedSearchVolume || "Unknown"
+          }))
+        : [],
+      topicsToTarget: Array.isArray(result.topicsToTarget) ? result.topicsToTarget : [],
+      contentGaps: Array.isArray(result.contentGaps) ? result.contentGaps : [],
+      competitorInsights: Array.isArray(result.competitorInsights) ? result.competitorInsights : []
+    };
+  } catch (error) {
+    console.error("Error analyzing website for keywords:", error);
+    return {
+      primaryKeywords: [],
+      secondaryKeywords: [],
+      questions: [],
+      topicsToTarget: [],
+      contentGaps: [],
+      competitorInsights: []
+    };
+  }
+}
+
+/**
+ * Generate questions for a forum based on a specific keyword or topic
+ */
+export async function generateKeywordOptimizedQuestions(
+  keyword: string,
+  count: number = 5,
+  difficulty: "beginner" | "intermediate" | "expert" = "intermediate"
+): Promise<Array<{ title: string; content: string; keywords: string[]; difficulty: "beginner" | "intermediate" | "expert"; estimatedSearchVolume: string }>> {
+  try {
+    const prompt = `Generate ${count} SEO-optimized forum questions targeting the keyword: "${keyword}"
+    
+    For each question:
+    1. Create a search-friendly title that includes the keyword naturally
+    2. Generate detailed question content that would attract quality answers
+    3. Identify related keywords and phrases that should be included
+    4. Estimate a realistic monthly search volume for the question (e.g., "500-1k/mo", "1k-5k/mo")
+    
+    The questions should be at a ${difficulty} knowledge level.`;
+
+    const response = await openai.chat.completions.create({
+      model: AI_MODELS.default,
+      messages: [
+        { 
+          role: "system", 
+          content: `You are an SEO content strategist specializing in forum question optimization.
+          Provide output in JSON format with the following structure:
+          {
+            "questions": [
+              {
+                "title": string,
+                "content": string,
+                "keywords": string[],
+                "difficulty": "beginner" | "intermediate" | "expert",
+                "estimatedSearchVolume": string
+              }
+            ]
+          }
+          
+          Make questions sound natural while incorporating relevant keywords.
+          For beginner questions, use simpler language and basic concepts.
+          For intermediate questions, assume some domain knowledge and use appropriate terminology.
+          For expert questions, dive into advanced topics with specialized terminology.
+          
+          For the estimatedSearchVolume field, provide realistic estimates based on the question's specificity and popularity.`
+        },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.7,
+    });
+    
+    const content = response.choices[0].message.content || "{}";
+    const result = JSON.parse(content);
+
+    return Array.isArray(result.questions) 
+      ? result.questions.map((q: any) => ({
+          title: q.title || "",
+          content: q.content || "",
+          keywords: Array.isArray(q.keywords) ? q.keywords : [],
+          difficulty: (q.difficulty === 'beginner' || q.difficulty === 'intermediate' || q.difficulty === 'expert') 
+            ? q.difficulty 
+            : difficulty, // Use the provided difficulty if not valid in response
+          estimatedSearchVolume: q.estimatedSearchVolume || "0-10/mo"
+        }))
+      : [];
+  } catch (error) {
+    console.error("Error generating keyword-optimized questions:", error);
+    return [];
+  }
+}

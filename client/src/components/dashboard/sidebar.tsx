@@ -13,6 +13,7 @@ export default function Sidebar() {
   const sidebarItems: SidebarItem[] = [
     { name: "Dashboard", path: "/dashboard", icon: "dashboard" },
     { name: "Forum Management", path: "/dashboard/forum", icon: "forum" },
+    { name: "Keyword Analysis", path: "/dashboard/keyword-analysis", icon: "travel_explore" },
     { name: "AI Personas", path: "/dashboard/personas", icon: "psychology" },
     { name: "Analytics", path: "/dashboard/analytics", icon: "analytics" },
     { name: "Integration", path: "/dashboard/integration", icon: "integration_instructions" },

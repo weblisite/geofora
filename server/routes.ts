@@ -19,6 +19,8 @@ import {
   generateAnswer,
   generateInterlinkingSuggestions,
   generateQuestionInterlinkingSuggestions,
+  analyzeWebsiteForKeywords,
+  generateKeywordOptimizedQuestions,
   InterlinkableContent
 } from "./ai";
 import { setupAuth } from "./auth";
@@ -323,6 +325,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating interlinking suggestions:", error);
       res.status(500).json({ message: "Failed to generate interlinking suggestions" });
+    }
+  });
+
+  // Keyword Analysis routes
+  app.post("/api/ai/analyze-website-keywords", async (req, res) => {
+    try {
+      const { websiteUrl, questionCount = 10 } = req.body;
+      
+      if (!websiteUrl) {
+        return res.status(400).json({ message: "Website URL is required" });
+      }
+      
+      const analysis = await analyzeWebsiteForKeywords(websiteUrl, questionCount);
+      res.json(analysis);
+    } catch (error) {
+      console.error("Error analyzing website for keywords:", error);
+      res.status(500).json({ message: "Failed to analyze website for keywords" });
+    }
+  });
+
+  app.post("/api/ai/generate-keyword-questions", async (req, res) => {
+    try {
+      const { keyword, count = 5, difficulty = "intermediate" } = req.body;
+      
+      if (!keyword) {
+        return res.status(400).json({ message: "Keyword is required" });
+      }
+      
+      if (!["beginner", "intermediate", "expert"].includes(difficulty)) {
+        return res.status(400).json({ message: "Valid difficulty level is required: beginner, intermediate, or expert" });
+      }
+      
+      const questions = await generateKeywordOptimizedQuestions(keyword, count, difficulty);
+      res.json({ questions });
+    } catch (error) {
+      console.error("Error generating keyword-optimized questions:", error);
+      res.status(500).json({ message: "Failed to generate keyword-optimized questions" });
+    }
+  });
+
+  // Forum specific keyword analysis
+  app.post("/api/forums/:id/analyze-keywords", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to analyze forum keywords" });
+      }
+      
+      const forumId = parseInt(req.params.id);
+      const forum = await storage.getForum(forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if user owns the forum
+      if (forum.userId !== req.session.userId) {
+        return res.status(403).json({ message: "You don't have permission to analyze this forum" });
+      }
+      
+      // If forum doesn't have a mainWebsiteUrl, return an error
+      if (!forum.mainWebsiteUrl) {
+        return res.status(400).json({ 
+          message: "Main website URL is required for keyword analysis",
+          code: "NO_WEBSITE_URL"
+        });
+      }
+      
+      const analysis = await analyzeWebsiteForKeywords(forum.mainWebsiteUrl, 10);
+      res.json(analysis);
+    } catch (error) {
+      console.error("Error analyzing forum keywords:", error);
+      res.status(500).json({ message: "Failed to analyze forum keywords" });
     }
   });
 
