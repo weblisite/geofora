@@ -67,12 +67,20 @@ export async function initDatabase(): Promise<void> {
     // Create a default forum if none exists - only attempt if DATABASE_URL is available
     if (process.env.DATABASE_URL) {
       try {
-        const defaultForum = await db.select().from(forums).limit(1);
+        const defaultForum = await db.select().from(schema.forums).limit(1);
         if (!defaultForum.length) {
-          await db.insert(forums).values({
+          await db.insert(schema.forums).values({
             name: 'Default Forum',
             slug: 'default',
-            userId: 1,
+            description: 'The default forum',
+            userId: 1, // Default admin user
+            themeColor: '#3B82F6',
+            primaryFont: 'Inter',
+            secondaryFont: 'Roboto',
+            headingFontSize: '1.5rem',
+            bodyFontSize: '1rem',
+            isPublic: true,
+            requiresApproval: false,
             createdAt: new Date(),
             updatedAt: new Date()
           });
