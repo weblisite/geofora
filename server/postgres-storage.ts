@@ -520,7 +520,12 @@ export class PostgresStorage implements IStorage {
     return result[0];
   }
 
-  async getForumBySlug(slug: string): Promise<Forum | undefined> {
+  async getForumById(id: number): Promise<Forum | undefined> {
+    const result = await db.select().from(forums).where(eq(forums.id, id));
+    return result[0];
+}
+
+async getForumBySlug(slug: string): Promise<Forum | undefined> {
     const result = await db.select().from(forums).where(eq(forums.slug, slug));
     return result[0];
   }

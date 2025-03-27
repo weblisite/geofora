@@ -1888,6 +1888,10 @@ export class MemStorage implements IStorage {
     return this.forumsStore.get(id);
   }
 
+  async getForumById(id: number): Promise<Forum | undefined> {
+    return this.getForum(id);
+  }
+
   async getForumBySlug(slug: string): Promise<Forum | undefined> {
     for (const forum of this.forumsStore.values()) {
       if (forum.slug === slug) {
