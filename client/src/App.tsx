@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import { ProtectedRoute } from "@/lib/protected-route";
 import HomePage from "@/pages/home";
@@ -21,8 +21,39 @@ import DocumentationPage from "@/pages/documentation-page";
 import NotFound from "@/pages/not-found";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
+import { initAnalytics, trackPageView } from "@/lib/analytics-tracker";
+import React from "react";
 
 function App() {
+  const [location] = useLocation();
+  const analyticsInitialized = React.useRef(false);
+
+  // Initialize analytics only once after component mounts
+  useEffect(() => {
+    if (!analyticsInitialized.current) {
+      try {
+        initAnalytics();
+        analyticsInitialized.current = true;
+        console.log("Analytics initialized successfully");
+      } catch (error) {
+        console.error("Failed to initialize analytics:", error);
+      }
+    }
+  }, []);
+  
+  // Track page views when location changes
+  useEffect(() => {
+    if (analyticsInitialized.current) {
+      try {
+        trackPageView();
+        console.log(`Page view tracked for: ${location}`);
+      } catch (error) {
+        console.error("Failed to track page view:", error);
+      }
+    }
+  }, [location]);
+
   try {
     const { isLoading } = useAuth();
 

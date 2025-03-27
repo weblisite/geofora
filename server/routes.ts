@@ -2364,29 +2364,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/analytics/events/:forumId", getAnalyticsEvents);
   app.get("/api/analytics/events/:forumId/counts", getEventCountsByType);
   
-  // Analytics data collection endpoints
+  // Analytics tracking endpoints
   app.post("/api/analytics/track-event", async (req, res) => {
     try {
-      if (!req.body.forumId || !req.body.eventType) {
-        return res.status(400).json({ message: "Missing required fields: forumId and eventType" });
+      const {
+        forumId,
+        eventType,
+        eventCategory,
+        eventAction,
+        eventLabel,
+        eventValue,
+        pageUrl,
+        additionalData,
+        sessionId,
+        deviceType,
+        browserInfo
+      } = req.body;
+      
+      // Validate required fields
+      if (!forumId || !eventType) {
+        return res.status(400).json({ message: "Forum ID and event type are required" });
       }
       
-      const event = await storage.createAnalyticsEvent(req.body);
-      res.status(201).json(event);
+      // Get user ID from session if logged in
+      const userId = req.session?.userId || null;
+      
+      // Add client IP address
+      const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+      
+      // Save the event to database
+      await storage.trackAnalyticsEvent({
+        forumId,
+        userId,
+        eventType,
+        eventCategory,
+        eventAction,
+        eventLabel,
+        eventValue,
+        sessionId,
+        deviceType,
+        browserInfo,
+        ipAddress: ipAddress as string,
+        referrer: req.headers.referer || null,
+        pageUrl,
+        additionalData: additionalData ? JSON.stringify(additionalData) : null,
+        timestamp: new Date()
+      });
+      
+      res.status(201).json({ success: true });
     } catch (error) {
-      console.error("Error tracking analytics event:", error);
-      res.status(500).json({ message: "Failed to track analytics event" });
+      console.error("Error tracking event:", error);
+      res.status(500).json({ message: "Failed to track event" });
     }
   });
   
   app.post("/api/analytics/track-user-engagement", async (req, res) => {
     try {
-      if (!req.body.forumId || !req.body.date) {
-        return res.status(400).json({ message: "Missing required fields: forumId and date" });
+      const {
+        forumId,
+        date,
+        pageViews,
+        uniqueVisitors,
+        avgSessionDuration,
+        bounceRate,
+        deviceType,
+        referrer,
+        deviceBreakdown
+      } = req.body;
+      
+      // Validate required fields
+      if (!forumId || !date) {
+        return res.status(400).json({ message: "Forum ID and date are required" });
       }
       
-      const metric = await storage.createUserEngagementMetric(req.body);
-      res.status(201).json(metric);
+      // Find existing metrics for this date and forum
+      const existingMetrics = await storage.getUserEngagementMetricsByForumAndDate(forumId, date);
+      
+      if (existingMetrics) {
+        // Update existing metrics
+        await storage.updateUserEngagementMetrics(existingMetrics.id, {
+          pageViews: (existingMetrics.pageViews || 0) + (pageViews || 0),
+          uniqueVisitors: (existingMetrics.uniqueVisitors || 0) + (uniqueVisitors || 0),
+          // If avgSessionDuration is provided, compute a weighted average
+          avgSessionDuration: avgSessionDuration 
+            ? ((existingMetrics.avgSessionDuration || 0) * (existingMetrics.pageViews || 1) + 
+               (avgSessionDuration * (pageViews || 1))) / 
+              ((existingMetrics.pageViews || 0) + (pageViews || 1))
+            : existingMetrics.avgSessionDuration,
+          bounceRate: bounceRate !== undefined 
+            ? ((existingMetrics.bounceRate || 0) * (existingMetrics.pageViews || 1) + 
+               (bounceRate * (pageViews || 1))) / 
+              ((existingMetrics.pageViews || 0) + (pageViews || 1))
+            : existingMetrics.bounceRate,
+          // Merge device breakdown data if provided
+          deviceBreakdown: deviceBreakdown 
+            ? JSON.stringify({
+                ...JSON.parse(existingMetrics.deviceBreakdown || '{}'),
+                ...deviceBreakdown
+              })
+            : existingMetrics.deviceBreakdown
+        });
+      } else {
+        // Create new metrics
+        await storage.createUserEngagementMetrics({
+          forumId,
+          date,
+          pageViews: pageViews || 0,
+          uniqueVisitors: uniqueVisitors || 0,
+          avgSessionDuration,
+          bounceRate,
+          deviceBreakdown: deviceBreakdown ? JSON.stringify(deviceBreakdown) : null,
+          // Initialize other fields
+          topReferrers: JSON.stringify([]),
+          eventsTriggered: JSON.stringify({}),
+          activeUsers: 0,
+          newUsers: uniqueVisitors || 0,
+          returningUsers: 0,
+          conversionRate: 0
+        });
+      }
+      
+      res.status(201).json({ success: true });
     } catch (error) {
       console.error("Error tracking user engagement:", error);
       res.status(500).json({ message: "Failed to track user engagement" });
@@ -2395,19 +2493,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/analytics/track-content-performance", async (req, res) => {
     try {
-      if (!req.body.forumId || !req.body.contentType || !req.body.contentId || !req.body.date) {
+      const {
+        forumId,
+        contentType,
+        contentId,
+        title,
+        url,
+        impressions,
+        clicks,
+        socialShares,
+        avgTimeOnContent,
+        scoreDate
+      } = req.body;
+      
+      // Validate required fields
+      if (!forumId || !contentType || !contentId) {
         return res.status(400).json({ 
-          message: "Missing required fields: forumId, contentType, contentId, and date" 
+          message: "Forum ID, content type, and content ID are required" 
         });
       }
       
-      const metric = await storage.createContentPerformanceMetric(req.body);
-      res.status(201).json(metric);
+      // Find existing metrics for this content and date
+      const existingMetrics = await storage.getContentPerformanceMetricsByContentAndDate(
+        forumId, contentType, contentId, scoreDate
+      );
+      
+      if (existingMetrics) {
+        // Update existing metrics
+        await storage.updateContentPerformanceMetrics(existingMetrics.id, {
+          impressions: (existingMetrics.impressions || 0) + (impressions || 0),
+          clicks: (existingMetrics.clicks || 0) + (clicks || 0),
+          socialShares: (existingMetrics.socialShares || 0) + (socialShares || 0),
+          // Calculate new CTR
+          ctr: (existingMetrics.clicks || 0) + (clicks || 0) > 0 
+            ? (((existingMetrics.clicks || 0) + (clicks || 0)) / 
+               ((existingMetrics.impressions || 0) + (impressions || 0))) 
+            : existingMetrics.ctr,
+          // Calculate new average time on content (weighted)
+          avgTimeOnContent: avgTimeOnContent 
+            ? ((existingMetrics.avgTimeOnContent || 0) * (existingMetrics.impressions || 1) + 
+               (avgTimeOnContent * (impressions || 1))) / 
+              ((existingMetrics.impressions || 0) + (impressions || 1))
+            : existingMetrics.avgTimeOnContent
+        });
+      } else {
+        // Create new metrics
+        await storage.createContentPerformanceMetrics({
+          forumId,
+          contentType,
+          contentId,
+          title: title || '',
+          url: url || '',
+          impressions: impressions || 0,
+          clicks: clicks || 0,
+          socialShares: socialShares || 0,
+          ctr: impressions > 0 ? (clicks || 0) / impressions : 0,
+          avgTimeOnContent: avgTimeOnContent || 0,
+          avgPosition: 0, // Initialize with default values
+          backlinks: 0,
+          engagementRate: 0,
+          conversionRate: 0,
+          scoreDate,
+          performance: JSON.stringify({})
+        });
+      }
+      
+      res.status(201).json({ success: true });
     } catch (error) {
       console.error("Error tracking content performance:", error);
       res.status(500).json({ message: "Failed to track content performance" });
     }
   });
+  
+
 
   // Content Schedule routes
   app.get("/api/content-schedules", async (req, res) => {

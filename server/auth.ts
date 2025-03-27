@@ -29,7 +29,20 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  // Session is already configured in index.ts with storage.sessionStore
+  // Set up session middleware
+  const sessionSettings = {
+    secret: process.env.SESSION_SECRET || "forumAI-session-secret",
+    resave: false,
+    saveUninitialized: false,
+    store: storage.sessionStore,
+    cookie: {
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      secure: process.env.NODE_ENV === "production"
+    }
+  };
+  
+  app.set("trust proxy", 1);
+  app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
 

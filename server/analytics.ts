@@ -161,92 +161,65 @@ export async function getTopContent(req: Request, res: Response) {
   try {
     const period = req.query.period || "30d";
     const forumId = req.query.forumId ? parseInt(req.query.forumId as string) : undefined;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
 
-    // Sample data for the demo
-    const topContentData = [
-      {
-        id: 1,
-        title: "What's the most effective way to optimize content for BERT algorithm?",
-        views: 2345,
-        answers: 18,
-        conversions: 87,
-        ranking: "#3 for 'BERT optimization'",
-        position: 3,
-        change: 2,
-      },
-      {
-        id: 2,
-        title: "How does Google's helpful content update affect ranking in 2024?",
-        views: 1987,
-        answers: 23,
-        conversions: 64,
-        ranking: "#5 for 'helpful content update'",
-        position: 5,
-        change: 1,
-      },
-      {
-        id: 3,
-        title: "Best practices for optimizing image SEO for e-commerce",
-        views: 1756,
-        answers: 15,
-        conversions: 52,
-        ranking: "#7 for 'e-commerce image SEO'",
-        position: 7,
-        change: -1,
-      },
-      {
-        id: 4,
-        title: "Does site speed really impact search rankings?",
-        views: 1654,
-        answers: 27,
-        conversions: 43,
-        ranking: "#2 for 'site speed ranking impact'",
-        position: 2,
-        change: 3,
-      },
-      {
-        id: 5,
-        title: "How to create topic clusters that rank well",
-        views: 1432,
-        answers: 19,
-        conversions: 38,
-        ranking: "#4 for 'topic cluster SEO'",
-        position: 4,
-        change: 0,
-      },
-      {
-        id: 6,
-        title: "AI content and SEO: Is it detectable by Google?",
-        views: 1387,
-        answers: 34,
-        conversions: 41,
-        ranking: "#1 for 'AI content detection SEO'",
-        position: 1,
-        change: 5,
-      },
-      {
-        id: 7,
-        title: "How to optimize for voice search in 2024",
-        views: 1265,
-        answers: 14,
-        conversions: 29,
-        ranking: "#8 for 'voice search optimization'",
-        position: 8,
-        change: 2,
-      },
-      {
-        id: 8,
-        title: "Local SEO tactics that actually work",
-        views: 1198,
-        answers: 21,
-        conversions: 36,
-        ranking: "#5 for 'effective local SEO tactics'",
-        position: 5,
-        change: -2,
-      },
-    ];
+    // Calculate date range based on period
+    const endDate = new Date();
+    const startDate = new Date();
+    const days = period === "7d" ? 7 : 
+                period === "30d" ? 30 : 
+                period === "90d" ? 90 : 
+                period === "6m" ? 180 : 
+                period === "1y" ? 365 : 30;
+    
+    startDate.setDate(startDate.getDate() - days);
+    
+    // Get real data from the database
+    let topContent;
+    
+    if (forumId) {
+      // Get forum-specific content
+      topContent = await storage.getTopPerformingContent(forumId, limit);
+    } else {
+      // Get content across all forums
+      topContent = await storage.getTopPerformingContentAcrossForums(limit);
+    }
+    
+    if (!topContent || topContent.length === 0) {
+      // Fallback to querying questions data if no performance metrics exist
+      const questions = forumId 
+        ? await storage.getQuestionsByForumWithMetrics(forumId, limit) 
+        : await storage.getQuestionsWithMetrics(limit);
+      
+      // Transform questions data into expected format
+      topContent = questions.map(q => {
+        // Count related SEO positions if available
+        const rankingInfo = q.seoPositions && q.seoPositions.length > 0
+          ? {
+              ranking: `#${q.seoPositions[0].position} for '${q.seoPositions[0].keyword}'`,
+              position: q.seoPositions[0].position,
+              change: (q.seoPositions.length > 1) 
+                ? q.seoPositions[0].position - q.seoPositions[1].position 
+                : 0
+            }
+          : {
+              ranking: "Not ranked",
+              position: 0,
+              change: 0
+            };
+          
+        return {
+          id: q.id,
+          title: q.title,
+          views: q.viewCount || 0,
+          answers: q.answerCount || 0,
+          conversions: q.leadConversions || 0,
+          ...rankingInfo
+        };
+      });
+    }
 
-    res.json(topContentData);
+    res.json(topContent);
   } catch (error) {
     console.error("Error getting top content:", error);
     res.status(500).json({ message: "Failed to fetch top content" });
