@@ -2338,7 +2338,7 @@ export class MemStorage implements IStorage {
 
     const positions = await this.getSeoPositionsByKeyword(id);
     const latestPosition = positions.length > 0 
-      ? positions.sort((a, b) => new Date(b.trackedAt).getTime() - new Date(a.trackedAt).getTime())[0]
+      ? positions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
       : undefined;
 
     return {
@@ -2357,12 +2357,16 @@ export class MemStorage implements IStorage {
       updatedAt: now,
       keyword: keywordData.keyword,
       forumId: keywordData.forumId,
-      targetPosition: keywordData.targetPosition ?? null,
+      url: keywordData.url, // Required field
       difficulty: keywordData.difficulty ?? null,
       searchVolume: keywordData.searchVolume ?? null,
-      isTracking: keywordData.isTracking ?? true,
+      priority: keywordData.priority ?? null,
+      isActive: keywordData.isActive ?? true,
+      lastCheckedAt: null, // Will be set when positions are checked
       notes: keywordData.notes ?? null,
-      startingPosition: keywordData.startingPosition ?? null
+      serp_features: keywordData.serp_features ?? null,
+      intent: keywordData.intent ?? null,
+      stage: keywordData.stage ?? null
     };
     
     this.seoKeywordsStore.set(id, keyword);
@@ -2419,8 +2423,7 @@ export class MemStorage implements IStorage {
     const dateStr = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
     
     for (const position of this.seoPositionsStore.values()) {
-      const positionDate = new Date(position.trackedAt).toISOString().split('T')[0];
-      if (positionDate === dateStr) {
+      if (position.date === dateStr) {
         positions.push(position);
       }
     }
@@ -2432,14 +2435,27 @@ export class MemStorage implements IStorage {
     const position: SeoPosition = {
       id,
       keywordId: positionData.keywordId,
+      date: positionData.date || new Date().toISOString().split('T')[0],
       position: positionData.position,
-      trackedAt: positionData.trackedAt ?? new Date(),
-      url: positionData.url ?? null,
+      previousPosition: positionData.previousPosition ?? null,
       change: positionData.change ?? null,
-      searchVolume: positionData.searchVolume ?? null
+      clicks: positionData.clicks ?? null,
+      impressions: positionData.impressions ?? null,
+      ctr: positionData.ctr ?? null,
+      device: positionData.device ?? null,
+      location: positionData.location ?? null
     };
     
     this.seoPositionsStore.set(id, position);
+    
+    // Update the lastCheckedAt field of the corresponding keyword
+    const keyword = await this.getSeoKeyword(positionData.keywordId);
+    if (keyword) {
+      await this.updateSeoKeyword(keyword.id, {
+        lastCheckedAt: new Date().toISOString(),
+      });
+    }
+    
     return position;
   }
   
@@ -2544,13 +2560,14 @@ export class MemStorage implements IStorage {
       createdAt: now,
       updatedAt: now,
       forumId: gapData.forumId,
-      keyword: gapData.keyword,
+      topic: gapData.topic,
       searchVolume: gapData.searchVolume ?? null,
-      difficulty: gapData.difficulty ?? null,
-      competitorUrls: gapData.competitorUrls ?? null,
+      competitorCoverage: gapData.competitorCoverage ?? null,
+      opportunityScore: gapData.opportunityScore ?? null,
+      recommendedKeywords: gapData.recommendedKeywords ?? null,
+      contentSuggestion: gapData.contentSuggestion ?? null,
       isAddressed: gapData.isAddressed ?? false,
-      targetUrl: gapData.targetUrl ?? null,
-      priority: gapData.priority ?? "medium"
+      targetUrl: gapData.targetUrl ?? null
     };
     
     this.seoContentGapsStore.set(id, gap);
@@ -2583,21 +2600,17 @@ export class MemStorage implements IStorage {
     const report = await this.getSeoWeeklyReport(id);
     if (!report) return undefined;
     
-    // Parse keywordMovements from the report
-    let keywordMovements;
+    // Parse reportData from the report
+    let parsedReportData: Record<string, any> = {};
     try {
-      keywordMovements = JSON.parse(report.keywordMovements || '{"rising":[],"declining":[],"new":[]}');
+      parsedReportData = report.reportData ? JSON.parse(report.reportData as string) : {};
     } catch (e) {
-      keywordMovements = {
-        rising: [],
-        declining: [],
-        new: []
-      };
+      parsedReportData = {};
     }
     
     return {
       ...report,
-      keywordMovements
+      parsedReportData
     };
   }
 
@@ -2608,7 +2621,7 @@ export class MemStorage implements IStorage {
         reports.push(report);
       }
     }
-    return reports.sort((a, b) => new Date(b.weekStartDate).getTime() - new Date(a.weekStartDate).getTime());
+    return reports.sort((a, b) => new Date(b.reportDate).getTime() - new Date(a.reportDate).getTime());
   }
 
   async getLatestSeoWeeklyReport(forumId: number): Promise<SeoWeeklyReportWithDetails | undefined> {
@@ -2627,20 +2640,18 @@ export class MemStorage implements IStorage {
       createdAt: now,
       updatedAt: now,
       forumId: reportData.forumId,
-      weekStartDate: reportData.weekStartDate,
-      weekEndDate: reportData.weekEndDate,
-      totalOrganicTraffic: reportData.totalOrganicTraffic ?? 0,
-      trafficChange: reportData.trafficChange ?? 0,
-      averagePosition: reportData.averagePosition ?? null,
-      positionChange: reportData.positionChange ?? null,
-      topPerformingPages: reportData.topPerformingPages ?? null,
-      keywordMovements: reportData.keywordMovements ?? JSON.stringify({
-        rising: [],
-        declining: [],
-        new: []
-      }),
-      newBacklinks: reportData.newBacklinks ?? 0,
-      recommendedActions: reportData.recommendedActions ?? null
+      reportDate: reportData.reportDate,
+      organicTraffic: reportData.organicTraffic ?? 0,
+      avgPosition: reportData.avgPosition ?? null,
+      topTenKeywords: reportData.topTenKeywords ?? null,
+      topThreeKeywords: reportData.topThreeKeywords ?? null,
+      totalKeywords: reportData.totalKeywords ?? null,
+      trafficChangePercent: reportData.trafficChangePercent ?? null,
+      positionChangePoints: reportData.positionChangePoints ?? null,
+      topPerformingUrls: reportData.topPerformingUrls ?? null,
+      impressions: reportData.impressions ?? null,
+      clicks: reportData.clicks ?? null,
+      reportData: reportData.reportData ?? null
     };
     
     this.seoWeeklyReportsStore.set(id, report);

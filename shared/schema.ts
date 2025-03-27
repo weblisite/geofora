@@ -530,11 +530,7 @@ export type SeoKeywordWithPositionHistory = SeoKeyword & {
 };
 
 export type SeoWeeklyReportWithDetails = SeoWeeklyReport & {
-  keywordMovements: {
-    rising: {keyword: string, change: number, position: number}[];
-    declining: {keyword: string, change: number, position: number}[];
-    new: {keyword: string, position: number}[];
-  };
+  parsedReportData: Record<string, any>;
 };
 
 // Lead Capture Forms schema
