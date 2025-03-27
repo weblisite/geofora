@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import session from "express-session";
 import { storage } from "./storage";
+import { checkDatabaseConnection, initDatabase } from "./database";
 
 const app = express();
 app.use(express.json());
@@ -51,6 +52,23 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize the database
+  try {
+    // Check if database connection is working
+    const isConnected = await checkDatabaseConnection();
+    
+    if (isConnected) {
+      log('Successfully connected to PostgreSQL database');
+      // Initialize database (create tables if needed)
+      await initDatabase();
+      log('Database initialized successfully');
+    } else {
+      log('Error connecting to PostgreSQL database - using fallback storage');
+    }
+  } catch (error: any) {
+    log(`Database error: ${error.message}`);
+  }
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

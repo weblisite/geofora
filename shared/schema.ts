@@ -1,6 +1,8 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, real, primaryKey } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import type { Json } from "drizzle-orm/pg-core";
 
 // Roles schema with defined role types
 export const roles = pgTable("roles", {
@@ -175,6 +177,289 @@ export const insertAiPersonaSchema = createInsertSchema(aiPersonas).pick({
   avatar: true,
   description: true,
 });
+
+// Schema relations
+// Role relations
+export const rolesRelations = relations(roles, ({ many }) => ({
+  permissions: many(rolePermissions),
+  users: many(users),
+  userForumRoles: many(userForumRoles),
+}));
+
+// Permission relations
+export const permissionsRelations = relations(permissions, ({ many }) => ({
+  roles: many(rolePermissions),
+}));
+
+// Role-Permission junction relations
+export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => ({
+  role: one(roles, {
+    fields: [rolePermissions.roleId],
+    references: [roles.id],
+  }),
+  permission: one(permissions, {
+    fields: [rolePermissions.permissionId],
+    references: [permissions.id],
+  }),
+}));
+
+// User relations
+export const usersRelations = relations(users, ({ one, many }) => ({
+  role: one(roles, {
+    fields: [users.roleId],
+    references: [roles.id],
+  }),
+  questions: many(questions),
+  answers: many(answers),
+  votes: many(votes),
+  forums: many(forums),
+  userForumRoles: many(userForumRoles),
+  contentInterlinks: many(contentInterlinks, { relationName: "createdByUser" }),
+  contentSchedules: many(contentSchedules),
+}));
+
+// User-Forum-Role relations
+export const userForumRolesRelations = relations(userForumRoles, ({ one }) => ({
+  user: one(users, {
+    fields: [userForumRoles.userId],
+    references: [users.id],
+  }),
+  forum: one(forums, {
+    fields: [userForumRoles.forumId],
+    references: [forums.id],
+  }),
+  role: one(roles, {
+    fields: [userForumRoles.roleId],
+    references: [roles.id],
+  }),
+}));
+
+// Category relations
+export const categoriesRelations = relations(categories, ({ many }) => ({
+  questions: many(questions),
+  contentSchedules: many(contentSchedules),
+}));
+
+// Question relations
+export const questionsRelations = relations(questions, ({ one, many }) => ({
+  user: one(users, {
+    fields: [questions.userId],
+    references: [users.id],
+  }),
+  category: one(categories, {
+    fields: [questions.categoryId],
+    references: [categories.id],
+  }),
+  answers: many(answers),
+  sourceInterlinks: many(contentInterlinks, { relationName: "questionSource" }),
+  targetInterlinks: many(contentInterlinks, { relationName: "questionTarget" }),
+}));
+
+// Answer relations
+export const answersRelations = relations(answers, ({ one, many }) => ({
+  question: one(questions, {
+    fields: [answers.questionId],
+    references: [questions.id],
+  }),
+  user: one(users, {
+    fields: [answers.userId],
+    references: [users.id],
+  }),
+  votes: many(votes),
+  sourceInterlinks: many(contentInterlinks, { relationName: "answerSource" }),
+  targetInterlinks: many(contentInterlinks, { relationName: "answerTarget" }),
+}));
+
+// Vote relations
+export const votesRelations = relations(votes, ({ one }) => ({
+  user: one(users, {
+    fields: [votes.userId],
+    references: [users.id],
+  }),
+  answer: one(answers, {
+    fields: [votes.answerId],
+    references: [answers.id],
+  }),
+}));
+
+// Content interlink relations
+export const contentInterlinksRelations = relations(contentInterlinks, ({ one }) => ({
+  createdByUser: one(users, {
+    fields: [contentInterlinks.createdByUserId],
+    references: [users.id],
+    relationName: "createdByUser",
+  }),
+}));
+
+// Forum relations
+export const forumsRelations = relations(forums, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [forums.userId],
+    references: [users.id],
+  }),
+  userForumRoles: many(userForumRoles),
+  domainVerifications: many(domainVerifications),
+  leadCaptureForms: many(leadCaptureForms),
+  gatedContents: many(gatedContents),
+  crmIntegrations: many(crmIntegrations),
+  contentSchedules: many(contentSchedules),
+  seoKeywords: many(seoKeywords),
+  seoContentGaps: many(seoContentGaps),
+  seoPageMetrics: many(seoPageMetrics),
+  userEngagementMetrics: many(userEngagementMetrics),
+  contentPerformanceMetrics: many(contentPerformanceMetrics),
+  analyticsEvents: many(analyticsEvents),
+  funnelDefinitions: many(funnelDefinitions),
+}));
+
+// Domain verification relations
+export const domainVerificationsRelations = relations(domainVerifications, ({ one }) => ({
+  forum: one(forums, {
+    fields: [domainVerifications.forumId],
+    references: [forums.id],
+  }),
+}));
+
+// Lead capture form relations
+export const leadCaptureFormsRelations = relations(leadCaptureForms, ({ one, many }) => ({
+  forum: one(forums, {
+    fields: [leadCaptureForms.forumId],
+    references: [forums.id],
+  }),
+  submissions: many(leadSubmissions),
+  views: many(leadFormViews),
+  gatedContent: one(gatedContents, {
+    fields: [leadCaptureForms.gatedContentId],
+    references: [gatedContents.id],
+  }),
+}));
+
+// Lead submission relations
+export const leadSubmissionsRelations = relations(leadSubmissions, ({ one }) => ({
+  form: one(leadCaptureForms, {
+    fields: [leadSubmissions.formId],
+    references: [leadCaptureForms.id],
+  }),
+}));
+
+// Lead form view relations
+export const leadFormViewsRelations = relations(leadFormViews, ({ one }) => ({
+  form: one(leadCaptureForms, {
+    fields: [leadFormViews.formId],
+    references: [leadCaptureForms.id],
+  }),
+}));
+
+// Gated content relations
+export const gatedContentsRelations = relations(gatedContents, ({ one, many }) => ({
+  forum: one(forums, {
+    fields: [gatedContents.forumId],
+    references: [forums.id],
+  }),
+  leadCaptureForms: many(leadCaptureForms),
+}));
+
+// CRM integration relations
+export const crmIntegrationsRelations = relations(crmIntegrations, ({ one }) => ({
+  forum: one(forums, {
+    fields: [crmIntegrations.forumId],
+    references: [forums.id],
+  }),
+}));
+
+// Content schedule relations
+export const contentSchedulesRelations = relations(contentSchedules, ({ one }) => ({
+  forum: one(forums, {
+    fields: [contentSchedules.forumId],
+    references: [forums.id],
+  }),
+  category: one(categories, {
+    fields: [contentSchedules.categoryId],
+    references: [categories.id],
+  }),
+  user: one(users, {
+    fields: [contentSchedules.userId],
+    references: [users.id],
+  }),
+}));
+
+// SEO Keyword relations
+export const seoKeywordsRelations = relations(seoKeywords, ({ one, many }) => ({
+  forum: one(forums, {
+    fields: [seoKeywords.forumId],
+    references: [forums.id],
+  }),
+  positions: many(seoPositions),
+}));
+
+// SEO Position relations
+export const seoPositionsRelations = relations(seoPositions, ({ one }) => ({
+  keyword: one(seoKeywords, {
+    fields: [seoPositions.keywordId],
+    references: [seoKeywords.id],
+  }),
+}));
+
+// SEO Page Metrics relations
+export const seoPageMetricsRelations = relations(seoPageMetrics, ({ one }) => ({
+  forum: one(forums, {
+    fields: [seoPageMetrics.forumId],
+    references: [forums.id],
+  }),
+}));
+
+// SEO Content Gap relations
+export const seoContentGapsRelations = relations(seoContentGaps, ({ one }) => ({
+  forum: one(forums, {
+    fields: [seoContentGaps.forumId],
+    references: [forums.id],
+  }),
+}));
+
+// User Engagement Metrics relations
+export const userEngagementMetricsRelations = relations(userEngagementMetrics, ({ one }) => ({
+  forum: one(forums, {
+    fields: [userEngagementMetrics.forumId],
+    references: [forums.id],
+  }),
+}));
+
+// Analytics Events relations
+export const analyticsEventsRelations = relations(analyticsEvents, ({ one }) => ({
+  forum: one(forums, {
+    fields: [analyticsEvents.forumId],
+    references: [forums.id],
+  }),
+  user: one(users, {
+    fields: [analyticsEvents.userId],
+    references: [users.id],
+  }),
+}));
+
+// Content Performance Metrics relations
+export const contentPerformanceMetricsRelations = relations(contentPerformanceMetrics, ({ one }) => ({
+  forum: one(forums, {
+    fields: [contentPerformanceMetrics.forumId],
+    references: [forums.id],
+  }),
+}));
+
+// Funnel Definitions relations
+export const funnelDefinitionsRelations = relations(funnelDefinitions, ({ one, many }) => ({
+  forum: one(forums, {
+    fields: [funnelDefinitions.forumId],
+    references: [forums.id],
+  }),
+  analytics: many(funnelAnalytics),
+}));
+
+// Funnel Analytics relations
+export const funnelAnalyticsRelations = relations(funnelAnalytics, ({ one }) => ({
+  funnel: one(funnelDefinitions, {
+    fields: [funnelAnalytics.funnelId],
+    references: [funnelDefinitions.id],
+  }),
+}));
 
 // Type exports
 export type Role = typeof roles.$inferSelect;

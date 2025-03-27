@@ -29,7 +29,7 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  // Session is already configured in index.ts
+  // Session is already configured in index.ts with storage.sessionStore
   app.use(passport.initialize());
   app.use(passport.session());
 

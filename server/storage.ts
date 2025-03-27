@@ -18,6 +18,9 @@ import {
   gatedContents, type GatedContent, type InsertGatedContent,
   crmIntegrations, type CrmIntegration, type InsertCrmIntegration,
   leadFormViews, type LeadFormView, type InsertLeadFormView,
+  userEngagementMetrics, type UserEngagementMetric, type InsertUserEngagementMetric,
+  contentPerformanceMetrics, type ContentPerformanceMetric, type InsertContentPerformanceMetric,
+  analyticsEvents, type AnalyticsEvent, type InsertAnalyticsEvent,
   contentSchedules, type ContentSchedule, type InsertContentSchedule, type ContentScheduleWithDetails,
   seoKeywords, type SeoKeyword, type InsertSeoKeyword, type SeoKeywordWithPositionHistory,
   seoPositions, type SeoPosition, type InsertSeoPosition,
@@ -27,12 +30,12 @@ import {
   funnelDefinitions, type FunnelDefinition, type InsertFunnelDefinition, type FunnelDefinitionWithStats,
   funnelAnalytics, type FunnelAnalytic, type InsertFunnelAnalytic
 } from "@shared/schema";
-// Import this way to make TypeScript happy in an ESM context
-import memorystore from 'memorystore';
+// Import PostgreSQL storage
+import { PostgresStorage } from './postgres-storage';
 import session from 'express-session';
+import createMemoryStore from 'memorystore';
 
-// Create the MemoryStore
-const MemoryStore = memorystore(session);
+const MemoryStore = createMemoryStore(session);
 
 // Storage interface with CRUD methods
 export interface IStorage {
@@ -218,7 +221,7 @@ export interface IStorage {
   createSeoWeeklyReport(report: InsertSeoWeeklyReport): Promise<SeoWeeklyReport>;
   
   // Session store
-  sessionStore: any;
+  sessionStore: session.Store;
   
   // User Engagement Tracking
   createUserEngagementMetric(metric: InsertUserEngagementMetric): Promise<UserEngagementMetric>;
@@ -335,7 +338,7 @@ export class MemStorage implements IStorage {
   private analyticsEventId: number;
   private funnelDefinitionId: number;
   private funnelAnalyticId: number;
-  public sessionStore: any;
+  public sessionStore: session.Store;
 
   constructor() {
     // Initialize stores
@@ -3506,4 +3509,5 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Use PostgreSQL storage instead of in-memory storage
+export const storage = new PostgresStorage();
