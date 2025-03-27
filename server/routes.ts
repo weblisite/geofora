@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
+import { generateAnswer, generateSeoQuestions, analyzeQuestionSeo, generateInterlinkingSuggestions } from "./ai";
 import { 
   insertUserSchema, 
   insertQuestionSchema, 
@@ -1084,6 +1085,386 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Forum Questions API routes
+  app.get("/api/forums/:forumId/questions", async (req, res) => {
+    try {
+      const forumId = parseInt(req.params.forumId);
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const categoryId = req.query.categoryId ? parseInt(req.query.categoryId as string) : undefined;
+      
+      const questions = await storage.getQuestionsForForum(forumId, limit, categoryId);
+      res.json(questions);
+    } catch (error) {
+      console.error("Error fetching forum questions:", error);
+      res.status(500).json({ message: "Failed to fetch forum questions" });
+    }
+  });
+  
+  app.get("/api/forums/:forumId/questions/popular", async (req, res) => {
+    try {
+      const forumId = parseInt(req.params.forumId);
+      const sortBy = req.query.sortBy as string || 'views';
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const categoryId = req.query.categoryId ? parseInt(req.query.categoryId as string) : undefined;
+      const timeFrame = req.query.timeFrame ? parseInt(req.query.timeFrame as string) : 30;
+      
+      const questions = await storage.getPopularQuestionsForForum(forumId, sortBy, limit, categoryId, timeFrame);
+      res.json(questions);
+    } catch (error) {
+      console.error("Error fetching popular forum questions:", error);
+      res.status(500).json({ message: "Failed to fetch popular forum questions" });
+    }
+  });
+  
+  app.get("/api/forums/:forumId/questions/search", async (req, res) => {
+    try {
+      const forumId = parseInt(req.params.forumId);
+      const query = req.query.q as string;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+      const categoryId = req.query.categoryId ? parseInt(req.query.categoryId as string) : undefined;
+      
+      if (!query) {
+        return res.status(400).json({ message: "Search query is required" });
+      }
+      
+      const questions = await storage.searchQuestionsInForum(forumId, query, limit, categoryId);
+      res.json(questions);
+    } catch (error) {
+      console.error("Error searching forum questions:", error);
+      res.status(500).json({ message: "Failed to search forum questions" });
+    }
+  });
+  
+  app.get("/api/forums/:forumId/stats", async (req, res) => {
+    try {
+      const forumId = parseInt(req.params.forumId);
+      
+      // Get forum by ID to verify it exists
+      const forum = await storage.getForum(forumId);
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Get question and answer counts
+      const questionCount = await storage.countQuestionsByForum(forumId);
+      const answerCount = await storage.countAnswersByForum(forumId);
+      
+      // Return forum stats
+      res.json({
+        questionCount,
+        answerCount,
+        forumId,
+        forumName: forum.name
+      });
+    } catch (error) {
+      console.error("Error fetching forum stats:", error);
+      res.status(500).json({ message: "Failed to fetch forum stats" });
+    }
+  });
+  
+  app.post("/api/forums/:forumId/generate-questions", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to generate questions" });
+      }
+      
+      const forumId = parseInt(req.params.forumId);
+      const forum = await storage.getForum(forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if the user owns this forum or is an admin
+      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to generate questions for this forum" });
+      }
+      
+      const { keyword, count = 5, searchIntent } = req.body;
+      
+      if (!keyword) {
+        return res.status(400).json({ message: "Keyword is required" });
+      }
+      
+      // Generate optimized questions using the AI service
+      const optimizedQuestions = await generateSeoOptimizedQuestions(
+        keyword, 
+        count, 
+        searchIntent as 'informational' | 'commercial' | 'transactional' | undefined
+      );
+      
+      // Return the optimized questions
+      res.json(optimizedQuestions);
+    } catch (error) {
+      console.error("Error generating optimized questions:", error);
+      res.status(500).json({ message: "Failed to generate optimized questions" });
+    }
+  });
+
+  // Question and Answer routes
+  app.get("/api/questions/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const question = await storage.getQuestion(id);
+      
+      if (!question) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+      
+      // Increment view count
+      await storage.incrementQuestionViews(id);
+      
+      res.json(question);
+    } catch (error) {
+      console.error("Error fetching question:", error);
+      res.status(500).json({ message: "Failed to fetch question" });
+    }
+  });
+  
+  app.post("/api/forums/:forumId/questions", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to ask a question" });
+      }
+      
+      const forumId = parseInt(req.params.forumId);
+      const forum = await storage.getForum(forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      const validatedData = insertQuestionSchema.parse({
+        ...req.body,
+        userId: req.session.userId,
+        forumId
+      });
+      
+      const question = await storage.createQuestion(validatedData);
+      res.status(201).json(question);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else {
+        console.error("Error creating question:", error);
+        res.status(500).json({ message: "Failed to create question" });
+      }
+    }
+  });
+  
+  app.delete("/api/questions/:id", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to delete a question" });
+      }
+      
+      const id = parseInt(req.params.id);
+      const question = await storage.getQuestion(id);
+      
+      if (!question) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+      
+      // Check if the user owns this question or is an admin
+      if (question.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to delete this question" });
+      }
+      
+      const success = await storage.deleteQuestion(id);
+      
+      if (success) {
+        res.json({ success: true });
+      } else {
+        res.status(500).json({ message: "Failed to delete question" });
+      }
+    } catch (error) {
+      console.error("Error deleting question:", error);
+      res.status(500).json({ message: "Failed to delete question" });
+    }
+  });
+  
+  app.get("/api/questions/:id/answers", async (req, res) => {
+    try {
+      const questionId = parseInt(req.params.id);
+      const answers = await storage.getAnswersByQuestion(questionId);
+      res.json(answers);
+    } catch (error) {
+      console.error("Error fetching answers:", error);
+      res.status(500).json({ message: "Failed to fetch answers" });
+    }
+  });
+  
+  app.post("/api/questions/:id/answers", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to post an answer" });
+      }
+      
+      const questionId = parseInt(req.params.id);
+      const question = await storage.getQuestion(questionId);
+      
+      if (!question) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+      
+      const validatedData = insertAnswerSchema.parse({
+        ...req.body,
+        userId: req.session.userId,
+        questionId
+      });
+      
+      const answer = await storage.createAnswer(validatedData);
+      res.status(201).json(answer);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else {
+        console.error("Error creating answer:", error);
+        res.status(500).json({ message: "Failed to create answer" });
+      }
+    }
+  });
+  
+  app.post("/api/questions/:id/answers/ai", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to generate an AI answer" });
+      }
+      
+      const questionId = parseInt(req.params.id);
+      const question = await storage.getQuestion(questionId);
+      
+      if (!question) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+      
+      const { personaType } = req.body;
+      
+      if (!personaType || !["beginner", "intermediate", "expert", "moderator"].includes(personaType)) {
+        return res.status(400).json({ message: "Invalid persona type. Must be beginner, intermediate, expert, or moderator" });
+      }
+      
+      // Generate AI answer
+      const answerContent = await generateAnswer(question.title, question.content, personaType as "beginner" | "intermediate" | "expert" | "moderator");
+      
+      // Create answer record
+      const answer = await storage.createAnswer({
+        userId: req.session.userId,
+        questionId,
+        content: answerContent,
+        isAiGenerated: true,
+        aiPersonaType: personaType
+      });
+      
+      res.status(201).json(answer);
+    } catch (error) {
+      console.error("Error generating AI answer:", error);
+      res.status(500).json({ message: "Failed to generate AI answer" });
+    }
+  });
+  
+  app.delete("/api/answers/:id", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to delete an answer" });
+      }
+      
+      const id = parseInt(req.params.id);
+      const answer = await storage.getAnswer(id);
+      
+      if (!answer) {
+        return res.status(404).json({ message: "Answer not found" });
+      }
+      
+      // Check if the user owns this answer or is an admin
+      if (answer.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to delete this answer" });
+      }
+      
+      const success = await storage.deleteAnswer(id);
+      
+      if (success) {
+        res.json({ success: true });
+      } else {
+        res.status(500).json({ message: "Failed to delete answer" });
+      }
+    } catch (error) {
+      console.error("Error deleting answer:", error);
+      res.status(500).json({ message: "Failed to delete answer" });
+    }
+  });
+  
+  app.post("/api/answers/:id/vote", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to vote on an answer" });
+      }
+      
+      const answerId = parseInt(req.params.id);
+      const answer = await storage.getAnswer(answerId);
+      
+      if (!answer) {
+        return res.status(404).json({ message: "Answer not found" });
+      }
+      
+      const { isUpvote } = req.body;
+      
+      if (typeof isUpvote !== 'boolean') {
+        return res.status(400).json({ message: "isUpvote must be a boolean" });
+      }
+      
+      // Check if the user has already voted on this answer
+      const existingVote = await storage.getVoteByUserAndAnswer(req.session.userId, answerId);
+      
+      if (existingVote) {
+        // Update existing vote
+        await storage.updateVote(existingVote.id, { isUpvote });
+      } else {
+        // Create new vote
+        await storage.createVote({
+          userId: req.session.userId,
+          answerId,
+          isUpvote
+        });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error voting on answer:", error);
+      res.status(500).json({ message: "Failed to vote on answer" });
+    }
+  });
+  
+  app.delete("/api/answers/:id/vote", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to remove a vote" });
+      }
+      
+      const answerId = parseInt(req.params.id);
+      const answer = await storage.getAnswer(answerId);
+      
+      if (!answer) {
+        return res.status(404).json({ message: "Answer not found" });
+      }
+      
+      // Get the user's vote on this answer
+      const vote = await storage.getVoteByUserAndAnswer(req.session.userId, answerId);
+      
+      if (!vote) {
+        return res.status(404).json({ message: "Vote not found" });
+      }
+      
+      // Delete the vote
+      await storage.deleteVote(vote.id);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing vote:", error);
+      res.status(500).json({ message: "Failed to remove vote" });
+    }
+  });
+  
   // Domain verification routes
   app.post("/api/domains/verify", async (req, res) => {
     try {
@@ -2338,6 +2719,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating SEO weekly report:", error);
       res.status(500).json({ message: "Failed to create SEO weekly report" });
+    }
+  });
+
+  // Generate a batch of optimized questions and answers for a forum section
+  app.post("/api/forums/:forumId/generate-section-content", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to generate forum content" });
+      }
+      
+      const forumId = parseInt(req.params.forumId);
+      const forum = await storage.getForum(forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if the user owns this forum
+      if (forum.userId !== req.session.userId) {
+        return res.status(403).json({ message: "You don't have permission to generate content for this forum" });
+      }
+      
+      const { 
+        sectionTitle, 
+        keywordFocus, 
+        questionCount = 5, 
+        questionPersona = "expert",
+        answerPersona = "expert", 
+        generateAnswers = true,
+        schedulePublication = false,
+        scheduledDate
+      } = req.body;
+      
+      if (!sectionTitle || !keywordFocus) {
+        return res.status(400).json({ message: "Section title and keyword focus are required" });
+      }
+      
+      // Check valid persona types
+      if (!["beginner", "intermediate", "expert", "moderator"].includes(questionPersona)) {
+        return res.status(400).json({ message: "Invalid question persona type" });
+      }
+      
+      if (!["beginner", "intermediate", "expert", "moderator"].includes(answerPersona)) {
+        return res.status(400).json({ message: "Invalid answer persona type" });
+      }
+      
+      // Generate optimized questions using the AI service
+      const optimizedQuestions = await generateSeoOptimizedQuestions(
+        keywordFocus, 
+        questionCount
+      );
+      
+      const createdQuestions = [];
+      const createdAnswers = [];
+      
+      // Create questions in the database
+      for (const q of optimizedQuestions.questions) {
+        const questionData = {
+          userId: req.session.userId,
+          forumId,
+          title: q.title,
+          content: q.content,
+          keywordTargets: q.targetKeywords.primary + "," + q.targetKeywords.secondary.join(","),
+          isAiGenerated: true,
+          aiPersonaType: questionPersona,
+          status: schedulePublication ? 'scheduled' : 'published',
+          categoryId: null // Could be enhanced to match to existing categories
+        };
+        
+        const newQuestion = await storage.createQuestion(questionData);
+        createdQuestions.push(newQuestion);
+        
+        // Generate and save answers if requested
+        if (generateAnswers) {
+          const answerContent = await generateAnswer(q.title, q.content, answerPersona);
+          
+          const answerData = {
+            userId: req.session.userId,
+            questionId: newQuestion.id,
+            content: answerContent,
+            isAiGenerated: true,
+            aiPersonaType: answerPersona
+          };
+          
+          const newAnswer = await storage.createAnswer(answerData);
+          createdAnswers.push(newAnswer);
+        }
+      }
+      
+      // Create a content schedule entry if requested
+      let contentSchedule = null;
+      if (schedulePublication && scheduledDate) {
+        const scheduleData = {
+          userId: req.session.userId,
+          forumId,
+          title: sectionTitle,
+          keyword: keywordFocus,
+          contentType: 'section',
+          status: 'scheduled',
+          personaType: questionPersona,
+          answerPersonaType: answerPersona,
+          scheduledFor: new Date(scheduledDate),
+          questionCount: createdQuestions.length,
+          questionIds: JSON.stringify(createdQuestions.map(q => q.id))
+        };
+        
+        contentSchedule = await storage.createContentSchedule(scheduleData);
+      }
+      
+      res.status(201).json({
+        sectionTitle,
+        keywordFocus,
+        questions: createdQuestions,
+        answers: createdAnswers,
+        contentSchedule
+      });
+    } catch (error) {
+      console.error("Error generating section content:", error);
+      res.status(500).json({ message: "Failed to generate section content" });
     }
   });
 

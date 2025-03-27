@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Glassmorphism } from "@/components/ui/glassmorphism";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { SectionGenerator } from "@/components/section-generator";
 
 // Types
 interface Forum {
