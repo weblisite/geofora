@@ -183,6 +183,7 @@ export async function generateInterlinkingSuggestions(
   existingQuestions: Array<{ id: number; title: string; content: string }>
 ): Promise<Array<{ questionId: number; title: string; relevanceScore: number; anchorText: string }>> {
   try {
+    // Map questions to a format suitable for OpenAI prompt
     const questionsData = existingQuestions.map(q => ({
       id: q.id,
       title: q.title,
@@ -202,11 +203,23 @@ export async function generateInterlinkingSuggestions(
         { 
           role: "system", 
           content: `You are an interlinking analysis tool for a Q&A forum. 
-          Provide output in JSON format as an array of objects with:
-          "questionId": number,
-          "title": string,
-          "relevanceScore": number between 0-100,
-          "anchorText": suggested anchor text for the link`
+          Analyze user-provided content and identify opportunities for interlinking with existing forum questions.
+          
+          Provide output as a JSON object with a key called "suggestions" containing an array of objects with these exact properties:
+          {
+            "suggestions": [
+              {
+                "questionId": number,          // The ID of the question to link to
+                "title": string,               // The title of the question
+                "relevanceScore": number,      // A score from 0-100 indicating relevance
+                "anchorText": string           // The text in the original content that should become the link
+              },
+              ...
+            ]
+          }
+          
+          Important: Make sure the "anchorText" is an exact substring that exists in the original content.
+          Only provide suggestions where the anchorText appears exactly in the content.`
         },
         { role: "user", content: userPrompt }
       ],
@@ -218,26 +231,36 @@ export async function generateInterlinkingSuggestions(
     
     try {
       const result = JSON.parse(responseContent);
-      // Handle different response structures based on the JSON returned from OpenAI
-      if (Array.isArray(result)) {
-        return result.map((item: any) => ({
-          questionId: item.questionId,
-          title: item.title,
-          relevanceScore: item.relevanceScore || 0,
-          anchorText: item.anchorText || ""
-        }));
-      } else if (result.suggestions && Array.isArray(result.suggestions)) {
+      
+      // Primary expected format is a JSON object with a "suggestions" array
+      if (result.suggestions && Array.isArray(result.suggestions)) {
         return result.suggestions.map((item: any) => ({
-          questionId: item.questionId,
-          title: item.title,
-          relevanceScore: item.relevanceScore || 0,
+          questionId: item.questionId || item.id || 0,
+          title: item.title || "",
+          relevanceScore: typeof item.relevanceScore === 'number' ? item.relevanceScore : 0,
           anchorText: item.anchorText || ""
         }));
-      } else if (result.interlinkingSuggestions && Array.isArray(result.interlinkingSuggestions)) {
-        return result.interlinkingSuggestions;
+      } 
+      // Fallback: the entire response is an array of suggestion objects
+      else if (Array.isArray(result)) {
+        return result.map((item: any) => ({
+          questionId: item.questionId || item.id || 0,
+          title: item.title || "",
+          relevanceScore: typeof item.relevanceScore === 'number' ? item.relevanceScore : 0,
+          anchorText: item.anchorText || ""
+        }));
+      }
+      // Alternate format that might come from OpenAI
+      else if (result.interlinkingSuggestions && Array.isArray(result.interlinkingSuggestions)) {
+        return result.interlinkingSuggestions.map((item: any) => ({
+          questionId: item.questionId || item.id || 0,
+          title: item.title || "",
+          relevanceScore: typeof item.relevanceScore === 'number' ? item.relevanceScore : 0,
+          anchorText: item.anchorText || ""
+        }));
       }
       
-      // If we can't find a valid structure, return an empty array
+      console.warn("Unexpected response format from OpenAI:", result);
       return [];
     } catch (parseError) {
       console.error("Error parsing interlinking suggestions JSON:", parseError);

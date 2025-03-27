@@ -30,13 +30,16 @@ export default function AnswerForm({ questionId }: AnswerFormProps) {
   const [selectedPersona, setSelectedPersona] = useState<string>("expert");
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   
-  // States for interlinking
-  const [interlinkingSuggestions, setInterlinkingSuggestions] = useState<Array<{
+  // Define interface for interlinking suggestions
+  interface InterlinkingSuggestion {
     questionId: number;
     title: string;
     relevanceScore: number;
     anchorText: string;
-  }>>([]);
+  }
+  
+  // States for interlinking
+  const [interlinkingSuggestions, setInterlinkingSuggestions] = useState<InterlinkingSuggestion[]>([]);
   const [isAnalyzingLinks, setIsAnalyzingLinks] = useState(false);
 
   // Get AI helpers
@@ -52,7 +55,7 @@ export default function AnswerForm({ questionId }: AnswerFormProps) {
         });
       } else if (Array.isArray(data)) {
         // Handle interlinking suggestions success
-        setInterlinkingSuggestions(data);
+        setInterlinkingSuggestions(data as InterlinkingSuggestion[]);
         setIsAnalyzingLinks(false);
         toast({
           title: "Interlinking Analysis Complete",
@@ -148,7 +151,7 @@ export default function AnswerForm({ questionId }: AnswerFormProps) {
   };
   
   // Apply a suggested interlink to the answer content
-  const applyInterlink = (suggestion: { anchorText: string; questionId: number; title: string }) => {
+  const applyInterlink = (suggestion: InterlinkingSuggestion) => {
     const content = form.getValues("content");
     const linkText = `[${suggestion.anchorText}](/forum/${suggestion.questionId})`;
     

@@ -258,13 +258,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get all questions to analyze for interlinking
       const questions = await storage.getAllQuestionsWithDetails();
-      const questionData = questions.map(q => ({
+      const existingQuestions = questions.map(q => ({
         id: q.id,
         title: q.title,
         content: q.content
       }));
       
-      const suggestions = await generateInterlinkingSuggestions(content, questionData);
+      const suggestions = await generateInterlinkingSuggestions(content, existingQuestions);
       res.json({ suggestions });
     } catch (error) {
       console.error("Error generating interlinking suggestions:", error);

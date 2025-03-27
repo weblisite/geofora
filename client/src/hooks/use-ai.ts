@@ -103,10 +103,16 @@ export function useAI(options?: UseAIOptions) {
       const response = await apiRequest("/api/ai/generate-interlinking", {
         method: "POST",
         body: JSON.stringify({ content }),
-      }) as any;
-      return response.suggestions;
+      });
+      
+      // Return the suggestions array from the response
+      return response.suggestions || [];
     },
-    onSuccess: defaultOptions.onSuccess,
+    onSuccess: (data) => {
+      if (defaultOptions.onSuccess) {
+        defaultOptions.onSuccess(data);
+      }
+    },
     onError: defaultOptions.onError,
   });
 
