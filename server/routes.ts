@@ -8,7 +8,9 @@ import {
   insertAnswerSchema, 
   insertVoteSchema,
   insertMainSitePageSchema,
-  insertContentInterlinkSchema 
+  insertContentInterlinkSchema,
+  insertForumSchema,
+  insertDomainVerificationSchema 
 } from "@shared/schema";
 import { 
   generateAiContent,
@@ -580,6 +582,286 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ];
     
     res.json(topContent);
+  });
+
+  // Forum Management routes
+  app.get("/api/forums", async (req, res) => {
+    try {
+      const forums = await storage.getAllForums();
+      res.json(forums);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch forums" });
+    }
+  });
+
+  app.get("/api/forums/user", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to view your forums" });
+      }
+
+      const forums = await storage.getForumsByUser(req.session.userId);
+      res.json(forums);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch user forums" });
+    }
+  });
+
+  app.get("/api/forums/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const forum = await storage.getForum(id);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      res.json(forum);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch forum" });
+    }
+  });
+
+  app.get("/api/forums/slug/:slug", async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const forum = await storage.getForumBySlug(slug);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      res.json(forum);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch forum" });
+    }
+  });
+
+  app.get("/api/forums/subdomain/:subdomain", async (req, res) => {
+    try {
+      const { subdomain } = req.params;
+      const forum = await storage.getForumBySubdomain(subdomain);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      res.json(forum);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch forum" });
+    }
+  });
+
+  app.get("/api/forums/domain/:domain", async (req, res) => {
+    try {
+      const { domain } = req.params;
+      const forum = await storage.getForumByCustomDomain(domain);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      res.json(forum);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch forum" });
+    }
+  });
+
+  app.post("/api/forums", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to create a forum" });
+      }
+
+      const validatedData = insertForumSchema.parse({
+        ...req.body,
+        userId: req.session.userId,
+      });
+      
+      const forum = await storage.createForum(validatedData);
+      res.status(201).json(forum);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else if (error instanceof Error) {
+        res.status(500).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: "Failed to create forum" });
+      }
+    }
+  });
+
+  app.put("/api/forums/:id", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to update a forum" });
+      }
+
+      const id = parseInt(req.params.id);
+      const forum = await storage.getForum(id);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if the user owns this forum
+      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to update this forum" });
+      }
+
+      // Update non-domain fields
+      const { subdomain, customDomain, ...otherData } = req.body;
+      
+      // Update the forum data
+      const updatedForum = await storage.updateForum(id, otherData);
+      res.json(updatedForum);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else if (error instanceof Error) {
+        res.status(500).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: "Failed to update forum" });
+      }
+    }
+  });
+
+  app.put("/api/forums/:id/domain", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to update forum domains" });
+      }
+
+      const id = parseInt(req.params.id);
+      const forum = await storage.getForum(id);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if the user owns this forum
+      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to update this forum" });
+      }
+
+      // Update domain fields
+      const { subdomain, customDomain } = req.body;
+      
+      // Update the forum domain
+      const updatedForum = await storage.updateForumDomain(id, { subdomain, customDomain });
+      res.json(updatedForum);
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(400).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: "Failed to update forum domain" });
+      }
+    }
+  });
+
+  app.delete("/api/forums/:id", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to delete a forum" });
+      }
+
+      const id = parseInt(req.params.id);
+      const forum = await storage.getForum(id);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if the user owns this forum
+      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to delete this forum" });
+      }
+
+      await storage.deleteForum(id);
+      res.json({ success: true });
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(400).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: "Failed to delete forum" });
+      }
+    }
+  });
+
+  // Domain verification routes
+  app.post("/api/domains/verify", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to verify a domain" });
+      }
+
+      const { domain, forumId } = req.body;
+      
+      if (!domain) {
+        return res.status(400).json({ message: "Domain is required" });
+      }
+      
+      if (!forumId) {
+        return res.status(400).json({ message: "Forum ID is required" });
+      }
+
+      // Generate a verification token (unique random string)
+      const verificationToken = Math.random().toString(36).substring(2, 15) + 
+                               Math.random().toString(36).substring(2, 15);
+      
+      // Create verification record
+      const verification = await storage.createDomainVerification({
+        domain,
+        forumId,
+        verificationToken,
+        isVerified: false
+      });
+      
+      res.json({ 
+        domain: verification.domain, 
+        verificationToken: verification.verificationToken,
+        verificationMethod: "dns-txt", // For future expansion to support multiple verification methods
+        instructions: "Add a TXT record to your domain with the name '@' or the root domain, and the value provided above."
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else if (error instanceof Error) {
+        res.status(500).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: "Failed to start domain verification" });
+      }
+    }
+  });
+
+  app.post("/api/domains/check-verification", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to check domain verification" });
+      }
+
+      const { domain, token } = req.body;
+      
+      if (!domain || !token) {
+        return res.status(400).json({ message: "Domain and token are required" });
+      }
+
+      // In a real implementation, we would check the domain's DNS records here
+      // For the demo, we'll simulate verification by checking our database
+      const isVerified = await storage.verifyDomain(domain, token);
+      
+      if (isVerified) {
+        res.json({ verified: true, message: "Domain successfully verified" });
+      } else {
+        res.json({ verified: false, message: "Domain verification failed. Please check the TXT record and try again." });
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(500).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: "Failed to check domain verification" });
+      }
+    }
   });
 
   const httpServer = createServer(app);

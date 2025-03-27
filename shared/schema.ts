@@ -201,3 +201,63 @@ export type MainSitePageWithLinks = MainSitePage & {
   incomingLinks: ContentInterlink[];
   outgoingLinks: ContentInterlink[];
 };
+
+// Forums schema
+export const forums = pgTable("forums", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description"),
+  themeColor: text("theme_color").default("#3B82F6"),
+  subdomain: text("subdomain").unique(),
+  customDomain: text("custom_domain").unique(),
+  isPublic: boolean("is_public").default(true),
+  requiresApproval: boolean("requires_approval").default(false),
+  userId: integer("user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertForumSchema = createInsertSchema(forums).pick({
+  name: true,
+  slug: true,
+  description: true,
+  themeColor: true,
+  subdomain: true,
+  customDomain: true,
+  isPublic: true,
+  requiresApproval: true,
+  userId: true,
+});
+
+// Forum domain verification schema
+export const domainVerifications = pgTable("domain_verifications", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  domain: text("domain").notNull().unique(),
+  verificationToken: text("verification_token").notNull(),
+  isVerified: boolean("is_verified").default(false),
+  verifiedAt: timestamp("verified_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertDomainVerificationSchema = createInsertSchema(domainVerifications).pick({
+  forumId: true,
+  domain: true,
+  verificationToken: true,
+  isVerified: true,
+  verifiedAt: true,
+});
+
+// Type exports for forums
+export type Forum = typeof forums.$inferSelect;
+export type InsertForum = z.infer<typeof insertForumSchema>;
+
+export type DomainVerification = typeof domainVerifications.$inferSelect;
+export type InsertDomainVerification = z.infer<typeof insertDomainVerificationSchema>;
+
+// Extended type for forums with stats
+export type ForumWithStats = Forum & {
+  totalQuestions: number;
+  totalAnswers: number;
+};

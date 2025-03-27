@@ -6,7 +6,9 @@ import {
   votes, type Vote, type InsertVote,
   aiPersonas, type AiPersona, type InsertAiPersona,
   mainSitePages, type MainSitePage, type InsertMainSitePage, type MainSitePageWithLinks,
-  contentInterlinks, type ContentInterlink, type InsertContentInterlink
+  contentInterlinks, type ContentInterlink, type InsertContentInterlink,
+  forums, type Forum, type InsertForum, type ForumWithStats,
+  domainVerifications, type DomainVerification, type InsertDomainVerification
 } from "@shared/schema";
 // Import this way to make TypeScript happy in an ESM context
 import memorystore from 'memorystore';
@@ -66,6 +68,23 @@ export interface IStorage {
   getInterlinksForTarget(targetType: string, targetId: number): Promise<ContentInterlink[]>;
   getRelevantContentForInterlinking(contentType: string, contentId: number, limit?: number): Promise<Array<{id: number, type: string, title: string, relevanceScore: number}>>;
   
+  // Forum methods
+  getForum(id: number): Promise<Forum | undefined>;
+  getForumBySlug(slug: string): Promise<Forum | undefined>;
+  getForumBySubdomain(subdomain: string): Promise<Forum | undefined>;
+  getForumByCustomDomain(domain: string): Promise<Forum | undefined>;
+  getAllForums(): Promise<Forum[]>;
+  getForumsByUser(userId: number): Promise<ForumWithStats[]>;
+  createForum(forum: InsertForum): Promise<Forum>;
+  updateForum(id: number, data: Partial<InsertForum>): Promise<Forum>;
+  updateForumDomain(id: number, data: { subdomain?: string; customDomain?: string }): Promise<Forum>;
+  deleteForum(id: number): Promise<void>;
+  
+  // Domain verification methods
+  createDomainVerification(verification: InsertDomainVerification): Promise<DomainVerification>;
+  getDomainVerification(domain: string): Promise<DomainVerification | undefined>;
+  verifyDomain(domain: string, token: string): Promise<boolean>;
+  
   // Session store
   sessionStore: any;
 }
@@ -80,6 +99,8 @@ export class MemStorage implements IStorage {
   private aiPersonasStore: Map<number, AiPersona>;
   private mainSitePagesStore: Map<number, MainSitePage>;
   private contentInterlinksStore: Map<number, ContentInterlink>;
+  private forumsStore: Map<number, Forum>;
+  private domainVerificationsStore: Map<number, DomainVerification>;
   
   private userId: number;
   private categoryId: number;
@@ -89,6 +110,8 @@ export class MemStorage implements IStorage {
   private aiPersonaId: number;
   private mainSitePageId: number;
   private contentInterlinkId: number;
+  private forumId: number;
+  private domainVerificationId: number;
   public sessionStore: any;
 
   constructor() {
@@ -100,6 +123,8 @@ export class MemStorage implements IStorage {
     this.aiPersonasStore = new Map();
     this.mainSitePagesStore = new Map();
     this.contentInterlinksStore = new Map();
+    this.forumsStore = new Map();
+    this.domainVerificationsStore = new Map();
     
     // Create session store from memorystore
     this.sessionStore = new MemoryStore({
@@ -114,6 +139,8 @@ export class MemStorage implements IStorage {
     this.aiPersonaId = 1;
     this.mainSitePageId = 1;
     this.contentInterlinkId = 1;
+    this.forumId = 1;
+    this.domainVerificationId = 1;
 
     // Initialize with sample data
     this.initSampleData();
@@ -375,6 +402,42 @@ export class MemStorage implements IStorage {
     ];
     
     contentInterlinks.forEach(interlink => this.createContentInterlink(interlink));
+    
+    // Create sample forums
+    const forums = [
+      {
+        name: "SEO Experts Forum",
+        slug: "seo-experts",
+        description: "A forum for SEO professionals to share tips, strategies, and case studies",
+        themeColor: "#3B82F6",
+        subdomain: "seo",
+        isPublic: true,
+        requiresApproval: false,
+        userId: 1 // Admin
+      },
+      {
+        name: "Content Marketing Hub",
+        slug: "content-marketing",
+        description: "Discussions about content strategy, creation, and promotion",
+        themeColor: "#10B981",
+        subdomain: "content",
+        isPublic: true,
+        requiresApproval: false,
+        userId: 2 // Sarah T.
+      },
+      {
+        name: "Analytics & Tracking",
+        slug: "analytics-tracking",
+        description: "Technical forum for web analytics and conversion tracking",
+        themeColor: "#8B5CF6",
+        subdomain: "analytics",
+        isPublic: true,
+        requiresApproval: true,
+        userId: 3 // Michael R.
+      }
+    ];
+    
+    forums.forEach(forum => this.createForum(forum));
   }
 
   // User methods
@@ -816,6 +879,164 @@ export class MemStorage implements IStorage {
                             ? 20 : 0;
     
     return Math.min(100, Math.floor((matchCount / maxPossibleMatches) * 80) + titleMatchBonus);
+  }
+
+  // Forum methods
+  async getForum(id: number): Promise<Forum | undefined> {
+    return this.forumsStore.get(id);
+  }
+
+  async getForumBySlug(slug: string): Promise<Forum | undefined> {
+    for (const forum of this.forumsStore.values()) {
+      if (forum.slug === slug) {
+        return forum;
+      }
+    }
+    return undefined;
+  }
+
+  async getForumBySubdomain(subdomain: string): Promise<Forum | undefined> {
+    for (const forum of this.forumsStore.values()) {
+      if (forum.subdomain === subdomain) {
+        return forum;
+      }
+    }
+    return undefined;
+  }
+
+  async getForumByCustomDomain(domain: string): Promise<Forum | undefined> {
+    for (const forum of this.forumsStore.values()) {
+      if (forum.customDomain === domain) {
+        return forum;
+      }
+    }
+    return undefined;
+  }
+
+  async getAllForums(): Promise<Forum[]> {
+    return Array.from(this.forumsStore.values());
+  }
+
+  async getForumsByUser(userId: number): Promise<ForumWithStats[]> {
+    const userForums = Array.from(this.forumsStore.values())
+      .filter(forum => forum.userId === userId);
+    
+    return userForums.map(forum => {
+      // In a real app, we would calculate actual question and answer counts
+      // For now, we'll use random counts for demo purposes
+      return {
+        ...forum,
+        totalQuestions: Math.floor(Math.random() * 100) + 5,
+        totalAnswers: Math.floor(Math.random() * 200) + 10
+      };
+    });
+  }
+
+  async createForum(forum: InsertForum): Promise<Forum> {
+    const id = this.forumId++;
+    const newForum: Forum = {
+      ...forum,
+      id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    this.forumsStore.set(id, newForum);
+    return newForum;
+  }
+
+  async updateForum(id: number, data: Partial<InsertForum>): Promise<Forum> {
+    const forum = this.forumsStore.get(id);
+    if (!forum) {
+      throw new Error(`Forum with id ${id} not found`);
+    }
+    
+    const updatedForum: Forum = {
+      ...forum,
+      ...data,
+      updatedAt: new Date().toISOString()
+    };
+    
+    this.forumsStore.set(id, updatedForum);
+    return updatedForum;
+  }
+
+  async updateForumDomain(id: number, data: { subdomain?: string; customDomain?: string }): Promise<Forum> {
+    const forum = this.forumsStore.get(id);
+    if (!forum) {
+      throw new Error(`Forum with id ${id} not found`);
+    }
+    
+    // Validation for unique subdomains and domains
+    if (data.subdomain) {
+      const existingForumWithSubdomain = await this.getForumBySubdomain(data.subdomain);
+      if (existingForumWithSubdomain && existingForumWithSubdomain.id !== id) {
+        throw new Error(`Subdomain "${data.subdomain}" is already in use`);
+      }
+    }
+    
+    if (data.customDomain) {
+      const existingForumWithDomain = await this.getForumByCustomDomain(data.customDomain);
+      if (existingForumWithDomain && existingForumWithDomain.id !== id) {
+        throw new Error(`Domain "${data.customDomain}" is already in use`);
+      }
+    }
+    
+    const updatedForum: Forum = {
+      ...forum,
+      subdomain: data.subdomain !== undefined ? data.subdomain : forum.subdomain,
+      customDomain: data.customDomain !== undefined ? data.customDomain : forum.customDomain,
+      updatedAt: new Date().toISOString()
+    };
+    
+    this.forumsStore.set(id, updatedForum);
+    return updatedForum;
+  }
+
+  async deleteForum(id: number): Promise<void> {
+    if (!this.forumsStore.has(id)) {
+      throw new Error(`Forum with id ${id} not found`);
+    }
+    this.forumsStore.delete(id);
+  }
+
+  // Domain verification methods
+  async createDomainVerification(verification: InsertDomainVerification): Promise<DomainVerification> {
+    const id = this.domainVerificationId++;
+    const newVerification: DomainVerification = {
+      ...verification,
+      id,
+      isVerified: verification.isVerified || false,
+      createdAt: new Date().toISOString()
+    };
+    this.domainVerificationsStore.set(id, newVerification);
+    return newVerification;
+  }
+
+  async getDomainVerification(domain: string): Promise<DomainVerification | undefined> {
+    for (const verification of this.domainVerificationsStore.values()) {
+      if (verification.domain === domain) {
+        return verification;
+      }
+    }
+    return undefined;
+  }
+
+  async verifyDomain(domain: string, token: string): Promise<boolean> {
+    const verification = await this.getDomainVerification(domain);
+    
+    if (!verification) {
+      return false;
+    }
+    
+    if (verification.verificationToken === token) {
+      // Update the verification status
+      verification.isVerified = true;
+      verification.verifiedAt = new Date().toISOString();
+      this.domainVerificationsStore.set(verification.id, verification);
+      return true;
+    }
+    
+    return false;
   }
 }
 

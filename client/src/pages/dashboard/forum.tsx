@@ -89,7 +89,7 @@ export default function ForumManagementPage() {
   const updateForumMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number, data: typeof formData }) => {
       const response = await apiRequest(`/api/forums/${id}`, {
-        method: "PATCH",
+        method: "PUT",
         body: JSON.stringify(data)
       });
       return await response.json();
@@ -140,7 +140,7 @@ export default function ForumManagementPage() {
   const updateDomainMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number, data: typeof domainData }) => {
       const response = await apiRequest(`/api/forums/${id}/domain`, {
-        method: "PATCH",
+        method: "PUT",
         body: JSON.stringify(data)
       });
       return await response.json();
