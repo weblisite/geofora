@@ -417,6 +417,113 @@ export const seoContentGaps = pgTable("seo_content_gaps", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// User Engagement Tracking schema
+export const userEngagementMetrics = pgTable("user_engagement_metrics", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  date: date("date").notNull(),
+  pageViews: integer("page_views").default(0),
+  uniqueVisitors: integer("unique_visitors").default(0),
+  avgSessionDuration: integer("avg_session_duration").default(0), // in seconds
+  bounceRate: real("bounce_rate").default(0), // as a decimal (0.0-1.0)
+  returnVisitorRate: real("return_visitor_rate").default(0), // as a decimal (0.0-1.0)
+  deviceDistribution: jsonb("device_distribution"), // JSON with device breakdown
+  trafficSources: jsonb("traffic_sources"), // JSON with traffic source breakdown
+  popularPages: jsonb("popular_pages"), // JSON with most visited pages
+  userJourneys: jsonb("user_journeys"), // JSON with common navigation paths
+  exitPages: jsonb("exit_pages"), // JSON with common exit pages
+  interactionEvents: jsonb("interaction_events"), // JSON with click, scroll, etc. events
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertUserEngagementMetricsSchema = createInsertSchema(userEngagementMetrics).pick({
+  forumId: true,
+  date: true,
+  pageViews: true,
+  uniqueVisitors: true,
+  avgSessionDuration: true,
+  bounceRate: true,
+  returnVisitorRate: true,
+  deviceDistribution: true,
+  trafficSources: true,
+  popularPages: true,
+  userJourneys: true,
+  exitPages: true,
+  interactionEvents: true,
+});
+
+// Content Performance Metrics schema
+export const contentPerformanceMetrics = pgTable("content_performance_metrics", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  contentType: text("content_type").notNull(), // question, answer, category, etc.
+  contentId: integer("content_id").notNull(),
+  date: date("date").notNull(),
+  pageViews: integer("page_views").default(0),
+  uniqueVisitors: integer("unique_visitors").default(0),
+  avgTimeOnPage: integer("avg_time_on_page").default(0), // in seconds
+  bounceRate: real("bounce_rate").default(0), // as a decimal (0.0-1.0)
+  entrances: integer("entrances").default(0), // number of times this was the first page
+  exits: integer("exits").default(0), // number of times this was the last page
+  interactionRate: real("interaction_rate").default(0), // percentage of visitors who interacted
+  socialShares: integer("social_shares").default(0),
+  clickthroughRate: real("clickthrough_rate").default(0), // for interlinking effectiveness
+  scrollDepth: jsonb("scroll_depth"), // JSON with scroll depth percentages
+  heatmapData: jsonb("heatmap_data"), // JSON with click/hover heatmap data
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertContentPerformanceMetricsSchema = createInsertSchema(contentPerformanceMetrics).pick({
+  forumId: true,
+  contentType: true,
+  contentId: true,
+  date: true,
+  pageViews: true,
+  uniqueVisitors: true,
+  avgTimeOnPage: true,
+  bounceRate: true,
+  entrances: true,
+  exits: true,
+  interactionRate: true,
+  socialShares: true,
+  clickthroughRate: true,
+  scrollDepth: true,
+  heatmapData: true,
+});
+
+// Real-time Analytics Events schema
+export const analyticsEvents = pgTable("analytics_events", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  eventType: text("event_type").notNull(), // pageview, click, scroll, form_submission, etc.
+  userId: integer("user_id"), // nullable for anonymous users
+  anonymousId: text("anonymous_id"), // cookie or session ID for anonymous users
+  targetId: text("target_id"), // ID of the target element/page/content
+  targetType: text("target_type"), // type of the target (button, link, page, etc.)
+  properties: jsonb("properties"), // JSON with additional event properties
+  referrer: text("referrer"), // where user came from
+  userAgent: text("user_agent"), // browser/device info
+  ipAddress: text("ip_address"),
+  timestamp: timestamp("timestamp").defaultNow(),
+  sessionId: text("session_id"), // to group events by session
+  pageUrl: text("page_url"), // URL where event occurred
+});
+
+export const insertAnalyticsEventSchema = createInsertSchema(analyticsEvents).pick({
+  forumId: true,
+  eventType: true,
+  userId: true,
+  anonymousId: true,
+  targetId: true,
+  targetType: true,
+  properties: true,
+  referrer: true,
+  userAgent: true,
+  ipAddress: true,
+  sessionId: true,
+  pageUrl: true,
+});
+
 // SEO Weekly reports schema
 export const seoWeeklyReports = pgTable("seo_weekly_reports", {
   id: serial("id").primaryKey(),
@@ -691,6 +798,16 @@ export type LeadCaptureFormWithStats = LeadCaptureForm & {
   totalSubmissions: number;
   conversionRate: number;
 };
+
+// Export types for user engagement tracking
+export type UserEngagementMetric = typeof userEngagementMetrics.$inferSelect;
+export type InsertUserEngagementMetric = z.infer<typeof insertUserEngagementMetricsSchema>;
+
+export type ContentPerformanceMetric = typeof contentPerformanceMetrics.$inferSelect;
+export type InsertContentPerformanceMetric = z.infer<typeof insertContentPerformanceMetricsSchema>;
+
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+export type InsertAnalyticsEvent = z.infer<typeof insertAnalyticsEventSchema>;
 
 // Content Schedule schema
 export const contentSchedules = pgTable("content_schedules", {

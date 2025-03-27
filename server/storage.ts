@@ -209,6 +209,27 @@ export interface IStorage {
   
   // Session store
   sessionStore: any;
+  
+  // User Engagement Tracking
+  createUserEngagementMetric(metric: InsertUserEngagementMetric): Promise<UserEngagementMetric>;
+  getUserEngagementMetricsByForum(forumId: number, startDate?: string, endDate?: string): Promise<UserEngagementMetric[]>;
+  getUserEngagementMetricsByDate(date: string): Promise<UserEngagementMetric[]>;
+  getDailyAverageSessionDuration(forumId: number, days?: number): Promise<number>;
+  getReturnVisitorRateTrend(forumId: number, days?: number): Promise<{ date: string, rate: number }[]>;
+  
+  // Content Performance Tracking
+  createContentPerformanceMetric(metric: InsertContentPerformanceMetric): Promise<ContentPerformanceMetric>;
+  getContentPerformanceMetricsByForum(forumId: number, contentType?: string): Promise<ContentPerformanceMetric[]>;
+  getContentPerformanceMetricsByContent(contentType: string, contentId: number): Promise<ContentPerformanceMetric[]>;
+  getTopPerformingContent(forumId: number, limit?: number): Promise<ContentPerformanceMetric[]>;
+  getContentEngagementTrend(forumId: number, days?: number): Promise<{ date: string, avgTimeOnPage: number, interactionRate: number }[]>;
+  
+  // Analytics Events
+  createAnalyticsEvent(event: InsertAnalyticsEvent): Promise<AnalyticsEvent>;
+  getAnalyticsEventsByForum(forumId: number, eventType?: string, startDate?: string, endDate?: string): Promise<AnalyticsEvent[]>;
+  getEventCountsByType(forumId: number, days?: number): Promise<{ eventType: string, count: number }[]>;
+  getUserJourneys(forumId: number, days?: number, limit?: number): Promise<{ path: string[], count: number }[]>;
+  getPopularEventTargets(forumId: number, eventType: string, limit?: number): Promise<{ targetId: string, targetType: string, count: number }[]>;
 }
 
 // In-memory storage implementation
@@ -238,6 +259,9 @@ export class MemStorage implements IStorage {
   private seoPageMetricsStore: Map<number, SeoPageMetric>;
   private seoContentGapsStore: Map<number, SeoContentGap>;
   private seoWeeklyReportsStore: Map<number, SeoWeeklyReport>;
+  private userEngagementMetricsStore: Map<number, UserEngagementMetric>;
+  private contentPerformanceMetricsStore: Map<number, ContentPerformanceMetric>;
+  private analyticsEventsStore: Map<number, AnalyticsEvent>;
   
   private roleId: number;
   private permissionId: number;
@@ -264,6 +288,9 @@ export class MemStorage implements IStorage {
   private seoPageMetricId: number;
   private seoContentGapId: number;
   private seoWeeklyReportId: number;
+  private userEngagementMetricId: number;
+  private contentPerformanceMetricId: number;
+  private analyticsEventId: number;
   public sessionStore: any;
 
   constructor() {
@@ -293,6 +320,9 @@ export class MemStorage implements IStorage {
     this.seoPageMetricsStore = new Map();
     this.seoContentGapsStore = new Map();
     this.seoWeeklyReportsStore = new Map();
+    this.userEngagementMetricsStore = new Map();
+    this.contentPerformanceMetricsStore = new Map();
+    this.analyticsEventsStore = new Map();
     
     // Create session store from memorystore
     this.sessionStore = new MemoryStore({
@@ -325,6 +355,9 @@ export class MemStorage implements IStorage {
     this.seoPageMetricId = 1;
     this.seoContentGapId = 1;
     this.seoWeeklyReportId = 1;
+    this.userEngagementMetricId = 1;
+    this.contentPerformanceMetricId = 1;
+    this.analyticsEventId = 1;
 
     // Initialize with sample data
     this.initSampleData();
@@ -2656,6 +2689,235 @@ export class MemStorage implements IStorage {
     
     this.seoWeeklyReportsStore.set(id, report);
     return report;
+  }
+  
+  // User Engagement Metrics methods
+  async createUserEngagementMetric(metric: InsertUserEngagementMetric): Promise<UserEngagementMetric> {
+    const newMetric: UserEngagementMetric = {
+      id: this.userEngagementMetricId++,
+      ...metric,
+      createdAt: new Date(),
+    };
+    this.userEngagementMetricsStore.set(newMetric.id, newMetric);
+    return newMetric;
+  }
+
+  async getUserEngagementMetricsByForum(
+    forumId: number, 
+    startDate?: string, 
+    endDate?: string
+  ): Promise<UserEngagementMetric[]> {
+    const metrics = [...this.userEngagementMetricsStore.values()].filter(
+      (metric) => metric.forumId === forumId
+    );
+    
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      return metrics.filter(
+        (metric) => {
+          const metricDate = new Date(metric.date);
+          return metricDate >= start && metricDate <= end;
+        }
+      );
+    }
+    
+    return metrics;
+  }
+
+  async getUserEngagementMetricsByDate(date: string): Promise<UserEngagementMetric[]> {
+    const targetDate = new Date(date);
+    return [...this.userEngagementMetricsStore.values()].filter(
+      (metric) => {
+        const metricDate = new Date(metric.date);
+        return metricDate.toDateString() === targetDate.toDateString();
+      }
+    );
+  }
+
+  async getDailyAverageSessionDuration(forumId: number, days: number = 30): Promise<number> {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    const metrics = await this.getUserEngagementMetricsByForum(
+      forumId,
+      startDate.toISOString().split('T')[0],
+      endDate.toISOString().split('T')[0]
+    );
+    
+    if (metrics.length === 0) return 0;
+    
+    const totalDuration = metrics.reduce((sum, metric) => sum + metric.avgSessionDuration, 0);
+    return totalDuration / metrics.length;
+  }
+
+  async getReturnVisitorRateTrend(
+    forumId: number, 
+    days: number = 30
+  ): Promise<{ date: string, rate: number }[]> {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    const metrics = await this.getUserEngagementMetricsByForum(
+      forumId,
+      startDate.toISOString().split('T')[0],
+      endDate.toISOString().split('T')[0]
+    );
+    
+    return metrics
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .map((metric) => ({
+        date: new Date(metric.date).toISOString().split('T')[0],
+        rate: metric.returnVisitorRate
+      }));
+  }
+
+  // Content Performance Metrics methods
+  async createContentPerformanceMetric(metric: InsertContentPerformanceMetric): Promise<ContentPerformanceMetric> {
+    const newMetric: ContentPerformanceMetric = {
+      id: this.contentPerformanceMetricId++,
+      ...metric,
+      createdAt: new Date(),
+    };
+    this.contentPerformanceMetricsStore.set(newMetric.id, newMetric);
+    return newMetric;
+  }
+
+  async getContentPerformanceMetricsByForum(
+    forumId: number, 
+    contentType?: string
+  ): Promise<ContentPerformanceMetric[]> {
+    let metrics = [...this.contentPerformanceMetricsStore.values()].filter(
+      (metric) => metric.forumId === forumId
+    );
+    
+    if (contentType) {
+      metrics = metrics.filter((metric) => metric.contentType === contentType);
+    }
+    
+    return metrics;
+  }
+
+  async getContentPerformanceMetricsByContent(
+    contentType: string, 
+    contentId: number
+  ): Promise<ContentPerformanceMetric[]> {
+    return [...this.contentPerformanceMetricsStore.values()].filter(
+      (metric) => metric.contentType === contentType && metric.contentId === contentId
+    );
+  }
+
+  async getTopPerformingContent(
+    forumId: number, 
+    limit: number = 10
+  ): Promise<ContentPerformanceMetric[]> {
+    return [...this.contentPerformanceMetricsStore.values()]
+      .filter((metric) => metric.forumId === forumId)
+      .sort((a, b) => b.pageViews - a.pageViews)
+      .slice(0, limit);
+  }
+
+  async getContentEngagementTrend(
+    forumId: number, 
+    days: number = 30
+  ): Promise<{ date: string, avgTimeOnPage: number, interactionRate: number }[]> {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    // Group metrics by date
+    const metricsByDate = new Map<string, ContentPerformanceMetric[]>();
+    
+    for (const metric of this.contentPerformanceMetricsStore.values()) {
+      if (metric.forumId !== forumId) continue;
+      
+      const metricDate = new Date(metric.date);
+      if (metricDate < startDate || metricDate > endDate) continue;
+      
+      const dateKey = metricDate.toISOString().split('T')[0];
+      if (!metricsByDate.has(dateKey)) {
+        metricsByDate.set(dateKey, []);
+      }
+      metricsByDate.get(dateKey)!.push(metric);
+    }
+    
+    // Calculate averages for each date
+    return Array.from(metricsByDate.entries())
+      .map(([date, dayMetrics]) => {
+        const avgTimeOnPage = dayMetrics.reduce((sum, m) => sum + m.avgTimeOnPage, 0) / dayMetrics.length;
+        const interactionRate = dayMetrics.reduce((sum, m) => sum + m.interactionRate, 0) / dayMetrics.length;
+        return { date, avgTimeOnPage, interactionRate };
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }
+
+  // Analytics Events methods
+  async createAnalyticsEvent(event: InsertAnalyticsEvent): Promise<AnalyticsEvent> {
+    const newEvent: AnalyticsEvent = {
+      id: this.analyticsEventId++,
+      ...event,
+      timestamp: new Date(),
+    };
+    this.analyticsEventsStore.set(newEvent.id, newEvent);
+    return newEvent;
+  }
+
+  async getAnalyticsEventsByForum(
+    forumId: number, 
+    eventType?: string, 
+    startDate?: string, 
+    endDate?: string
+  ): Promise<AnalyticsEvent[]> {
+    let events = [...this.analyticsEventsStore.values()].filter(
+      (event) => event.forumId === forumId
+    );
+    
+    if (eventType) {
+      events = events.filter((event) => event.eventType === eventType);
+    }
+    
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      events = events.filter(
+        (event) => {
+          const eventDate = new Date(event.timestamp);
+          return eventDate >= start && eventDate <= end;
+        }
+      );
+    }
+    
+    return events;
+  }
+
+  async getEventCountsByType(
+    forumId: number, 
+    days: number = 30
+  ): Promise<{ eventType: string, count: number }[]> {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    const events = await this.getAnalyticsEventsByForum(
+      forumId,
+      undefined,
+      startDate.toISOString(),
+      endDate.toISOString()
+    );
+    
+    // Count events by type
+    const counts = new Map<string, number>();
+    for (const event of events) {
+      const count = counts.get(event.eventType) || 0;
+      counts.set(event.eventType, count + 1);
+    }
+    
+    return Array.from(counts.entries()).map(([eventType, count]) => ({
+      eventType,
+      count
+    }));
   }
 }
 
