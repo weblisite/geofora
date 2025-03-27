@@ -681,7 +681,7 @@ export class MemStorage implements IStorage {
     const newInterlink: ContentInterlink = { 
       ...interlink, 
       id,
-      createdAt: new Date().toISOString()
+      createdAt: new Date()
     };
     this.contentInterlinksStore.set(id, newInterlink);
     return newInterlink;
