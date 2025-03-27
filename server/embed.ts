@@ -455,4 +455,283 @@ export function registerEmbedRoutes(app: Express) {
       res.status(500).json({ message: 'Failed to generate AI answer preview' });
     }
   });
+
+  // Redirect endpoint with advanced options
+  app.get('/embed/redirect/:forumId', async (req, res) => {
+    try {
+      const forumId = parseInt(req.params.forumId, 10);
+      
+      if (isNaN(forumId)) {
+        return res.status(400).send('Invalid forum ID');
+      }
+      
+      const forum = await storage.getForum(forumId);
+      
+      if (!forum) {
+        return res.status(404).send('Forum not found');
+      }
+      
+      // Extract redirect parameters
+      const destination = req.query.dest as string; // 'forum', 'question', 'category', 'ask'
+      const targetId = req.query.id ? parseInt(req.query.id as string, 10) : null;
+      const embed = req.query.embed as string || null; // 'true', 'minimal', 'compact', 'sidebar'
+      const theme = req.query.theme as string || null; // 'light', 'dark', 'auto'
+      const utmSource = req.query.utm_source as string || 'redirect';
+      const utmMedium = req.query.utm_medium as string || 'forum';
+      const utmCampaign = req.query.utm_campaign as string || 'forum-redirect';
+      const tracking = req.query.track !== 'false'; // Track by default unless disabled
+      const cookieConsent = req.query.cookies === 'true'; // Default to no cookies unless explicitly allowed
+      const dataConsent = req.query.data === 'true'; // Default to no data collection unless explicitly allowed
+      const preserveParams = req.query.params === 'true'; // Whether to preserve additional query parameters
+      const mode = req.query.mode as string || 'navigate'; // 'navigate', 'newtab', 'iframe'
+      const customParams = req.query.custom as string || null; // Custom parameters in JSON format
+      
+      // Construct the URL
+      let targetUrl;
+      
+      // Determine base URL
+      let baseUrl;
+      if (forum.customDomain) {
+        baseUrl = `https://${forum.customDomain}`;
+      } else if (forum.subdomain) {
+        baseUrl = `https://${forum.subdomain}.${process.env.BASE_DOMAIN || 'formai.repl.app'}`;
+      } else {
+        baseUrl = `https://${process.env.BASE_DOMAIN || 'formai.repl.app'}/forum/${forum.slug}`;
+      }
+      
+      // Determine path based on destination
+      let path = '';
+      
+      if (destination === 'question' && targetId) {
+        // Redirect to specific question
+        const question = await storage.getQuestion(targetId);
+        if (question) {
+          path = `/question/${targetId}/${encodeURIComponent(question.title.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase())}`;
+        } else {
+          path = '/questions';
+        }
+      } else if (destination === 'category' && targetId) {
+        // Redirect to specific category
+        const category = await storage.getCategory(targetId);
+        if (category) {
+          path = `/category/${targetId}/${encodeURIComponent(category.name.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase())}`;
+        } else {
+          path = '/categories';
+        }
+      } else if (destination === 'ask') {
+        // Redirect to ask page
+        path = '/ask';
+      } else {
+        // Default to forum main page
+        path = '';
+      }
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      
+      // Add embed parameters if embed mode is requested
+      if (embed) {
+        if (embed === 'true') {
+          params.set('embed', 'true');
+        } else {
+          params.set('embed', embed);
+        }
+      }
+      
+      // Add theme if specified
+      if (theme) {
+        params.set('theme', theme);
+      }
+      
+      // Add UTM parameters for tracking
+      if (tracking) {
+        params.set('utm_source', utmSource);
+        params.set('utm_medium', utmMedium);
+        params.set('utm_campaign', utmCampaign);
+      }
+      
+      // Add consent parameters
+      if (cookieConsent) {
+        params.set('cookie_consent', 'true');
+      }
+      
+      if (dataConsent) {
+        params.set('data_consent', 'true');
+      }
+      
+      // Add custom parameters if provided
+      if (customParams) {
+        try {
+          const customParamsObj = JSON.parse(customParams);
+          Object.entries(customParamsObj).forEach(([key, value]) => {
+            params.set(key, String(value));
+          });
+        } catch (e) {
+          console.warn('Failed to parse custom parameters:', e);
+        }
+      }
+      
+      // Preserve additional query parameters if requested
+      if (preserveParams) {
+        Object.entries(req.query).forEach(([key, value]) => {
+          if (!['dest', 'id', 'embed', 'theme', 'utm_source', 'utm_medium', 'utm_campaign', 
+                'track', 'cookies', 'data', 'params', 'mode', 'custom'].includes(key)) {
+            params.set(key, value as string);
+          }
+        });
+      }
+      
+      // Construct final URL
+      const queryString = params.toString();
+      targetUrl = `${baseUrl}${path}${queryString ? `?${queryString}` : ''}`;
+      
+      // Track the redirect event if tracking is enabled
+      if (tracking) {
+        // Record analytics event
+        try {
+          await storage.createAnalyticsEvent({
+            type: 'redirect',
+            category: 'forum_embed',
+            action: `redirect_to_${destination || 'forum'}`,
+            label: `from=${req.headers.referer || 'unknown'};to=${path}`,
+            value: 1,
+            forumId,
+            metadata: JSON.stringify({
+              timestamp: new Date().toISOString(),
+              referer: req.headers.referer,
+              userAgent: req.headers['user-agent'],
+              ipAddress: req.ip,
+              destination,
+              targetId,
+              mode
+            })
+          });
+        } catch (err) {
+          console.error('Failed to track redirect event:', err);
+        }
+      }
+      
+      // Handle different redirect modes
+      if (mode === 'newtab') {
+        // Return an HTML page that will open the URL in a new tab
+        res.send(`<!DOCTYPE html>
+        <html>
+          <head>
+            <title>Redirecting to Forum...</title>
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                background: #f5f5f7;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                margin: 0;
+                padding: 20px;
+                color: #333;
+                text-align: center;
+              }
+              .container {
+                background: white;
+                border-radius: 12px;
+                padding: 30px;
+                box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+                max-width: 500px;
+                width: 100%;
+              }
+              h1 {
+                font-weight: 600;
+                font-size: 22px;
+                margin-bottom: 16px;
+              }
+              p {
+                font-size: 16px;
+                line-height: 1.5;
+                color: #666;
+                margin-bottom: 24px;
+              }
+              .button {
+                background: ${forum.themeColor || '#0070f3'};
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                font-size: 16px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 500;
+                transition: all 0.2s;
+                text-decoration: none;
+                display: inline-block;
+              }
+              .button:hover {
+                opacity: 0.9;
+                transform: translateY(-1px);
+              }
+              .powered-by {
+                margin-top: 20px;
+                font-size: 14px;
+                color: #999;
+              }
+              .powered-by a {
+                color: ${forum.themeColor || '#0070f3'};
+                text-decoration: none;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>Redirecting to ${forum.name}</h1>
+              <p>Click the button below to continue to the forum.</p>
+              <a href="${targetUrl}" target="_blank" class="button" id="redirect-btn">Continue to Forum</a>
+            </div>
+            <div class="powered-by">
+              Powered by <a href="https://formai.repl.app" target="_blank">ForumAI</a>
+            </div>
+            <script>
+              // Auto-click the button after a short delay
+              setTimeout(() => {
+                document.getElementById('redirect-btn').click();
+              }, 500);
+            </script>
+          </body>
+        </html>`);
+      } else if (mode === 'iframe') {
+        // Return an HTML page with an iframe
+        res.send(`<!DOCTYPE html>
+        <html>
+          <head>
+            <title>${forum.name} - Embedded Forum</title>
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+              body {
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                height: 100vh;
+                width: 100vw;
+              }
+              iframe {
+                border: none;
+                width: 100%;
+                height: 100%;
+              }
+            </style>
+          </head>
+          <body>
+            <iframe src="${targetUrl}" allowfullscreen></iframe>
+          </body>
+        </html>`);
+      } else {
+        // Default mode: navigate directly to the URL
+        res.redirect(targetUrl);
+      }
+    } catch (error) {
+      console.error('Error in redirect endpoint:', error);
+      res.status(500).send('Failed to process redirect request');
+    }
+  });
 }

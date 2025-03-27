@@ -4,13 +4,22 @@
     forumId: null,
     container: 'formai-forum-embed',
     theme: 'light', // 'light', 'dark', 'auto'
-    layout: 'full', // 'full', 'sidebar', 'minimal'
-    defaultView: 'questions', // 'questions', 'categories', 'search'
+    layout: 'full', // 'full', 'sidebar', 'minimal', 'compact'
+    defaultView: 'questions', // 'questions', 'categories', 'search', 'ask'
     showHeader: true,
     showFooter: true,
     height: '600px',
     width: '100%',
-    customStyles: null
+    customStyles: null,
+    allowFullscreen: true, // Allow iframe to go fullscreen
+    autoResize: true, // Automatically adjust iframe height
+    scrolling: 'auto', // 'auto', 'yes', 'no'
+    allowScripts: true, // Allow scripts in the iframe
+    sandbox: null, // Custom sandbox attributes
+    crossDomain: 'allow', // 'allow', 'deny', 'secure'
+    queryParams: null, // Additional query params to add to the iframe URL
+    trackEvents: true, // Track iframe interaction events
+    loadCallback: null // Name of callback function to call when iframe loads
   };
 
   // Get script attributes and merge with defaults
@@ -314,6 +323,26 @@
       const iframe = document.createElement('iframe');
       iframe.className = 'formai-forum-embed-frame';
       
+      // Set iframe attributes based on config
+      if (config.allowFullscreen) {
+        iframe.allowFullscreen = true;
+      }
+      
+      if (config.scrolling) {
+        iframe.scrolling = config.scrolling;
+      }
+      
+      // Handle sandbox attributes
+      if (config.sandbox === 'none') {
+        // Don't add sandbox attribute to allow all permissions
+      } else if (config.sandbox) {
+        iframe.sandbox = config.sandbox;
+      } else if (config.allowScripts) {
+        iframe.sandbox = 'allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation-by-user-activation';
+      } else {
+        iframe.sandbox = 'allow-same-origin allow-forms allow-popups';
+      }
+      
       // Determine URL based on forum data and config
       let forumUrl;
       
@@ -343,13 +372,61 @@
         case 'search':
           viewPath = '/search';
           break;
+        case 'ask':
+          viewPath = '/ask';
+          break;
         default:
           viewPath = '';
       }
       
+      // Build query parameters
+      const queryParams = new URLSearchParams();
+      
       // Add layout parameter
-      const layoutParam = config.layout !== 'full' ? `?embed=${config.layout}` : '?embed=true';
-      iframe.src = `${forumUrl}${viewPath}${layoutParam}`;
+      if (config.layout !== 'full') {
+        queryParams.set('embed', config.layout);
+      } else {
+        queryParams.set('embed', 'true');
+      }
+      
+      // Add cross-domain parameter if specified
+      if (config.crossDomain && config.crossDomain !== 'deny') {
+        queryParams.set('xdomain', config.crossDomain);
+      }
+      
+      // Add tracking parameter
+      if (config.trackEvents) {
+        queryParams.set('track', 'true');
+      }
+      
+      // Add callback parameter if specified
+      if (config.loadCallback) {
+        queryParams.set('callback', config.loadCallback);
+      }
+      
+      // Add custom query parameters if provided
+      if (config.queryParams) {
+        try {
+          const customParams = typeof config.queryParams === 'string' 
+            ? JSON.parse(config.queryParams) 
+            : config.queryParams;
+          
+          Object.entries(customParams).forEach(([key, value]) => {
+            queryParams.set(key, String(value));
+          });
+        } catch (e) {
+          console.error('Invalid queryParams format:', e);
+        }
+      }
+      
+      // Build the final URL
+      const queryString = queryParams.toString();
+      iframe.src = `${forumUrl}${viewPath}${queryString ? `?${queryString}` : ''}`;
+      
+      // Set data attributes for improved tracking
+      iframe.setAttribute('data-forum-id', forumId);
+      iframe.setAttribute('data-embed-type', config.layout);
+      iframe.setAttribute('data-theme', config.theme);
       
       // Add the iframe
       iframeContainer.appendChild(iframe);
@@ -371,35 +448,121 @@
         embed.appendChild(footer);
       }
       
-      // Setup message communication with iframe
+      // Setup enhanced cross-domain communication with iframe
       window.addEventListener('message', (event) => {
-        // Verify the origin
+        // Security check for origin
         const iframeSrc = new URL(iframe.src);
-        if (event.origin !== iframeSrc.origin) return;
+        const allowedOrigins = [
+          iframeSrc.origin,
+          window.location.origin
+        ];
         
-        // Handle height adjustments
-        if (event.data.type === 'resize' && event.data.height) {
-          iframe.style.height = `${event.data.height}px`;
+        // Allow specific domains if crossDomain is set to allow
+        if (config.crossDomain === 'allow' || config.crossDomain === 'secure') {
+          if (forumData.customDomain) {
+            allowedOrigins.push(`https://${forumData.customDomain}`);
+          }
+          if (forumData.subdomain) {
+            const baseUrl = window.location.hostname.includes('localhost') ? 
+              'localhost:3000' : 
+              'formai.repl.app';
+            allowedOrigins.push(`https://${forumData.subdomain}.${baseUrl}`);
+          }
         }
         
-        // Handle navigation events
-        if (event.data.type === 'navigate' && event.data.path) {
-          // Update navigation tabs if header is shown
-          if (config.showHeader) {
-            const navItems = embed.querySelectorAll('.formai-forum-embed-nav-item');
-            navItems.forEach(item => {
-              const view = item.getAttribute('data-view');
-              if (
-                (view === 'questions' && !event.data.path.includes('/')) ||
-                (view === 'categories' && event.data.path.includes('/categories')) ||
-                (view === 'search' && event.data.path.includes('/search'))
-              ) {
-                item.classList.add('active');
-              } else {
-                item.classList.remove('active');
-              }
-            });
+        // Verify origin against allowed list
+        if (!allowedOrigins.includes(event.origin)) {
+          console.warn(`ForumAI: Rejected message from unauthorized origin: ${event.origin}`);
+          return;
+        }
+        
+        // Process message data
+        try {
+          const { type, ...data } = event.data;
+          
+          // Handle height adjustments (responsive resizing)
+          if (type === 'resize' && data.height) {
+            if (config.autoResize) {
+              iframe.style.height = `${data.height}px`;
+              
+              // Fire custom event for parent page to handle
+              const resizeEvent = new CustomEvent('formai:resized', { 
+                detail: { height: data.height, embedId: config.container } 
+              });
+              window.dispatchEvent(resizeEvent);
+            }
           }
+          
+          // Handle navigation events
+          else if (type === 'navigate' && data.path) {
+            // Update navigation tabs if header is shown
+            if (config.showHeader) {
+              const navItems = embed.querySelectorAll('.formai-forum-embed-nav-item');
+              navItems.forEach(item => {
+                const view = item.getAttribute('data-view');
+                if (
+                  (view === 'questions' && !data.path.includes('/')) ||
+                  (view === 'categories' && data.path.includes('/categories')) ||
+                  (view === 'search' && data.path.includes('/search')) ||
+                  (view === 'ask' && data.path.includes('/ask'))
+                ) {
+                  item.classList.add('active');
+                } else {
+                  item.classList.remove('active');
+                }
+              });
+            }
+            
+            // Fire custom navigation event
+            const navEvent = new CustomEvent('formai:navigate', { 
+              detail: { path: data.path, title: data.title || '', embedId: config.container } 
+            });
+            window.dispatchEvent(navEvent);
+          }
+          
+          // Handle tracking events (for analytics)
+          else if (type === 'track' && config.trackEvents) {
+            const trackEvent = new CustomEvent('formai:track', { 
+              detail: { action: data.action, category: data.category, label: data.label, value: data.value, embedId: config.container } 
+            });
+            window.dispatchEvent(trackEvent);
+          }
+          
+          // Handle load event when iframe is fully loaded
+          else if (type === 'load') {
+            const loadEvent = new CustomEvent('formai:loaded', { 
+              detail: { embedId: config.container } 
+            });
+            window.dispatchEvent(loadEvent);
+            
+            // Call user-defined callback if specified
+            if (config.loadCallback && typeof window[config.loadCallback] === 'function') {
+              window[config.loadCallback](config.container);
+            }
+          }
+          
+          // Handle interaction events (clicks, submissions, etc.)
+          else if (type === 'interaction') {
+            const interactionEvent = new CustomEvent('formai:interaction', { 
+              detail: { 
+                action: data.action, 
+                elementType: data.elementType, 
+                elementId: data.elementId, 
+                embedId: config.container 
+              } 
+            });
+            window.dispatchEvent(interactionEvent);
+          }
+          
+          // Add support for custom event types
+          else if (type === 'custom') {
+            const customEvent = new CustomEvent('formai:custom', { 
+              detail: { ...data, embedId: config.container } 
+            });
+            window.dispatchEvent(customEvent);
+          }
+        } catch (error) {
+          console.error('ForumAI: Error processing message:', error);
         }
       });
       

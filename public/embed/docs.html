@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ForumAI Embed Documentation</title>
+  <style>
+    :root {
+      --primary: #5e35b1;
+      --primary-dark: #4527a0;
+      --primary-light: #9575cd;
+      --secondary: #673ab7;
+      --success: #4caf50;
+      --danger: #f44336;
+      --warning: #ff9800;
+      --info: #2196f3;
+      --dark: #212121;
+      --light: #f5f5f7;
+      --code-bg: #f1f1f4;
+      --code-text: #333;
+      --border: #e0e0e0;
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: var(--light);
+      padding: 0;
+      margin: 0;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 30px 0;
+      margin-bottom: 40px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    header .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 1.8rem;
+      font-weight: 700;
+      background: linear-gradient(45deg, #fff, #e8eaf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .version {
+      background: rgba(255,255,255,0.2);
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    nav {
+      background: white;
+      border-radius: var(--radius);
+      margin-bottom: 30px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      position: sticky;
+      top: 20px;
+    }
+
+    nav ul {
+      list-style: none;
+      display: flex;
+      overflow-x: auto;
+      padding: 0 15px;
+    }
+
+    nav li a {
+      display: block;
+      padding: 15px;
+      color: var(--dark);
+      text-decoration: none;
+      font-weight: 500;
+      white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    nav li a:hover, nav li a.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 3fr;
+      gap: 40px;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 100px;
+      align-self: start;
+    }
+
+    .sidebar-nav {
+      background: white;
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .sidebar-nav h3 {
+      background: var(--primary);
+      color: white;
+      padding: 15px;
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .sidebar-nav ul {
+      list-style: none;
+    }
+
+    .sidebar-nav li a {
+      display: block;
+      padding: 10px 15px;
+      color: var(--dark);
+      text-decoration: none;
+      border-bottom: 1px solid var(--border);
+      transition: all 0.2s;
+    }
+
+    .sidebar-nav li a:hover, .sidebar-nav li a.active {
+      background: #f5f5f7;
+      color: var(--primary);
+      padding-left: 20px;
+    }
+
+    .content {
+      background: white;
+      border-radius: var(--radius);
+      padding: 30px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .section {
+      margin-bottom: 40px;
+      scroll-margin-top: 100px;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      margin-bottom: 20px;
+      color: var(--primary-dark);
+    }
+
+    h2 {
+      font-size: 1.8rem;
+      margin: 30px 0 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      color: var(--primary-dark);
+    }
+
+    h3 {
+      font-size: 1.4rem;
+      margin: 25px 0 15px;
+      color: var(--primary);
+    }
+
+    h4 {
+      font-size: 1.2rem;
+      margin: 20px 0 10px;
+      color: var(--secondary);
+    }
+
+    p, ul, ol {
+      margin-bottom: 20px;
+    }
+
+    ul, ol {
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    code {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      background: var(--code-bg);
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-size: 0.9em;
+      color: var(--code-text);
+    }
+
+    pre {
+      background: var(--code-bg);
+      padding: 15px;
+      border-radius: var(--radius);
+      overflow-x: auto;
+      margin-bottom: 20px;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      border-radius: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+
+    th, td {
+      padding: 10px 15px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: #f5f5f7;
+      font-weight: 600;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      margin-bottom: 20px;
+    }
+
+    .note {
+      background: #e8f4fd;
+      border-left: 4px solid var(--info);
+      padding: 15px;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      margin-bottom: 20px;
+    }
+
+    .warning {
+      background: #fff8e1;
+      border-left: 4px solid var(--warning);
+      padding: 15px;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      margin-bottom: 20px;
+    }
+
+    .success {
+      background: #e8f5e9;
+      border-left: 4px solid var(--success);
+      padding: 15px;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      margin-bottom: 20px;
+    }
+
+    .danger {
+      background: #ffebee;
+      border-left: 4px solid var(--danger);
+      padding: 15px;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      margin-bottom: 20px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 30px 0;
+      margin-top: 60px;
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+      .main {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+        margin-bottom: 30px;
+      }
+
+      header .container {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .logo {
+        margin-bottom: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div class="logo">ForumAI Documentation</div>
+      <div class="version">v1.1.0</div>
+    </div>
+  </header>
+
+  <div class="container">
+    <nav>
+      <ul>
+        <li><a href="#iframe-integration" class="active">Iframe Integration</a></li>
+        <li><a href="#redirect-options">Redirect Options</a></li>
+        <li><a href="#communication-library">Communication Library</a></li>
+        <li><a href="#event-handling">Event Handling</a></li>
+        <li><a href="#customization">Customization</a></li>
+      </ul>
+    </nav>
+
+    <div class="main">
+      <aside class="sidebar">
+        <div class="sidebar-nav">
+          <h3>Quick Links</h3>
+          <ul>
+            <li><a href="#iframe-integration">Iframe Integration</a></li>
+            <li><a href="#iframe-parameters">Iframe Parameters</a></li>
+            <li><a href="#redirect-options">Redirect Options</a></li>
+            <li><a href="#redirect-parameters">Redirect Parameters</a></li>
+            <li><a href="#redirect-modes">Redirect Modes</a></li>
+            <li><a href="#communication-library">Communication Library</a></li>
+            <li><a href="#library-methods">Library Methods</a></li>
+            <li><a href="#event-handling">Event Handling</a></li>
+            <li><a href="#event-types">Event Types</a></li>
+            <li><a href="#customization">Customization</a></li>
+            <li><a href="#best-practices">Best Practices</a></li>
+          </ul>
+        </div>
+      </aside>
+
+      <main class="content">
+        <section id="iframe-integration" class="section">
+          <h1>Enhanced Iframe Integration</h1>
+          <p>
+            ForumAI provides powerful iframe embedding options that allow you to integrate your forum 
+            directly into your website with enhanced cross-domain communication, responsive design, 
+            and event tracking capabilities.
+          </p>
+
+          <div class="note">
+            <strong>Note:</strong> The iframe integration method is recommended for most use cases 
+            as it provides the best user experience and integrates seamlessly with your website.
+          </div>
+
+          <h3 id="iframe-parameters">Iframe Parameters</h3>
+          <p>
+            The ForumAI iframe embedding system supports a wide range of parameters to customize 
+            the appearance and behavior of your embedded forum:
+          </p>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Parameter</th>
+                  <th>Type</th>
+                  <th>Default</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>forumId</code></td>
+                  <td>Number</td>
+                  <td><em>Required</em></td>
+                  <td>The ID of your forum</td>
+                </tr>
+                <tr>
+                  <td><code>showHeader</code></td>
+                  <td>Boolean</td>
+                  <td><code>true</code></td>
+                  <td>Whether to show the forum header</td>
+                </tr>
+                <tr>
+                  <td><code>showFooter</code></td>
+                  <td>Boolean</td>
+                  <td><code>true</code></td>
+                  <td>Whether to show the "Powered by ForumAI" footer</td>
+                </tr>
+                <tr>
+                  <td><code>theme</code></td>
+                  <td>String</td>
+                  <td><code>"light"</code></td>
+                  <td>Theme to use (<code>"light"</code>, <code>"dark"</code>, or <code>"auto"</code>)</td>
+                </tr>
+                <tr>
+                  <td><code>initialView</code></td>
+                  <td>String</td>
+                  <td><code>"questions"</code></td>
+                  <td>Initial view to show (<code>"questions"</code>, <code>"categories"</code>, <code>"search"</code>)</td>
+                </tr>
+                <tr>
+                  <td><code>defaultHeight</code></td>
+                  <td>Number</td>
+                  <td><code>600</code></td>
+                  <td>Default iframe height in pixels</td>
+                </tr>
+                <tr>
+                  <td><code>maxHeight</code></td>
+                  <td>Number</td>
+                  <td><code>1200</code></td>
+                  <td>Maximum iframe height in pixels</td>
+                </tr>
+                <tr>
+                  <td><code>width</code></td>
+                  <td>String</td>
+                  <td><code>"100%"</code></td>
+                  <td>Width of the iframe (CSS value)</td>
+                </tr>
+                <tr>
+                  <td><code>autoResize</code></td>
+                  <td>Boolean</td>
+                  <td><code>true</code></td>
+                  <td>Whether to automatically resize the iframe based on content</td>
+                </tr>
+                <tr>
+                  <td><code>questionId</code></td>
+                  <td>Number</td>
+                  <td><code>null</code></td>
+                  <td>ID of a specific question to display</td>
+                </tr>
+                <tr>
+                  <td><code>categoryId</code></td>
+                  <td>Number</td>
+                  <td><code>null</code></td>
+                  <td>ID of a specific category to display</td>
+                </tr>
+                <tr>
+                  <td><code>crossDomain</code></td>
+                  <td>String</td>
+                  <td><code>"secure"</code></td>
+                  <td>Cross-domain messaging policy (<code>"secure"</code>, <code>"allow"</code>, or <code>"block"</code>)</td>
+                </tr>
+                <tr>
+                  <td><code>trackEvents</code></td>
+                  <td>Boolean</td>
+                  <td><code>true</code></td>
+                  <td>Whether to track events for analytics</td>
+                </tr>
+                <tr>
+                  <td><code>loadCallback</code></td>
+                  <td>String</td>
+                  <td><code>null</code></td>
+                  <td>Name of a global function to call when the iframe is loaded</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4>Basic Iframe Implementation Example</h4>
+          <pre><code>&lt;div id="forumAI-container"&gt;&lt;/div&gt;
+
+&lt;script src="https://formai.repl.app/embed/forum-embed.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  window.ForumAIEmbedConfig = {
+    container: "forumAI-container",
+    forumId: 123,
+    showHeader: true,
+    autoResize: true,
+    crossDomain: "allow"
+  };
+&lt;/script&gt;</code></pre>
+
+        </section>
+
+        <section id="redirect-options" class="section">
+          <h2>Enhanced Redirect Options</h2>
+          <p>
+            ForumAI provides advanced redirect options that allow you to integrate with your forum 
+            through server-side redirects, custom landing pages, and specialized user experiences.
+          </p>
+
+          <div class="note">
+            <strong>New Feature:</strong> The enhanced redirect system now supports multiple redirect 
+            modes, UTM tracking parameters, and custom behaviors.
+          </div>
+
+          <h3 id="redirect-parameters">Redirect Parameters</h3>
+          <p>
+            The redirect endpoint supports numerous parameters to control the destination and behavior 
+            of the redirect:
+          </p>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Parameter</th>
+                  <th>Type</th>
+                  <th>Default</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>dest</code></td>
+                  <td>String</td>
+                  <td><code>"forum"</code></td>
+                  <td>Destination type: <code>"forum"</code>, <code>"question"</code>, <code>"category"</code>, <code>"ask"</code></td>
+                </tr>
+                <tr>
+                  <td><code>id</code></td>
+                  <td>Number</td>
+                  <td><code>null</code></td>
+                  <td>ID of the question or category when dest is <code>"question"</code> or <code>"category"</code></td>
+                </tr>
+                <tr>
+                  <td><code>embed</code></td>
+                  <td>String</td>
+                  <td><code>null</code></td>
+                  <td>Embed mode: <code>"true"</code>, <code>"minimal"</code>, <code>"compact"</code>, <code>"sidebar"</code></td>
+                </tr>
+                <tr>
+                  <td><code>theme</code></td>
+                  <td>String</td>
+                  <td><code>null</code></td>
+                  <td>Theme to use: <code>"light"</code>, <code>"dark"</code>, <code>"auto"</code></td>
+                </tr>
+                <tr>
+                  <td><code>mode</code></td>
+                  <td>String</td>
+                  <td><code>"navigate"</code></td>
+                  <td>Redirect mode: <code>"navigate"</code>, <code>"newtab"</code>, <code>"iframe"</code></td>
+                </tr>
+                <tr>
+                  <td><code>utm_source</code></td>
+                  <td>String</td>
+                  <td><code>"redirect"</code></td>
+                  <td>UTM source parameter for tracking</td>
+                </tr>
+                <tr>
+                  <td><code>utm_medium</code></td>
+                  <td>String</td>
+                  <td><code>"forum"</code></td>
+                  <td>UTM medium parameter for tracking</td>
+                </tr>
+                <tr>
+                  <td><code>utm_campaign</code></td>
+                  <td>String</td>
+                  <td><code>"forum-redirect"</code></td>
+                  <td>UTM campaign parameter for tracking</td>
+                </tr>
+                <tr>
+                  <td><code>track</code></td>
+                  <td>Boolean</td>
+                  <td><code>true</code></td>
+                  <td>Whether to track the redirect (<code>"true"</code> or <code>"false"</code>)</td>
+                </tr>
+                <tr>
+                  <td><code>cookies</code></td>
+                  <td>Boolean</td>
+                  <td><code>false</code></td>
+                  <td>Whether cookies are allowed (<code>"true"</code> or <code>"false"</code>)</td>
+                </tr>
+                <tr>
+                  <td><code>data</code></td>
+                  <td>Boolean</td>
+                  <td><code>false</code></td>
+                  <td>Whether data collection is allowed (<code>"true"</code> or <code>"false"</code>)</td>
+                </tr>
+                <tr>
+                  <td><code>params</code></td>
+                  <td>Boolean</td>
+                  <td><code>false</code></td>
+                  <td>Whether to preserve additional query params (<code>"true"</code> or <code>"false"</code>)</td>
+                </tr>
+                <tr>
+                  <td><code>custom</code></td>
+                  <td>JSON</td>
+                  <td><code>null</code></td>
+                  <td>JSON string of custom parameters to pass to the forum</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 id="redirect-modes">Redirect Modes</h3>
+          <p>
+            The redirect endpoint supports three different modes:
+          </p>
+
+          <ul>
+            <li>
+              <strong>navigate</strong> - Standard redirect that immediately navigates the user to the forum
+            </li>
+            <li>
+              <strong>newtab</strong> - Shows a landing page with a button that opens the forum in a new tab
+            </li>
+            <li>
+              <strong>iframe</strong> - Embeds the forum in an iframe on a landing page
+            </li>
+          </ul>
+
+          <h4>Redirect URL Examples</h4>
+          <pre><code>// Basic redirect to forum homepage
+https://formai.repl.app/embed/redirect/123
+
+// Redirect to a specific question with tracking
+https://formai.repl.app/embed/redirect/123?dest=question&id=456&utm_source=blog&utm_medium=link
+
+// Redirect with a landing page that opens in a new tab
+https://formai.repl.app/embed/redirect/123?mode=newtab&dest=ask
+
+// Embed the forum in an iframe
+https://formai.repl.app/embed/redirect/123?mode=iframe&theme=dark</code></pre>
+        </section>
+
+        <section id="communication-library" class="section">
+          <h2>Communication Library</h2>
+          <p>
+            The ForumAI Communication Library provides a robust API for communicating with embedded 
+            forums, handling events, and controlling forum behavior from your parent website.
+          </p>
+
+          <div class="note">
+            <strong>New Feature:</strong> The communication library offers a comprehensive set of 
+            methods for managing bidirectional communication between your website and the embedded forum.
+          </div>
+
+          <h3>Setup</h3>
+          <pre><code>&lt;script src="https://formai.repl.app/embed/forum-communication.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  // Initialize the communication API
+  const forumCommunication = ForumAI.initCommunication({
+    embedId: "forumAI-container",
+    debug: true
+  });
+&lt;/script&gt;</code></pre>
+
+          <h3 id="library-methods">Library Methods</h3>
+          <p>
+            The communication library provides the following methods:
+          </p>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Method</th>
+                  <th>Parameters</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>navigate(path)</code></td>
+                  <td><code>path</code>: String</td>
+                  <td>Navigate to a specific path in the forum</td>
+                </tr>
+                <tr>
+                  <td><code>refresh()</code></td>
+                  <td>None</td>
+                  <td>Refresh the forum content</td>
+                </tr>
+                <tr>
+                  <td><code>scrollTo(selector)</code></td>
+                  <td><code>selector</code>: String</td>
+                  <td>Scroll the forum to a specific element</td>
+                </tr>
+                <tr>
+                  <td><code>setTheme(theme)</code></td>
+                  <td><code>theme</code>: String</td>
+                  <td>Set the theme for the forum</td>
+                </tr>
+                <tr>
+                  <td><code>search(query)</code></td>
+                  <td><code>query</code>: String</td>
+                  <td>Search the forum</td>
+                </tr>
+                <tr>
+                  <td><code>sendMessage(type, data)</code></td>
+                  <td><code>type</code>: String, <code>data</code>: Object</td>
+                  <td>Send a custom message to the forum</td>
+                </tr>
+                <tr>
+                  <td><code>on(eventType, callback)</code></td>
+                  <td><code>eventType</code>: String, <code>callback</code>: Function</td>
+                  <td>Add an event listener</td>
+                </tr>
+                <tr>
+                  <td><code>off(eventType, callback)</code></td>
+                  <td><code>eventType</code>: String, <code>callback</code>: Function</td>
+                  <td>Remove an event listener</td>
+                </tr>
+                <tr>
+                  <td><code>getState()</code></td>
+                  <td>None</td>
+                  <td>Get the current state of the forum</td>
+                </tr>
+                <tr>
+                  <td><code>isLoaded()</code></td>
+                  <td>None</td>
+                  <td>Check if the forum is loaded</td>
+                </tr>
+                <tr>
+                  <td><code>getCurrentPath()</code></td>
+                  <td>None</td>
+                  <td>Get the current path of the forum</td>
+                </tr>
+                <tr>
+                  <td><code>getViewMode()</code></td>
+                  <td>None</td>
+                  <td>Get the current view mode</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4>Usage Examples</h4>
+          <pre><code>// Navigate to the ask page
+forumCommunication.navigate('/ask');
+
+// Change the theme
+forumCommunication.setTheme('dark');
+
+// Get the current state
+const state = forumCommunication.getState();
+console.log('Current forum state:', state);
+
+// Listen for navigation events
+forumCommunication.on('navigate', (detail) => {
+  console.log('Forum navigated to:', detail.path);
+});</code></pre>
+        </section>
+
+        <section id="event-handling" class="section">
+          <h2>Event Handling</h2>
+          <p>
+            The communication library emits events that you can listen for to respond to actions 
+            in the embedded forum:
+          </p>
+
+          <h3 id="event-types">Event Types</h3>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Event Type</th>
+                  <th>Description</th>
+                  <th>Data Properties</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>resize</code></td>
+                  <td>Fired when the iframe is resized</td>
+                  <td><code>height</code>, <code>embedId</code></td>
+                </tr>
+                <tr>
+                  <td><code>navigate</code></td>
+                  <td>Fired when navigation occurs in the forum</td>
+                  <td><code>path</code>, <code>title</code>, <code>embedId</code></td>
+                </tr>
+                <tr>
+                  <td><code>track</code></td>
+                  <td>Fired for tracking events</td>
+                  <td><code>action</code>, <code>category</code>, <code>label</code>, <code>value</code>, <code>embedId</code></td>
+                </tr>
+                <tr>
+                  <td><code>load</code></td>
+                  <td>Fired when the forum is fully loaded</td>
+                  <td><code>embedId</code></td>
+                </tr>
+                <tr>
+                  <td><code>interaction</code></td>
+                  <td>Fired when users interact with forum elements</td>
+                  <td><code>action</code>, <code>elementType</code>, <code>elementId</code>, <code>embedId</code></td>
+                </tr>
+                <tr>
+                  <td><code>custom</code></td>
+                  <td>Fired for custom events from the forum</td>
+                  <td>Custom properties and <code>embedId</code></td>
+                </tr>
+                <tr>
+                  <td><code>stateChange</code></td>
+                  <td>Fired when forum state changes</td>
+                  <td><code>type</code>, <code>oldValue</code>, <code>newValue</code>, <code>state</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4>Event Handling Examples</h4>
+          <pre><code>// Listen for forum load
+forumCommunication.on('load', () => {
+  console.log('Forum loaded!');
+});
+
+// Track user interactions
+forumCommunication.on('interaction', (detail) => {
+  if (detail.action === 'like' || detail.action === 'answer') {
+    console.log(`User ${detail.action}d content:`, detail);
+  }
+});
+
+// Respond to navigation
+forumCommunication.on('navigate', (detail) => {
+  // Update breadcrumbs or analytics
+  updateBreadcrumbs(detail.path, detail.title);
+});
+
+// Handle custom events
+forumCommunication.on('custom', (detail) => {
+  if (detail.key === 'lead_capture') {
+    showThankYouMessage(detail.email);
+  }
+});</code></pre>
+        </section>
+
+        <section id="customization" class="section">
+          <h2>Customization</h2>
+          <p>
+            ForumAI provides extensive customization options to match the look and feel of your website:
+          </p>
+
+          <h3>Styling Options</h3>
+          <p>
+            You can customize the appearance of the embedded forum through the theme color and 
+            styling options in your forum settings. Additionally, you can use CSS variables to 
+            override the default styles:
+          </p>
+
+          <pre><code>&lt;style&gt;
+  #forumAI-container {
+    --formai-primary-color: #5e35b1;
+    --formai-secondary-color: #9575cd;
+    --formai-background: #f5f5f7;
+    --formai-text-color: #333;
+    --formai-border-radius: 8px;
+    --formai-font-family: 'Roboto', sans-serif;
+    --formai-header-bg: linear-gradient(45deg, #5e35b1, #3949ab);
+  }
+&lt;/style&gt;</code></pre>
+
+          <h3>Callback Configuration</h3>
+          <p>
+            You can configure callbacks to respond to specific events:
+          </p>
+
+          <pre><code>const forumCommunication = ForumAI.initCommunication({
+  embedId: "forumAI-container",
+  debug: true,
+  onLoad: (detail) => {
+    console.log('Forum loaded!');
+    hideLoadingSpinner();
+  },
+  onNavigate: (detail) => {
+    updateBreadcrumbs(detail.path, detail.title);
+  },
+  navigationCallbacks: {
+    // Called when user visits a question page
+    question: (detail) => {
+      logQuestionView(detail.path.split('/')[2]); // Extract question ID
+    },
+    // Called when user visits category page
+    category: (detail) => {
+      updateCategoryMetrics(detail);
+    }
+  },
+  trackingCallbacks: {
+    // Called when a view event is tracked
+    'forum:view': (detail) => {
+      incrementPageViews();
+    }
+  }
+});</code></pre>
+        </section>
+
+        <section id="best-practices" class="section">
+          <h2>Best Practices</h2>
+          <p>
+            Follow these best practices for optimal forum integration:
+          </p>
+
+          <h3>Performance Optimization</h3>
+          <ul>
+            <li>Load the forum embed script asynchronously to prevent blocking page rendering</li>
+            <li>Set appropriate <code>defaultHeight</code> and <code>maxHeight</code> values to minimize layout shifts</li>
+            <li>Use the <code>autoResize</code> parameter to ensure the forum fits its content</li>
+            <li>Consider lazy-loading the forum when it comes into viewport for below-the-fold placements</li>
+          </ul>
+
+          <h3>Security Considerations</h3>
+          <div class="warning">
+            <strong>Important:</strong> When using <code>crossDomain: "allow"</code>, ensure you understand the security implications.
+            Only enable this for domains you trust.
+          </div>
+          <ul>
+            <li>Use <code>crossDomain: "secure"</code> (default) to only allow communication with trusted domains</li>
+            <li>Implement proper message validation when handling events from the iframe</li>
+            <li>Use HTTPS for both your website and forum to ensure secure communication</li>
+          </ul>
+
+          <h3>User Experience Recommendations</h3>
+          <ul>
+            <li>Clearly indicate to users when they are interacting with an embedded forum</li>
+            <li>Customize the forum's appearance to match your website's design</li>
+            <li>Implement smooth transitions when navigating within the forum</li>
+            <li>Consider using the <code>navigation</code> event to update browser history for better back/forward navigation</li>
+            <li>Test the forum integration on mobile devices to ensure responsiveness</li>
+          </ul>
+
+          <h3>SEO Considerations</h3>
+          <ul>
+            <li>Use the redirect system for pages where SEO is important, as content in iframes isn't indexable</li>
+            <li>Include relevant keywords and descriptions in your page content around the embedded forum</li>
+            <li>Consider using the <code>newtab</code> mode for forums with rich SEO content</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <footer>
+    <div class="container">
+      <p>&copy; 2025 ForumAI. All rights reserved.</p>
+      <p>Documentation version 1.1.0 | Last updated: March 27, 2025</p>
+    </div>
+  </footer>
+</body>
+</html>

@@ -57,7 +57,9 @@ import {
 } from "./ai";
 // Analytics imports are already included above
 import { setupAuth } from "./auth";
+import { registerEmbedRoutes } from "./embed";
 import session from "express-session";
+import path from "path";
 
 // Extend Express Request to include session property
 declare module "express-session" {
@@ -3038,6 +3040,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to generate section content" });
     }
   });
+
+  // Register the embed routes for JavaScript integration
+  registerEmbedRoutes(app);
 
   const httpServer = createServer(app);
 
