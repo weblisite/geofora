@@ -13,6 +13,7 @@ import { Glassmorphism } from "@/components/ui/glassmorphism";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Globe, Edit, Server, Type, Palette, Link, Shield, AlertCircle, ExternalLink } from "lucide-react";
 import DomainVerification from "@/components/dashboard/domain-verification";
+import ForumPreviewCard from "@/components/dashboard/forum-preview-card";
 import {
   Dialog,
   DialogContent,
@@ -323,177 +324,194 @@ export default function ForumManagementPage() {
 
   // Forum creation form component
   const ForumForm = () => (
-    <Glassmorphism className="p-6 rounded-lg max-w-2xl mx-auto">
-      <h2 className="text-xl font-semibold mb-4">
-        {editForumId ? "Edit Forum" : "Create New Forum"}
-      </h2>
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">Forum Name</Label>
-          <Input 
-            id="name" 
-            name="name" 
-            value={formData.name} 
-            onChange={handleInputChange} 
-            placeholder="e.g. Tech Discussion" 
-            required 
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="slug">URL Slug</Label>
-          <Input 
-            id="slug" 
-            name="slug" 
-            value={formData.slug} 
-            onChange={handleInputChange} 
-            placeholder="tech-discussion"
-            required 
-          />
-          <p className="text-xs text-gray-400">
-            This will be used in your forum URL: yourdomain.com/forum/{formData.slug || 'slug'}
-          </p>
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
-          <Textarea 
-            id="description" 
-            name="description" 
-            value={formData.description} 
-            onChange={handleInputChange} 
-            placeholder="Describe what your forum is about..."
-            rows={3}
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="themeColor">Theme Color</Label>
-          <div className="flex items-center gap-3">
-            <Input 
-              id="themeColor" 
-              name="themeColor" 
-              type="color" 
-              value={formData.themeColor} 
-              onChange={handleInputChange} 
-              className="w-12 h-12 p-1 cursor-pointer"
-            />
-            <Input 
-              value={formData.themeColor} 
-              onChange={handleInputChange} 
-              name="themeColor"
-              className="w-32"
-            />
-          </div>
-        </div>
+    <div className="max-w-6xl mx-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Form column - takes 2/3 of the space */}
+        <Glassmorphism className="p-6 rounded-lg lg:col-span-2">
+          <h2 className="text-xl font-semibold mb-4">
+            {editForumId ? "Edit Forum" : "Create New Forum"}
+          </h2>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Forum Name</Label>
+              <Input 
+                id="name" 
+                name="name" 
+                value={formData.name} 
+                onChange={handleInputChange} 
+                placeholder="e.g. Tech Discussion" 
+                required 
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="slug">URL Slug</Label>
+              <Input 
+                id="slug" 
+                name="slug" 
+                value={formData.slug} 
+                onChange={handleInputChange} 
+                placeholder="tech-discussion"
+                required 
+              />
+              <p className="text-xs text-gray-400">
+                This will be used in your forum URL: yourdomain.com/forum/{formData.slug || 'slug'}
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea 
+                id="description" 
+                name="description" 
+                value={formData.description} 
+                onChange={handleInputChange} 
+                placeholder="Describe what your forum is about..."
+                rows={3}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="themeColor">Theme Color</Label>
+              <div className="flex items-center gap-3">
+                <Input 
+                  id="themeColor" 
+                  name="themeColor" 
+                  type="color" 
+                  value={formData.themeColor} 
+                  onChange={handleInputChange} 
+                  className="w-12 h-12 p-1 cursor-pointer"
+                />
+                <Input 
+                  value={formData.themeColor} 
+                  onChange={handleInputChange} 
+                  name="themeColor"
+                  className="w-32"
+                />
+              </div>
+            </div>
 
-        <h3 className="text-lg font-medium pt-4 pb-1">Branding & Typography</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="primaryFont">Primary Font</Label>
-            <Input 
-              id="primaryFont" 
-              name="primaryFont" 
-              value={formData.primaryFont} 
-              onChange={handleInputChange} 
-              placeholder="Inter"
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="secondaryFont">Secondary Font</Label>
-            <Input 
-              id="secondaryFont" 
-              name="secondaryFont" 
-              value={formData.secondaryFont} 
-              onChange={handleInputChange} 
-              placeholder="Roboto"
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="headingFontSize">Heading Font Size</Label>
-            <Input 
-              id="headingFontSize" 
-              name="headingFontSize" 
-              value={formData.headingFontSize} 
-              onChange={handleInputChange} 
-              placeholder="1.5rem"
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="bodyFontSize">Body Font Size</Label>
-            <Input 
-              id="bodyFontSize" 
-              name="bodyFontSize" 
-              value={formData.bodyFontSize} 
-              onChange={handleInputChange} 
-              placeholder="1rem"
-            />
-          </div>
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="mainWebsiteUrl">Main Website URL (for keyword scraping)</Label>
-          <Input 
-            id="mainWebsiteUrl" 
-            name="mainWebsiteUrl" 
-            value={formData.mainWebsiteUrl} 
-            onChange={handleInputChange} 
-            placeholder="https://example.com"
+            <h3 className="text-lg font-medium pt-4 pb-1">Branding & Typography</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="primaryFont">Primary Font</Label>
+                <Input 
+                  id="primaryFont" 
+                  name="primaryFont" 
+                  value={formData.primaryFont} 
+                  onChange={handleInputChange} 
+                  placeholder="Inter"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="secondaryFont">Secondary Font</Label>
+                <Input 
+                  id="secondaryFont" 
+                  name="secondaryFont" 
+                  value={formData.secondaryFont} 
+                  onChange={handleInputChange} 
+                  placeholder="Roboto"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="headingFontSize">Heading Font Size</Label>
+                <Input 
+                  id="headingFontSize" 
+                  name="headingFontSize" 
+                  value={formData.headingFontSize} 
+                  onChange={handleInputChange} 
+                  placeholder="1.5rem"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="bodyFontSize">Body Font Size</Label>
+                <Input 
+                  id="bodyFontSize" 
+                  name="bodyFontSize" 
+                  value={formData.bodyFontSize} 
+                  onChange={handleInputChange} 
+                  placeholder="1rem"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="mainWebsiteUrl">Main Website URL (for keyword scraping)</Label>
+              <Input 
+                id="mainWebsiteUrl" 
+                name="mainWebsiteUrl" 
+                value={formData.mainWebsiteUrl} 
+                onChange={handleInputChange} 
+                placeholder="https://example.com"
+              />
+              <p className="text-xs text-gray-400">
+                We'll analyze your main website to generate relevant forum content and SEO optimizations
+              </p>
+            </div>
+            
+            <h3 className="text-lg font-medium pt-4 pb-1">Forum Settings</h3>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="isPublic" 
+                  checked={formData.isPublic} 
+                  onCheckedChange={(checked) => handleSwitchChange('isPublic', checked)} 
+                />
+                <Label htmlFor="isPublic">Public Forum</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="requiresApproval" 
+                  checked={formData.requiresApproval} 
+                  onCheckedChange={(checked) => handleSwitchChange('requiresApproval', checked)} 
+                />
+                <Label htmlFor="requiresApproval">Require Post Approval</Label>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  setForumFormVisible(false);
+                  setEditForumId(null);
+                  resetFormData();
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createForumMutation.isPending || updateForumMutation.isPending}>
+                {createForumMutation.isPending || updateForumMutation.isPending ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                    {editForumId ? "Updating..." : "Creating..."}
+                  </>
+                ) : (
+                  editForumId ? "Update Forum" : "Create Forum"
+                )}
+              </Button>
+            </div>
+          </form>
+        </Glassmorphism>
+
+        {/* Preview column - takes 1/3 of the space */}
+        <div className="lg:col-span-1 h-fit sticky top-6">
+          <ForumPreviewCard
+            themeColor={formData.themeColor}
+            primaryFont={formData.primaryFont}
+            secondaryFont={formData.secondaryFont}
+            headingFontSize={formData.headingFontSize}
+            bodyFontSize={formData.bodyFontSize}
+            forumName={formData.name || "Your Forum"}
           />
-          <p className="text-xs text-gray-400">
-            We'll analyze your main website to generate relevant forum content and SEO optimizations
-          </p>
         </div>
-        
-        <h3 className="text-lg font-medium pt-4 pb-1">Forum Settings</h3>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Switch 
-              id="isPublic" 
-              checked={formData.isPublic} 
-              onCheckedChange={(checked) => handleSwitchChange('isPublic', checked)} 
-            />
-            <Label htmlFor="isPublic">Public Forum</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Switch 
-              id="requiresApproval" 
-              checked={formData.requiresApproval} 
-              onCheckedChange={(checked) => handleSwitchChange('requiresApproval', checked)} 
-            />
-            <Label htmlFor="requiresApproval">Require Post Approval</Label>
-          </div>
-        </div>
-        
-        <div className="flex justify-end space-x-3 pt-4">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={() => {
-              setForumFormVisible(false);
-              setEditForumId(null);
-              resetFormData();
-            }}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" disabled={createForumMutation.isPending || updateForumMutation.isPending}>
-            {createForumMutation.isPending || updateForumMutation.isPending ? (
-              <>
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                {editForumId ? "Updating..." : "Creating..."}
-              </>
-            ) : (
-              editForumId ? "Update Forum" : "Create Forum"
-            )}
-          </Button>
-        </div>
-      </form>
-    </Glassmorphism>
+      </div>
+    </div>
   );
 
   // Domain settings form component
