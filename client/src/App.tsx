@@ -8,6 +8,9 @@ import NewQuestionPage from "@/pages/forum/new";
 import DashboardPage from "@/pages/dashboard";
 import KeywordAnalysisPage from "@/pages/dashboard/keyword-analysis";
 import InterlinkingPage from "@/pages/dashboard/interlinking";
+import LeadCapturePage from "@/pages/dashboard/lead-capture";
+import GatedContentPage from "@/pages/dashboard/gated-content";
+import CrmIntegrationsPage from "@/pages/dashboard/crm";
 import LoginPage from "@/pages/auth/login";
 import RegisterPage from "@/pages/auth/register";
 import AuthPage from "@/pages/auth-page";
@@ -27,6 +30,9 @@ function App() {
         <Route path="/dashboard/analytics" component={DashboardPage} />
         <Route path="/dashboard/keyword-analysis" component={KeywordAnalysisPage} />
         <Route path="/dashboard/interlinking" component={InterlinkingPage} />
+        <Route path="/dashboard/lead-capture" component={LeadCapturePage} />
+        <Route path="/dashboard/gated-content" component={GatedContentPage} />
+        <Route path="/dashboard/crm" component={CrmIntegrationsPage} />
         <Route path="/dashboard/integration" component={DashboardPage} />
         <Route path="/dashboard/settings" component={DashboardPage} />
         <Route path="/login" component={LoginPage} />

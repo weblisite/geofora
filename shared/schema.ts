@@ -271,3 +271,162 @@ export type ForumWithStats = Forum & {
   totalQuestions: number;
   totalAnswers: number;
 };
+
+// Lead Capture Forms schema
+export const leadCaptureForms = pgTable("lead_capture_forms", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  formFields: text("form_fields").notNull(), // JSON encoded string of field definitions
+  submitButtonText: text("submit_button_text").default("Submit"),
+  successMessage: text("success_message").default("Thank you for your submission!"),
+  redirectUrl: text("redirect_url"), // Optional URL to redirect after form submission
+  isActive: boolean("is_active").default(true),
+  formType: text("form_type").default("inline"), // inline, popup, gated
+  gatedContentId: integer("gated_content_id"), // If this is a gated content form, reference to content
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertLeadCaptureFormSchema = createInsertSchema(leadCaptureForms).pick({
+  forumId: true,
+  name: true,
+  description: true,
+  formFields: true,
+  submitButtonText: true,
+  successMessage: true,
+  redirectUrl: true,
+  isActive: true,
+  formType: true,
+  gatedContentId: true,
+});
+
+// Lead Capture Submissions schema
+export const leadSubmissions = pgTable("lead_submissions", {
+  id: serial("id").primaryKey(),
+  formId: integer("form_id").notNull().references(() => leadCaptureForms.id),
+  formData: text("form_data").notNull(), // JSON encoded string of form submission data
+  email: text("email").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  isExported: boolean("is_exported").default(false), // Track if exported to CRM
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertLeadSubmissionSchema = createInsertSchema(leadSubmissions).pick({
+  formId: true,
+  formData: true,
+  email: true,
+  firstName: true,
+  lastName: true,
+  ipAddress: true,
+  userAgent: true,
+  isExported: true,
+});
+
+// Gated Content schema
+export const gatedContents = pgTable("gated_contents", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  teaser: text("teaser").notNull(), // Content preview shown before form submission
+  content: text("content").notNull(), // Full content revealed after form submission
+  formId: integer("form_id").references(() => leadCaptureForms.id),
+  isActive: boolean("is_active").default(true),
+  contentType: text("content_type").default("article"), // article, guide, whitepaper, video, etc.
+  featuredImage: text("featured_image"),
+  metaDescription: text("meta_description"),
+  metaKeywords: text("meta_keywords"),
+  slug: text("slug").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertGatedContentSchema = createInsertSchema(gatedContents).pick({
+  forumId: true,
+  title: true,
+  description: true,
+  teaser: true,
+  content: true,
+  formId: true,
+  isActive: true,
+  contentType: true,
+  featuredImage: true,
+  metaDescription: true,
+  metaKeywords: true,
+  slug: true,
+});
+
+// CRM Integration schema
+export const crmIntegrations = pgTable("crm_integrations", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  provider: text("provider").notNull(), // mailchimp, hubspot, salesforce, etc.
+  apiKey: text("api_key"), // Encrypted API key
+  apiSecret: text("api_secret"), // Encrypted API secret if needed
+  listId: text("list_id"), // Target list or audience ID in the CRM
+  webhookUrl: text("webhook_url"), // Optional webhook for data sync
+  mappingRules: text("mapping_rules"), // JSON encoded field mapping rules
+  isActive: boolean("is_active").default(true),
+  lastSyncedAt: timestamp("last_synced_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCrmIntegrationSchema = createInsertSchema(crmIntegrations).pick({
+  forumId: true,
+  provider: true,
+  apiKey: true,
+  apiSecret: true,
+  listId: true,
+  webhookUrl: true,
+  mappingRules: true,
+  isActive: true,
+  lastSyncedAt: true,
+});
+
+// Lead Form View Tracking schema
+export const leadFormViews = pgTable("lead_form_views", {
+  id: serial("id").primaryKey(),
+  formId: integer("form_id").notNull().references(() => leadCaptureForms.id),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  referrer: text("referrer"),
+  isConversion: boolean("is_conversion").default(false), // Whether view led to submission
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertLeadFormViewSchema = createInsertSchema(leadFormViews).pick({
+  formId: true,
+  ipAddress: true,
+  userAgent: true,
+  referrer: true,
+  isConversion: true,
+});
+
+// Type exports for lead capture
+export type LeadCaptureForm = typeof leadCaptureForms.$inferSelect;
+export type InsertLeadCaptureForm = z.infer<typeof insertLeadCaptureFormSchema>;
+
+export type LeadSubmission = typeof leadSubmissions.$inferSelect;
+export type InsertLeadSubmission = z.infer<typeof insertLeadSubmissionSchema>;
+
+export type GatedContent = typeof gatedContents.$inferSelect;
+export type InsertGatedContent = z.infer<typeof insertGatedContentSchema>;
+
+export type CrmIntegration = typeof crmIntegrations.$inferSelect;
+export type InsertCrmIntegration = z.infer<typeof insertCrmIntegrationSchema>;
+
+export type LeadFormView = typeof leadFormViews.$inferSelect;
+export type InsertLeadFormView = z.infer<typeof insertLeadFormViewSchema>;
+
+// Extended types for lead capture forms with stats
+export type LeadCaptureFormWithStats = LeadCaptureForm & {
+  totalViews: number;
+  totalSubmissions: number;
+  conversionRate: number;
+};

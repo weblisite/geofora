@@ -8,7 +8,12 @@ import {
   mainSitePages, type MainSitePage, type InsertMainSitePage, type MainSitePageWithLinks,
   contentInterlinks, type ContentInterlink, type InsertContentInterlink,
   forums, type Forum, type InsertForum, type ForumWithStats,
-  domainVerifications, type DomainVerification, type InsertDomainVerification
+  domainVerifications, type DomainVerification, type InsertDomainVerification,
+  leadCaptureForms, type LeadCaptureForm, type InsertLeadCaptureForm, type LeadCaptureFormWithStats,
+  leadSubmissions, type LeadSubmission, type InsertLeadSubmission,
+  gatedContents, type GatedContent, type InsertGatedContent,
+  crmIntegrations, type CrmIntegration, type InsertCrmIntegration,
+  leadFormViews, type LeadFormView, type InsertLeadFormView
 } from "@shared/schema";
 // Import this way to make TypeScript happy in an ESM context
 import memorystore from 'memorystore';
@@ -85,6 +90,39 @@ export interface IStorage {
   getDomainVerification(domain: string): Promise<DomainVerification | undefined>;
   verifyDomain(domain: string, token: string): Promise<boolean>;
   
+  // Lead Capture Form methods
+  getLeadCaptureForm(id: number): Promise<LeadCaptureForm | undefined>;
+  getLeadCaptureFormsByForum(forumId: number): Promise<LeadCaptureForm[]>;
+  getLeadCaptureFormWithStats(id: number): Promise<LeadCaptureFormWithStats | undefined>;
+  createLeadCaptureForm(form: InsertLeadCaptureForm): Promise<LeadCaptureForm>;
+  updateLeadCaptureForm(id: number, data: Partial<InsertLeadCaptureForm>): Promise<LeadCaptureForm>;
+  deleteLeadCaptureForm(id: number): Promise<void>;
+  
+  // Lead Submission methods
+  getLeadSubmission(id: number): Promise<LeadSubmission | undefined>;
+  getLeadSubmissionsByForm(formId: number): Promise<LeadSubmission[]>;
+  createLeadSubmission(submission: InsertLeadSubmission): Promise<LeadSubmission>;
+  markLeadSubmissionsAsExported(formId: number): Promise<void>;
+  
+  // Gated Content methods
+  getGatedContent(id: number): Promise<GatedContent | undefined>;
+  getGatedContentBySlug(slug: string): Promise<GatedContent | undefined>;
+  getGatedContentsByForum(forumId: number): Promise<GatedContent[]>;
+  createGatedContent(content: InsertGatedContent): Promise<GatedContent>;
+  updateGatedContent(id: number, data: Partial<InsertGatedContent>): Promise<GatedContent>;
+  deleteGatedContent(id: number): Promise<void>;
+  
+  // CRM Integration methods
+  getCrmIntegration(id: number): Promise<CrmIntegration | undefined>;
+  getCrmIntegrationsByForum(forumId: number): Promise<CrmIntegration[]>;
+  createCrmIntegration(integration: InsertCrmIntegration): Promise<CrmIntegration>;
+  updateCrmIntegration(id: number, data: Partial<InsertCrmIntegration>): Promise<CrmIntegration>;
+  deleteCrmIntegration(id: number): Promise<void>;
+  
+  // Lead Form View Tracking methods
+  recordLeadFormView(view: InsertLeadFormView): Promise<LeadFormView>;
+  getLeadFormStats(formId: number): Promise<{ views: number; submissions: number; conversionRate: number }>;
+  
   // Session store
   sessionStore: any;
 }
@@ -101,6 +139,11 @@ export class MemStorage implements IStorage {
   private contentInterlinksStore: Map<number, ContentInterlink>;
   private forumsStore: Map<number, Forum>;
   private domainVerificationsStore: Map<number, DomainVerification>;
+  private leadCaptureFormsStore: Map<number, LeadCaptureForm>;
+  private leadSubmissionsStore: Map<number, LeadSubmission>;
+  private gatedContentsStore: Map<number, GatedContent>;
+  private crmIntegrationsStore: Map<number, CrmIntegration>;
+  private leadFormViewsStore: Map<number, LeadFormView>;
   
   private userId: number;
   private categoryId: number;
@@ -112,6 +155,11 @@ export class MemStorage implements IStorage {
   private contentInterlinkId: number;
   private forumId: number;
   private domainVerificationId: number;
+  private leadCaptureFormId: number;
+  private leadSubmissionId: number;
+  private gatedContentId: number;
+  private crmIntegrationId: number;
+  private leadFormViewId: number;
   public sessionStore: any;
 
   constructor() {
@@ -125,6 +173,11 @@ export class MemStorage implements IStorage {
     this.contentInterlinksStore = new Map();
     this.forumsStore = new Map();
     this.domainVerificationsStore = new Map();
+    this.leadCaptureFormsStore = new Map();
+    this.leadSubmissionsStore = new Map();
+    this.gatedContentsStore = new Map();
+    this.crmIntegrationsStore = new Map();
+    this.leadFormViewsStore = new Map();
     
     // Create session store from memorystore
     this.sessionStore = new MemoryStore({
@@ -141,6 +194,11 @@ export class MemStorage implements IStorage {
     this.contentInterlinkId = 1;
     this.forumId = 1;
     this.domainVerificationId = 1;
+    this.leadCaptureFormId = 1;
+    this.leadSubmissionId = 1;
+    this.gatedContentId = 1;
+    this.crmIntegrationId = 1;
+    this.leadFormViewId = 1;
 
     // Initialize with sample data
     this.initSampleData();
@@ -1052,6 +1110,240 @@ export class MemStorage implements IStorage {
     }
     
     return false;
+  }
+
+  // Lead Capture Form methods
+  async getLeadCaptureForm(id: number): Promise<LeadCaptureForm | undefined> {
+    return this.leadCaptureFormsStore.get(id);
+  }
+
+  async getLeadCaptureFormsByForum(forumId: number): Promise<LeadCaptureForm[]> {
+    const forms: LeadCaptureForm[] = [];
+    for (const form of this.leadCaptureFormsStore.values()) {
+      if (form.forumId === forumId) {
+        forms.push(form);
+      }
+    }
+    return forms;
+  }
+
+  async getLeadCaptureFormWithStats(id: number): Promise<LeadCaptureFormWithStats | undefined> {
+    const form = await this.getLeadCaptureForm(id);
+    if (!form) {
+      return undefined;
+    }
+
+    const stats = await this.getLeadFormStats(id);
+    return {
+      ...form,
+      ...stats
+    };
+  }
+
+  async createLeadCaptureForm(form: InsertLeadCaptureForm): Promise<LeadCaptureForm> {
+    const id = this.leadCaptureFormId++;
+    const newForm: LeadCaptureForm = {
+      ...form,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.leadCaptureFormsStore.set(id, newForm);
+    return newForm;
+  }
+
+  async updateLeadCaptureForm(id: number, data: Partial<InsertLeadCaptureForm>): Promise<LeadCaptureForm> {
+    const form = await this.getLeadCaptureForm(id);
+    if (!form) {
+      throw new Error(`Form with ID ${id} not found`);
+    }
+
+    const updatedForm: LeadCaptureForm = {
+      ...form,
+      ...data,
+      updatedAt: new Date()
+    };
+    this.leadCaptureFormsStore.set(id, updatedForm);
+    return updatedForm;
+  }
+
+  async deleteLeadCaptureForm(id: number): Promise<void> {
+    this.leadCaptureFormsStore.delete(id);
+  }
+
+  // Lead Submission methods
+  async getLeadSubmission(id: number): Promise<LeadSubmission | undefined> {
+    return this.leadSubmissionsStore.get(id);
+  }
+
+  async getLeadSubmissionsByForm(formId: number): Promise<LeadSubmission[]> {
+    const submissions: LeadSubmission[] = [];
+    for (const submission of this.leadSubmissionsStore.values()) {
+      if (submission.formId === formId) {
+        submissions.push(submission);
+      }
+    }
+    return submissions;
+  }
+
+  async createLeadSubmission(submission: InsertLeadSubmission): Promise<LeadSubmission> {
+    const id = this.leadSubmissionId++;
+    const newSubmission: LeadSubmission = {
+      ...submission,
+      id,
+      createdAt: new Date()
+    };
+    this.leadSubmissionsStore.set(id, newSubmission);
+    return newSubmission;
+  }
+
+  async markLeadSubmissionsAsExported(formId: number): Promise<void> {
+    for (const [id, submission] of this.leadSubmissionsStore.entries()) {
+      if (submission.formId === formId && !submission.isExported) {
+        const updatedSubmission = { ...submission, isExported: true };
+        this.leadSubmissionsStore.set(id, updatedSubmission);
+      }
+    }
+  }
+
+  // Gated Content methods
+  async getGatedContent(id: number): Promise<GatedContent | undefined> {
+    return this.gatedContentsStore.get(id);
+  }
+
+  async getGatedContentBySlug(slug: string): Promise<GatedContent | undefined> {
+    for (const content of this.gatedContentsStore.values()) {
+      if (content.slug === slug) {
+        return content;
+      }
+    }
+    return undefined;
+  }
+
+  async getGatedContentsByForum(forumId: number): Promise<GatedContent[]> {
+    const contents: GatedContent[] = [];
+    for (const content of this.gatedContentsStore.values()) {
+      if (content.forumId === forumId) {
+        contents.push(content);
+      }
+    }
+    return contents;
+  }
+
+  async createGatedContent(content: InsertGatedContent): Promise<GatedContent> {
+    const id = this.gatedContentId++;
+    const newContent: GatedContent = {
+      ...content,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.gatedContentsStore.set(id, newContent);
+    return newContent;
+  }
+
+  async updateGatedContent(id: number, data: Partial<InsertGatedContent>): Promise<GatedContent> {
+    const content = await this.getGatedContent(id);
+    if (!content) {
+      throw new Error(`Gated content with ID ${id} not found`);
+    }
+
+    const updatedContent: GatedContent = {
+      ...content,
+      ...data,
+      updatedAt: new Date()
+    };
+    this.gatedContentsStore.set(id, updatedContent);
+    return updatedContent;
+  }
+
+  async deleteGatedContent(id: number): Promise<void> {
+    this.gatedContentsStore.delete(id);
+  }
+
+  // CRM Integration methods
+  async getCrmIntegration(id: number): Promise<CrmIntegration | undefined> {
+    return this.crmIntegrationsStore.get(id);
+  }
+
+  async getCrmIntegrationsByForum(forumId: number): Promise<CrmIntegration[]> {
+    const integrations: CrmIntegration[] = [];
+    for (const integration of this.crmIntegrationsStore.values()) {
+      if (integration.forumId === forumId) {
+        integrations.push(integration);
+      }
+    }
+    return integrations;
+  }
+
+  async createCrmIntegration(integration: InsertCrmIntegration): Promise<CrmIntegration> {
+    const id = this.crmIntegrationId++;
+    const newIntegration: CrmIntegration = {
+      ...integration,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.crmIntegrationsStore.set(id, newIntegration);
+    return newIntegration;
+  }
+
+  async updateCrmIntegration(id: number, data: Partial<InsertCrmIntegration>): Promise<CrmIntegration> {
+    const integration = await this.getCrmIntegration(id);
+    if (!integration) {
+      throw new Error(`CRM integration with ID ${id} not found`);
+    }
+
+    const updatedIntegration: CrmIntegration = {
+      ...integration,
+      ...data,
+      updatedAt: new Date()
+    };
+    this.crmIntegrationsStore.set(id, updatedIntegration);
+    return updatedIntegration;
+  }
+
+  async deleteCrmIntegration(id: number): Promise<void> {
+    this.crmIntegrationsStore.delete(id);
+  }
+
+  // Lead Form View Tracking methods
+  async recordLeadFormView(view: InsertLeadFormView): Promise<LeadFormView> {
+    const id = this.leadFormViewId++;
+    const newView: LeadFormView = {
+      ...view,
+      id,
+      createdAt: new Date()
+    };
+    this.leadFormViewsStore.set(id, newView);
+    return newView;
+  }
+
+  async getLeadFormStats(formId: number): Promise<{ views: number; submissions: number; conversionRate: number }> {
+    let views = 0;
+    let conversions = 0;
+
+    // Count views
+    for (const view of this.leadFormViewsStore.values()) {
+      if (view.formId === formId) {
+        views++;
+        if (view.isConversion) {
+          conversions++;
+        }
+      }
+    }
+
+    // Count submissions
+    const submissions = (await this.getLeadSubmissionsByForm(formId)).length;
+    
+    // Calculate conversion rate
+    const conversionRate = views > 0 ? (submissions / views) * 100 : 0;
+
+    return {
+      views,
+      submissions,
+      conversionRate
+    };
   }
 }
 

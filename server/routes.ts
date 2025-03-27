@@ -10,7 +10,12 @@ import {
   insertMainSitePageSchema,
   insertContentInterlinkSchema,
   insertForumSchema,
-  insertDomainVerificationSchema 
+  insertDomainVerificationSchema,
+  insertLeadCaptureFormSchema,
+  insertLeadSubmissionSchema,
+  insertGatedContentSchema,
+  insertCrmIntegrationSchema,
+  insertLeadFormViewSchema
 } from "@shared/schema";
 import { 
   generateAiContent,
@@ -935,6 +940,602 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ message: "Failed to check domain verification" });
       }
+    }
+  });
+
+  // Lead Capture Form routes
+  app.get("/api/forums/:forumId/lead-forms", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to access lead forms" });
+      }
+
+      const forumId = parseInt(req.params.forumId);
+      const forum = await storage.getForum(forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if the user owns this forum
+      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to access this forum's lead forms" });
+      }
+
+      const forms = await storage.getLeadCaptureFormsByForum(forumId);
+      res.json(forms);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch lead forms" });
+    }
+  });
+
+  app.get("/api/lead-forms/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const form = await storage.getLeadCaptureFormWithStats(id);
+      
+      if (!form) {
+        return res.status(404).json({ message: "Lead form not found" });
+      }
+      
+      res.json(form);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch lead form" });
+    }
+  });
+
+  app.post("/api/forums/:forumId/lead-forms", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to create a lead form" });
+      }
+
+      const forumId = parseInt(req.params.forumId);
+      const forum = await storage.getForum(forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if the user owns this forum
+      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to create lead forms for this forum" });
+      }
+
+      const validatedData = insertLeadCaptureFormSchema.parse({
+        ...req.body,
+        forumId
+      });
+      
+      const form = await storage.createLeadCaptureForm(validatedData);
+      res.status(201).json(form);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Failed to create lead form" });
+      }
+    }
+  });
+
+  app.put("/api/lead-forms/:id", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to update a lead form" });
+      }
+
+      const id = parseInt(req.params.id);
+      const form = await storage.getLeadCaptureForm(id);
+      
+      if (!form) {
+        return res.status(404).json({ message: "Lead form not found" });
+      }
+      
+      // Get the forum to check ownership
+      const forum = await storage.getForum(form.forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if the user owns this forum
+      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to update this lead form" });
+      }
+
+      const validatedData = insertLeadCaptureFormSchema.partial().parse(req.body);
+      
+      const updatedForm = await storage.updateLeadCaptureForm(id, validatedData);
+      res.json(updatedForm);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Failed to update lead form" });
+      }
+    }
+  });
+
+  app.delete("/api/lead-forms/:id", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to delete a lead form" });
+      }
+
+      const id = parseInt(req.params.id);
+      const form = await storage.getLeadCaptureForm(id);
+      
+      if (!form) {
+        return res.status(404).json({ message: "Lead form not found" });
+      }
+      
+      // Get the forum to check ownership
+      const forum = await storage.getForum(form.forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if the user owns this forum
+      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to delete this lead form" });
+      }
+
+      await storage.deleteLeadCaptureForm(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete lead form" });
+    }
+  });
+
+  // Lead Submission routes
+  app.get("/api/lead-forms/:id/submissions", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to access lead submissions" });
+      }
+
+      const formId = parseInt(req.params.id);
+      const form = await storage.getLeadCaptureForm(formId);
+      
+      if (!form) {
+        return res.status(404).json({ message: "Lead form not found" });
+      }
+      
+      // Get the forum to check ownership
+      const forum = await storage.getForum(form.forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if the user owns this forum
+      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to access submissions for this form" });
+      }
+
+      const submissions = await storage.getLeadSubmissionsByForm(formId);
+      res.json(submissions);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch lead submissions" });
+    }
+  });
+
+  app.post("/api/lead-forms/:id/submissions", async (req, res) => {
+    try {
+      const formId = parseInt(req.params.id);
+      const form = await storage.getLeadCaptureForm(formId);
+      
+      if (!form) {
+        return res.status(404).json({ message: "Lead form not found" });
+      }
+
+      const validatedData = insertLeadSubmissionSchema.parse({
+        ...req.body,
+        formId,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+      
+      const submission = await storage.createLeadSubmission(validatedData);
+
+      // Record a form view with conversion
+      await storage.recordLeadFormView({
+        formId,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+        referrer: req.get('Referrer'),
+        isConversion: true
+      });
+      
+      res.status(201).json({ success: true });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Failed to submit lead form" });
+      }
+    }
+  });
+
+  app.post("/api/lead-forms/:id/export", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to export lead submissions" });
+      }
+
+      const formId = parseInt(req.params.id);
+      const form = await storage.getLeadCaptureForm(formId);
+      
+      if (!form) {
+        return res.status(404).json({ message: "Lead form not found" });
+      }
+      
+      // Get the forum to check ownership
+      const forum = await storage.getForum(form.forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if the user owns this forum
+      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to export submissions for this form" });
+      }
+
+      // Mark submissions as exported
+      await storage.markLeadSubmissionsAsExported(formId);
+      
+      // Get the updated submissions list
+      const submissions = await storage.getLeadSubmissionsByForm(formId);
+      res.json({ success: true, submissions });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to export lead submissions" });
+    }
+  });
+
+  // Lead Form View Tracking
+  app.post("/api/lead-forms/:id/view", async (req, res) => {
+    try {
+      const formId = parseInt(req.params.id);
+      const form = await storage.getLeadCaptureForm(formId);
+      
+      if (!form) {
+        return res.status(404).json({ message: "Lead form not found" });
+      }
+
+      // Record a form view without conversion
+      await storage.recordLeadFormView({
+        formId,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+        referrer: req.get('Referrer'),
+        isConversion: false
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to record form view" });
+    }
+  });
+
+  // Gated Content routes
+  app.get("/api/forums/:forumId/gated-content", async (req, res) => {
+    try {
+      const forumId = parseInt(req.params.forumId);
+      const forum = await storage.getForum(forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+
+      const gatedContents = await storage.getGatedContentsByForum(forumId);
+      
+      // Only send teasers and basic info for public access
+      const publicGatedContents = gatedContents.map(content => ({
+        id: content.id,
+        title: content.title,
+        slug: content.slug,
+        teaser: content.teaser,
+        description: content.description,
+        featuredImage: content.featuredImage,
+        contentType: content.contentType,
+        createdAt: content.createdAt,
+        formId: content.formId
+      }));
+      
+      res.json(publicGatedContents);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch gated content" });
+    }
+  });
+
+  app.get("/api/gated-content/:id", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to access full gated content" });
+      }
+
+      const id = parseInt(req.params.id);
+      const content = await storage.getGatedContent(id);
+      
+      if (!content) {
+        return res.status(404).json({ message: "Gated content not found" });
+      }
+      
+      // Get the forum to check ownership
+      const forum = await storage.getForum(content.forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if the user owns this forum
+      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to access this gated content" });
+      }
+
+      res.json(content);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch gated content" });
+    }
+  });
+
+  app.post("/api/forums/:forumId/gated-content", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to create gated content" });
+      }
+
+      const forumId = parseInt(req.params.forumId);
+      const forum = await storage.getForum(forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if the user owns this forum
+      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to create gated content for this forum" });
+      }
+
+      const validatedData = insertGatedContentSchema.parse({
+        ...req.body,
+        forumId
+      });
+      
+      const content = await storage.createGatedContent(validatedData);
+      res.status(201).json(content);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Failed to create gated content" });
+      }
+    }
+  });
+
+  app.put("/api/gated-content/:id", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to update gated content" });
+      }
+
+      const id = parseInt(req.params.id);
+      const content = await storage.getGatedContent(id);
+      
+      if (!content) {
+        return res.status(404).json({ message: "Gated content not found" });
+      }
+      
+      // Get the forum to check ownership
+      const forum = await storage.getForum(content.forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if the user owns this forum
+      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to update this gated content" });
+      }
+
+      const validatedData = insertGatedContentSchema.partial().parse(req.body);
+      
+      const updatedContent = await storage.updateGatedContent(id, validatedData);
+      res.json(updatedContent);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Failed to update gated content" });
+      }
+    }
+  });
+
+  app.delete("/api/gated-content/:id", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to delete gated content" });
+      }
+
+      const id = parseInt(req.params.id);
+      const content = await storage.getGatedContent(id);
+      
+      if (!content) {
+        return res.status(404).json({ message: "Gated content not found" });
+      }
+      
+      // Get the forum to check ownership
+      const forum = await storage.getForum(content.forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if the user owns this forum
+      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to delete this gated content" });
+      }
+
+      await storage.deleteGatedContent(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete gated content" });
+    }
+  });
+
+  // CRM Integration routes
+  app.get("/api/forums/:forumId/crm-integrations", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to access CRM integrations" });
+      }
+
+      const forumId = parseInt(req.params.forumId);
+      const forum = await storage.getForum(forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if the user owns this forum
+      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to access this forum's CRM integrations" });
+      }
+
+      const integrations = await storage.getCrmIntegrationsByForum(forumId);
+      
+      // Mask sensitive fields for security
+      const safeIntegrations = integrations.map(integration => ({
+        ...integration,
+        apiKey: integration.apiKey ? "********" : null,
+        apiSecret: integration.apiSecret ? "********" : null
+      }));
+      
+      res.json(safeIntegrations);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch CRM integrations" });
+    }
+  });
+
+  app.post("/api/forums/:forumId/crm-integrations", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to create a CRM integration" });
+      }
+
+      const forumId = parseInt(req.params.forumId);
+      const forum = await storage.getForum(forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if the user owns this forum
+      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to create CRM integrations for this forum" });
+      }
+
+      const validatedData = insertCrmIntegrationSchema.parse({
+        ...req.body,
+        forumId
+      });
+      
+      const integration = await storage.createCrmIntegration(validatedData);
+      
+      // Mask sensitive fields in the response
+      const safeIntegration = {
+        ...integration,
+        apiKey: integration.apiKey ? "********" : null,
+        apiSecret: integration.apiSecret ? "********" : null
+      };
+      
+      res.status(201).json(safeIntegration);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Failed to create CRM integration" });
+      }
+    }
+  });
+
+  app.put("/api/crm-integrations/:id", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to update a CRM integration" });
+      }
+
+      const id = parseInt(req.params.id);
+      const integration = await storage.getCrmIntegration(id);
+      
+      if (!integration) {
+        return res.status(404).json({ message: "CRM integration not found" });
+      }
+      
+      // Get the forum to check ownership
+      const forum = await storage.getForum(integration.forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if the user owns this forum
+      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to update this CRM integration" });
+      }
+
+      const validatedData = insertCrmIntegrationSchema.partial().parse(req.body);
+      
+      const updatedIntegration = await storage.updateCrmIntegration(id, validatedData);
+      
+      // Mask sensitive fields in the response
+      const safeIntegration = {
+        ...updatedIntegration,
+        apiKey: updatedIntegration.apiKey ? "********" : null,
+        apiSecret: updatedIntegration.apiSecret ? "********" : null
+      };
+      
+      res.json(safeIntegration);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Failed to update CRM integration" });
+      }
+    }
+  });
+
+  app.delete("/api/crm-integrations/:id", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to delete a CRM integration" });
+      }
+
+      const id = parseInt(req.params.id);
+      const integration = await storage.getCrmIntegration(id);
+      
+      if (!integration) {
+        return res.status(404).json({ message: "CRM integration not found" });
+      }
+      
+      // Get the forum to check ownership
+      const forum = await storage.getForum(integration.forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if the user owns this forum
+      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+        return res.status(403).json({ message: "You don't have permission to delete this CRM integration" });
+      }
+
+      await storage.deleteCrmIntegration(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete CRM integration" });
     }
   });
 
