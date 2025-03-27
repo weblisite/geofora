@@ -15,7 +15,8 @@ import {
   insertLeadSubmissionSchema,
   insertGatedContentSchema,
   insertCrmIntegrationSchema,
-  insertLeadFormViewSchema
+  insertLeadFormViewSchema,
+  insertContentScheduleSchema
 } from "@shared/schema";
 import { 
   generateAiContent,
@@ -1564,6 +1565,279 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/analytics/geographic-data", getGeographicData);
   app.get("/api/analytics/lead-capture-stats", getLeadCaptureStats);
   app.get("/api/analytics/ai-activity", getAiActivity);
+
+  // Content Schedule routes
+  app.get("/api/content-schedules", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to access content schedules" });
+      }
+      
+      const schedules = await storage.getContentSchedulesByUser(req.session.userId);
+      res.json(schedules);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch content schedules" });
+    }
+  });
+
+  app.get("/api/content-schedules/upcoming", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to access upcoming content schedules" });
+      }
+      
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const schedules = await storage.getUpcomingContentSchedules(limit);
+      
+      // Filter to only show schedules from forums owned by the user
+      const userSchedules = [];
+      for (const schedule of schedules) {
+        if (schedule.forum.userId === req.session.userId) {
+          userSchedules.push(schedule);
+        }
+      }
+      
+      res.json(userSchedules);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch upcoming content schedules" });
+    }
+  });
+
+  app.get("/api/forums/:id/content-schedules", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to access forum content schedules" });
+      }
+      
+      const forumId = parseInt(req.params.id);
+      const forum = await storage.getForum(forumId);
+      
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      // Check if user owns the forum
+      if (forum.userId !== req.session.userId) {
+        return res.status(403).json({ message: "You don't have permission to access this forum's content schedules" });
+      }
+      
+      const schedules = await storage.getContentSchedulesByForum(forumId);
+      res.json(schedules);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch forum content schedules" });
+    }
+  });
+
+  app.get("/api/content-schedules/:id", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to access content schedules" });
+      }
+      
+      const id = parseInt(req.params.id);
+      const schedule = await storage.getContentScheduleWithDetails(id);
+      
+      if (!schedule) {
+        return res.status(404).json({ message: "Content schedule not found" });
+      }
+      
+      // Check if user owns the forum associated with the schedule
+      if (schedule.forum.userId !== req.session.userId) {
+        return res.status(403).json({ message: "You don't have permission to access this content schedule" });
+      }
+      
+      res.json(schedule);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch content schedule" });
+    }
+  });
+
+  app.post("/api/content-schedules", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to create a content schedule" });
+      }
+      
+      // Validate the forum ownership
+      const forum = await storage.getForum(req.body.forumId);
+      if (!forum) {
+        return res.status(404).json({ message: "Forum not found" });
+      }
+      
+      if (forum.userId !== req.session.userId) {
+        return res.status(403).json({ message: "You don't have permission to create content for this forum" });
+      }
+      
+      const validatedData = insertContentScheduleSchema.parse({
+        ...req.body,
+        userId: req.session.userId
+      });
+      
+      const schedule = await storage.createContentSchedule(validatedData);
+      res.status(201).json(schedule);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Failed to create content schedule" });
+      }
+    }
+  });
+
+  app.patch("/api/content-schedules/:id", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to update a content schedule" });
+      }
+      
+      const id = parseInt(req.params.id);
+      const schedule = await storage.getContentScheduleWithDetails(id);
+      
+      if (!schedule) {
+        return res.status(404).json({ message: "Content schedule not found" });
+      }
+      
+      // Check if user owns the forum associated with the schedule
+      if (schedule.forum.userId !== req.session.userId) {
+        return res.status(403).json({ message: "You don't have permission to update this content schedule" });
+      }
+      
+      const updatedSchedule = await storage.updateContentSchedule(id, req.body);
+      res.json(updatedSchedule);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Failed to update content schedule" });
+      }
+    }
+  });
+
+  app.patch("/api/content-schedules/:id/status", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to update a content schedule status" });
+      }
+      
+      const id = parseInt(req.params.id);
+      const schedule = await storage.getContentScheduleWithDetails(id);
+      
+      if (!schedule) {
+        return res.status(404).json({ message: "Content schedule not found" });
+      }
+      
+      // Check if user owns the forum associated with the schedule
+      if (schedule.forum.userId !== req.session.userId) {
+        return res.status(403).json({ message: "You don't have permission to update this content schedule" });
+      }
+      
+      const { status, questionIds } = req.body;
+      
+      // Validate the status value
+      if (!["draft", "scheduled", "published", "cancelled"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status value" });
+      }
+      
+      const updatedSchedule = await storage.updateContentScheduleStatus(id, status, questionIds);
+      res.json(updatedSchedule);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update content schedule status" });
+    }
+  });
+
+  app.delete("/api/content-schedules/:id", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to delete a content schedule" });
+      }
+      
+      const id = parseInt(req.params.id);
+      const schedule = await storage.getContentScheduleWithDetails(id);
+      
+      if (!schedule) {
+        return res.status(404).json({ message: "Content schedule not found" });
+      }
+      
+      // Check if user owns the forum associated with the schedule
+      if (schedule.forum.userId !== req.session.userId) {
+        return res.status(403).json({ message: "You don't have permission to delete this content schedule" });
+      }
+      
+      await storage.deleteContentSchedule(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete content schedule" });
+    }
+  });
+
+  // Generate and publish content according to schedule
+  app.post("/api/content-schedules/:id/publish", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to publish scheduled content" });
+      }
+      
+      const id = parseInt(req.params.id);
+      const schedule = await storage.getContentScheduleWithDetails(id);
+      
+      if (!schedule) {
+        return res.status(404).json({ message: "Content schedule not found" });
+      }
+      
+      // Check if user owns the forum associated with the schedule
+      if (schedule.forum.userId !== req.session.userId) {
+        return res.status(403).json({ message: "You don't have permission to publish this content schedule" });
+      }
+      
+      // Check if the schedule is ready to be published
+      if (schedule.status !== "scheduled") {
+        return res.status(400).json({ message: "Only scheduled content can be published" });
+      }
+      
+      // Generate the requested number of questions based on the keyword
+      const count = req.body.count || 5; // Default to 5 questions
+      const questions = await generateKeywordOptimizedQuestions(
+        schedule.keyword,
+        count,
+        req.body.difficulty || "intermediate"
+      );
+      
+      // Create the questions in the database
+      const createdQuestionIds = [];
+      
+      if (questions && questions.questions) {
+        for (const questionData of questions.questions) {
+          try {
+            const newQuestion = await storage.createQuestion({
+              userId: req.session.userId,
+              title: questionData.title,
+              content: questionData.content,
+              categoryId: schedule.categoryId || 1, // Default to first category if none specified
+              isAiGenerated: true,
+              aiPersonaType: questionData.difficulty
+            });
+            
+            createdQuestionIds.push(newQuestion.id);
+          } catch (error) {
+            console.error("Error creating question:", error);
+          }
+        }
+      }
+      
+      // Update the content schedule status to published with the created question IDs
+      const updatedSchedule = await storage.updateContentScheduleStatus(id, "published", createdQuestionIds);
+      
+      res.json({
+        success: true,
+        schedule: updatedSchedule,
+        questionIds: createdQuestionIds,
+        questionsCreated: createdQuestionIds.length
+      });
+    } catch (error) {
+      console.error("Error publishing content schedule:", error);
+      res.status(500).json({ message: "Failed to publish content schedule" });
+    }
+  });
 
   const httpServer = createServer(app);
 

@@ -95,7 +95,7 @@ export default function LeadCapturePage() {
   const { data: forums, isLoading: isLoadingForums } = useQuery({
     queryKey: ["/api/user/forums"],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/user/forums");
+      const res = await apiRequest("/api/user/forums", { method: "GET" });
       return await res.json();
     },
     enabled: !!user,
@@ -106,7 +106,7 @@ export default function LeadCapturePage() {
     queryKey: ["/api/forums", selectedForumId, "lead-forms"],
     queryFn: async () => {
       if (!selectedForumId) return [];
-      const res = await apiRequest("GET", `/api/forums/${selectedForumId}/lead-forms`);
+      const res = await apiRequest(`/api/forums/${selectedForumId}/lead-forms`, { method: "GET" });
       return await res.json();
     },
     enabled: !!selectedForumId,
@@ -117,7 +117,7 @@ export default function LeadCapturePage() {
     queryKey: ["/api/lead-forms", selectedFormId, "submissions"],
     queryFn: async () => {
       if (!selectedFormId) return [];
-      const res = await apiRequest("GET", `/api/lead-forms/${selectedFormId}/submissions`);
+      const res = await apiRequest(`/api/lead-forms/${selectedFormId}/submissions`, { method: "GET" });
       return await res.json();
     },
     enabled: !!selectedFormId && activeTab === "submissions",
@@ -128,7 +128,7 @@ export default function LeadCapturePage() {
     queryKey: ["/api/lead-forms", selectedFormId],
     queryFn: async () => {
       if (!selectedFormId) return null;
-      const res = await apiRequest("GET", `/api/lead-forms/${selectedFormId}`);
+      const res = await apiRequest(`/api/lead-forms/${selectedFormId}`, { method: "GET" });
       return await res.json();
     },
     enabled: !!selectedFormId,
@@ -137,7 +137,11 @@ export default function LeadCapturePage() {
   // Create lead form mutation
   const createLeadFormMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      const res = await apiRequest("POST", `/api/forums/${data.forumId}/lead-forms`, data);
+      const res = await apiRequest(`/api/forums/${data.forumId}/lead-forms`, { 
+        method: "POST", 
+        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' } 
+      });
       return await res.json();
     },
     onSuccess: () => {
@@ -163,7 +167,11 @@ export default function LeadCapturePage() {
   const updateLeadFormMutation = useMutation({
     mutationFn: async (data: FormValues & { id: number }) => {
       const { id, ...formData } = data;
-      const res = await apiRequest("PUT", `/api/lead-forms/${id}`, formData);
+      const res = await apiRequest(`/api/lead-forms/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(formData),
+        headers: { 'Content-Type': 'application/json' }
+      });
       return await res.json();
     },
     onSuccess: () => {
@@ -191,7 +199,9 @@ export default function LeadCapturePage() {
   // Delete lead form mutation
   const deleteLeadFormMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await apiRequest("DELETE", `/api/lead-forms/${id}`);
+      const res = await apiRequest(`/api/lead-forms/${id}`, { 
+        method: "DELETE" 
+      });
       return await res.json();
     },
     onSuccess: () => {
@@ -216,7 +226,9 @@ export default function LeadCapturePage() {
   // Export submissions mutation
   const exportSubmissionsMutation = useMutation({
     mutationFn: async (formId: number) => {
-      const res = await apiRequest("POST", `/api/lead-forms/${formId}/export`);
+      const res = await apiRequest(`/api/lead-forms/${formId}/export`, {
+        method: "POST"
+      });
       return await res.json();
     },
     onSuccess: () => {

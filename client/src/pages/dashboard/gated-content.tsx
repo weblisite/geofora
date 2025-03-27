@@ -84,7 +84,7 @@ export default function GatedContentPage() {
   const { data: forums, isLoading: isLoadingForums } = useQuery({
     queryKey: ["/api/user/forums"],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/user/forums");
+      const res = await apiRequest("/api/user/forums");
       return await res.json();
     },
     enabled: !!user,

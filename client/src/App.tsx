@@ -12,6 +12,7 @@ import LeadCapturePage from "@/pages/dashboard/lead-capture";
 import GatedContentPage from "@/pages/dashboard/gated-content";
 import CrmIntegrationsPage from "@/pages/dashboard/crm";
 import AnalyticsPage from "@/pages/dashboard/analytics";
+import ContentSchedulingPage from "@/pages/dashboard/content-scheduling";
 import LoginPage from "@/pages/auth/login";
 import RegisterPage from "@/pages/auth/register";
 import AuthPage from "@/pages/auth-page";
@@ -50,6 +51,7 @@ function App() {
         <ProtectedRoute path="/dashboard/lead-capture" component={LeadCapturePage} />
         <ProtectedRoute path="/dashboard/gated-content" component={GatedContentPage} />
         <ProtectedRoute path="/dashboard/crm" component={CrmIntegrationsPage} />
+        <ProtectedRoute path="/dashboard/content-scheduling" component={ContentSchedulingPage} />
         <ProtectedRoute path="/dashboard/integration" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/settings" component={DashboardPage} />
         <Route path="/login" component={LoginPage} />

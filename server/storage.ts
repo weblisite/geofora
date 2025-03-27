@@ -1361,6 +1361,165 @@ export class MemStorage implements IStorage {
       conversionRate
     };
   }
+
+  // Content Schedule methods
+  async getContentSchedule(id: number): Promise<ContentSchedule | undefined> {
+    return this.contentSchedulesStore.get(id);
+  }
+  
+  async getContentScheduleWithDetails(id: number): Promise<ContentScheduleWithDetails | undefined> {
+    const schedule = this.contentSchedulesStore.get(id);
+    if (!schedule) return undefined;
+    
+    const forum = await this.getForum(schedule.forumId);
+    if (!forum) return undefined;
+    
+    const category = schedule.categoryId ? await this.getCategory(schedule.categoryId) : undefined;
+    
+    // Calculate questions/answers generated if questionIds exists
+    let questionsGenerated = 0;
+    let answersGenerated = 0;
+    
+    if (schedule.questionIds) {
+      try {
+        const questionIds = JSON.parse(schedule.questionIds) as number[];
+        questionsGenerated = questionIds.length;
+        
+        // Count answers for these questions
+        for (const questionId of questionIds) {
+          const answers = await this.getAnswersForQuestion(questionId);
+          answersGenerated += answers.length;
+        }
+      } catch (e) {
+        console.error("Error parsing questionIds:", e);
+      }
+    }
+    
+    return {
+      ...schedule,
+      forum,
+      category,
+      questionsGenerated,
+      answersGenerated
+    };
+  }
+  
+  async getContentSchedulesByForum(forumId: number): Promise<ContentScheduleWithDetails[]> {
+    const schedules = [];
+    
+    for (const schedule of this.contentSchedulesStore.values()) {
+      if (schedule.forumId === forumId) {
+        const details = await this.getContentScheduleWithDetails(schedule.id);
+        if (details) {
+          schedules.push(details);
+        }
+      }
+    }
+    
+    return schedules;
+  }
+  
+  async getContentSchedulesByUser(userId: number): Promise<ContentScheduleWithDetails[]> {
+    const schedules = [];
+    
+    for (const schedule of this.contentSchedulesStore.values()) {
+      if (schedule.userId === userId) {
+        const details = await this.getContentScheduleWithDetails(schedule.id);
+        if (details) {
+          schedules.push(details);
+        }
+      }
+    }
+    
+    return schedules;
+  }
+  
+  async getUpcomingContentSchedules(limit: number = 10): Promise<ContentScheduleWithDetails[]> {
+    const now = new Date();
+    const schedules = [];
+    
+    // Filter scheduled content that's in the future and has status "scheduled"
+    for (const schedule of this.contentSchedulesStore.values()) {
+      const scheduleDate = new Date(schedule.scheduledFor);
+      
+      if (scheduleDate > now && schedule.status === "scheduled") {
+        const details = await this.getContentScheduleWithDetails(schedule.id);
+        if (details) {
+          schedules.push(details);
+        }
+      }
+    }
+    
+    // Sort by closest upcoming date
+    schedules.sort((a, b) => {
+      const dateA = new Date(a.scheduledFor);
+      const dateB = new Date(b.scheduledFor);
+      return dateA.getTime() - dateB.getTime();
+    });
+    
+    // Limit results
+    return schedules.slice(0, limit);
+  }
+  
+  async createContentSchedule(schedule: InsertContentSchedule): Promise<ContentSchedule> {
+    const id = this.contentScheduleId++;
+    const now = new Date();
+    
+    const newSchedule: ContentSchedule = {
+      id,
+      ...schedule,
+      status: schedule.status || "scheduled",
+      createdAt: now,
+      updatedAt: now,
+      publishedAt: null,
+      questionIds: null
+    };
+    
+    this.contentSchedulesStore.set(id, newSchedule);
+    return newSchedule;
+  }
+  
+  async updateContentSchedule(id: number, data: Partial<InsertContentSchedule>): Promise<ContentSchedule> {
+    const schedule = this.contentSchedulesStore.get(id);
+    if (!schedule) {
+      throw new Error(`Content schedule with ID ${id} not found`);
+    }
+    
+    const updatedSchedule: ContentSchedule = {
+      ...schedule,
+      ...data,
+      updatedAt: new Date()
+    };
+    
+    this.contentSchedulesStore.set(id, updatedSchedule);
+    return updatedSchedule;
+  }
+  
+  async updateContentScheduleStatus(id: number, status: string, questionIds?: number[]): Promise<ContentSchedule> {
+    const schedule = this.contentSchedulesStore.get(id);
+    if (!schedule) {
+      throw new Error(`Content schedule with ID ${id} not found`);
+    }
+    
+    const updatedSchedule: ContentSchedule = {
+      ...schedule,
+      status,
+      updatedAt: new Date(),
+      publishedAt: status === "published" ? new Date() : schedule.publishedAt,
+      questionIds: questionIds ? JSON.stringify(questionIds) : schedule.questionIds
+    };
+    
+    this.contentSchedulesStore.set(id, updatedSchedule);
+    return updatedSchedule;
+  }
+  
+  async deleteContentSchedule(id: number): Promise<void> {
+    if (!this.contentSchedulesStore.has(id)) {
+      throw new Error(`Content schedule with ID ${id} not found`);
+    }
+    
+    this.contentSchedulesStore.delete(id);
+  }
 }
 
 export const storage = new MemStorage();
