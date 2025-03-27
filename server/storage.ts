@@ -564,7 +564,10 @@ export class MemStorage implements IStorage {
       }
     ];
 
-    answers.forEach(answer => this.createAnswer(answer));
+    // Create answers one by one
+    for (const answer of answers) {
+      await this.createAnswer(answer);
+    }
 
     // Create sample votes
     const votes = [
@@ -585,7 +588,10 @@ export class MemStorage implements IStorage {
       }
     ];
 
-    votes.forEach(vote => this.createOrUpdateVote(vote));
+    // Create votes one by one
+    for (const vote of votes) {
+      await this.createOrUpdateVote(vote);
+    }
     
     // Create sample main site pages
     const mainSitePages = [
@@ -618,7 +624,10 @@ export class MemStorage implements IStorage {
       }
     ];
     
-    mainSitePages.forEach(page => this.createMainSitePage(page));
+    // Create main site pages one by one
+    for (const page of mainSitePages) {
+      await this.createMainSitePage(page);
+    }
     
     // Create sample interlinks
     const contentInterlinks = [
@@ -664,7 +673,10 @@ export class MemStorage implements IStorage {
       }
     ];
     
-    contentInterlinks.forEach(interlink => this.createContentInterlink(interlink));
+    // Create interlinks one by one
+    for (const interlink of contentInterlinks) {
+      await this.createContentInterlink(interlink);
+    }
     
     // Create sample forums
     const forums = [
@@ -715,7 +727,10 @@ export class MemStorage implements IStorage {
       }
     ];
     
-    forums.forEach(forum => this.createForum(forum));
+    // Create forums one by one
+    for (const forum of forums) {
+      await this.createForum(forum);
+    }
   }
 
   // Role methods
