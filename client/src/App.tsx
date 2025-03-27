@@ -54,18 +54,15 @@ function App() {
     }
   }, [location]);
 
-  try {
-    const { isLoading } = useAuth();
+  // Get auth state safely - the useAuth hook has a fallback when used outside AuthProvider
+  const { isLoading } = useAuth();
 
-    if (isLoading) {
-      return (
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-border" />
-        </div>
-      );
-    }
-  } catch (error) {
-    console.error("Auth error in App:", error);
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-border" />
+      </div>
+    );
   }
 
   return (

@@ -2386,6 +2386,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Forum ID and event type are required" });
       }
       
+      // Check if forum exists before tracking
+      try {
+        const forum = await storage.getForumById(forumId);
+        if (!forum) {
+          // Forum doesn't exist, log silently and return success
+          // This prevents errors when tracking analytics for non-existent forums
+          return res.status(201).json({ success: true, message: "Forum not found, event not tracked" });
+        }
+      } catch (err) {
+        // If there's an error checking the forum, still return success
+        // This makes analytics tracking non-blocking
+        console.warn(`Unable to verify forum ${forumId} exists: ${err.message}`);
+        return res.status(201).json({ success: true, message: "Forum verification failed, event not tracked" });
+      }
+      
       // Get user ID from session if logged in
       const userId = req.session?.userId || null;
       
@@ -2414,7 +2429,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json({ success: true });
     } catch (error) {
       console.error("Error tracking event:", error);
-      res.status(500).json({ message: "Failed to track event" });
+      // Still return success to ensure client doesn't break
+      res.status(201).json({ success: true, message: "Failed to track event but continuing" });
     }
   });
   
@@ -2435,6 +2451,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate required fields
       if (!forumId || !date) {
         return res.status(400).json({ message: "Forum ID and date are required" });
+      }
+      
+      // Check if forum exists before tracking
+      try {
+        const forum = await storage.getForumById(forumId);
+        if (!forum) {
+          // Forum doesn't exist, log silently and return success
+          // This prevents errors when tracking analytics for non-existent forums
+          return res.status(201).json({ success: true, message: "Forum not found, engagement not tracked" });
+        }
+      } catch (err) {
+        // If there's an error checking the forum, still return success
+        // This makes analytics tracking non-blocking
+        console.warn(`Unable to verify forum ${forumId} exists: ${err.message}`);
+        return res.status(201).json({ success: true, message: "Forum verification failed, engagement not tracked" });
       }
       
       // Find existing metrics for this date and forum
@@ -2487,7 +2518,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json({ success: true });
     } catch (error) {
       console.error("Error tracking user engagement:", error);
-      res.status(500).json({ message: "Failed to track user engagement" });
+      // Still return success to ensure client doesn't break
+      res.status(201).json({ success: true, message: "Failed to track engagement but continuing" });
     }
   });
   
@@ -2511,6 +2543,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ 
           message: "Forum ID, content type, and content ID are required" 
         });
+      }
+      
+      // Check if forum exists before tracking
+      try {
+        const forum = await storage.getForumById(forumId);
+        if (!forum) {
+          // Forum doesn't exist, log silently and return success
+          // This prevents errors when tracking analytics for non-existent forums
+          return res.status(201).json({ success: true, message: "Forum not found, performance not tracked" });
+        }
+      } catch (err) {
+        // If there's an error checking the forum, still return success
+        // This makes analytics tracking non-blocking
+        console.warn(`Unable to verify forum ${forumId} exists: ${err.message}`);
+        return res.status(201).json({ success: true, message: "Forum verification failed, performance not tracked" });
       }
       
       // Find existing metrics for this content and date
@@ -2561,7 +2608,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json({ success: true });
     } catch (error) {
       console.error("Error tracking content performance:", error);
-      res.status(500).json({ message: "Failed to track content performance" });
+      // Still return success to ensure client doesn't break
+      res.status(201).json({ success: true, message: "Failed to track performance but continuing" });
     }
   });
   

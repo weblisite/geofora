@@ -2,6 +2,7 @@ import * as schema from '@shared/schema';
 import { db } from './db';
 import { log } from './vite';
 import { sql } from 'drizzle-orm';
+import { forums } from '@shared/schema';
 
 // Re-export the db instance
 export { db };
@@ -12,6 +13,11 @@ export { db };
  */
 export async function checkDatabaseConnection(): Promise<boolean> {
   try {
+    if (!db) {
+      log('Database connection check: failed - db is not initialized');
+      return false;
+    }
+    
     // Check the connection with a simple query that doesn't rely on tables existing
     const result = await db.execute(sql`SELECT 1 as check_connection`);
     
@@ -29,6 +35,11 @@ export async function checkDatabaseConnection(): Promise<boolean> {
  */
 export async function initDatabase(): Promise<void> {
   try {
+    if (!db) {
+      log('Database initialization skipped - db is not initialized');
+      return;
+    }
+    
     log('Initializing database schema...');
     
     // Check if the sessions table exists (required for connect-pg-simple)
@@ -53,22 +64,23 @@ export async function initDatabase(): Promise<void> {
     // Instead of using the drizzle-kit push command, we'll return early and let the ORM handle the tables
     // This is a simpler approach for development and avoids issues with child processes
     
-    // Create a default forum if none exists
-    try {
-      const defaultForum = await db.select().from(forums).limit(1);
-      if (!defaultForum.length) {
-        await db.insert(forums).values({
-          name: 'Default Forum',
-          slug: 'default',
-          userId: 1,
-          settings: {},
-          createdAt: new Date(),
-          updatedAt: new Date()
-        });
-        log('Default forum created');
+    // Create a default forum if none exists - only attempt if DATABASE_URL is available
+    if (process.env.DATABASE_URL) {
+      try {
+        const defaultForum = await db.select().from(forums).limit(1);
+        if (!defaultForum.length) {
+          await db.insert(forums).values({
+            name: 'Default Forum',
+            slug: 'default',
+            userId: 1,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          });
+          log('Default forum created');
+        }
+      } catch (error: any) {
+        log(`Error creating default forum: ${error.message}`);
       }
-    } catch (error: any) {
-      log(`Error creating default forum: ${error.message}`);
     }
     
     log('Database initialized - tables will be managed by Drizzle ORM');
