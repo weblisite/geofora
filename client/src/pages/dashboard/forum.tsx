@@ -11,7 +11,21 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Glassmorphism } from "@/components/ui/glassmorphism";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Globe, Edit, Server, Type, Palette, Link } from "lucide-react";
+import { Plus, Trash2, Globe, Edit, Server, Type, Palette, Link, Shield, AlertCircle, ExternalLink } from "lucide-react";
+import DomainVerification from "@/components/dashboard/domain-verification";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type Forum = {
   id: number;
@@ -31,6 +45,7 @@ type Forum = {
   createdAt: string;
   totalQuestions: number;
   totalAnswers: number;
+  isVerified?: boolean;
 };
 
 export default function ForumManagementPage() {
@@ -38,6 +53,8 @@ export default function ForumManagementPage() {
   const [forumFormVisible, setForumFormVisible] = useState(false);
   const [domainFormVisible, setDomainFormVisible] = useState<number | null>(null);
   const [editForumId, setEditForumId] = useState<number | null>(null);
+  const [verificationDialogOpen, setVerificationDialogOpen] = useState(false);
+  const [domainToVerify, setDomainToVerify] = useState<{forumId: number, domain: string} | null>(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -538,6 +555,27 @@ export default function ForumManagementPage() {
     </form>
   );
 
+  // Function to handle domain verification
+  const handleVerifyDomain = (forumId: number, customDomain: string) => {
+    if (!customDomain) return;
+    
+    setDomainToVerify({
+      forumId,
+      domain: customDomain
+    });
+    setVerificationDialogOpen(true);
+  };
+  
+  // Function to handle verification completion
+  const handleVerificationComplete = () => {
+    setVerificationDialogOpen(false);
+    queryClient.invalidateQueries({ queryKey: ["/api/forums"] });
+    toast({
+      title: "Domain verification started",
+      description: "The verification process has been initiated. It may take a few minutes to complete.",
+    });
+  };
+  
   // Forum card component
   const ForumCard = ({ forum }: { forum: Forum }) => (
     <Glassmorphism key={forum.id} className="rounded-lg overflow-hidden">
@@ -588,10 +626,24 @@ export default function ForumManagementPage() {
               )}
               
               {forum.customDomain && (
-                <Badge variant="outline" className="flex items-center gap-1">
-                  <Globe className="w-3 h-3" />
-                  {forum.customDomain}
-                </Badge>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="outline" className="flex items-center gap-1 cursor-pointer" 
+                        onClick={() => handleVerifyDomain(forum.id, forum.customDomain || '')}>
+                        <Globe className="w-3 h-3" />
+                        {forum.customDomain}
+                        {!forum.isVerified && <AlertCircle className="w-3 h-3 ml-1 text-amber-500" />}
+                        {forum.isVerified && <Shield className="w-3 h-3 ml-1 text-green-500" />}
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {forum.isVerified 
+                        ? "Verified domain - Click to manage DNS settings" 
+                        : "Unverified domain - Click to verify ownership"}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
             </div>
           </div>
@@ -802,6 +854,25 @@ export default function ForumManagementPage() {
           <GlobalSettings />
         </TabsContent>
       </Tabs>
+      
+      {/* Domain Verification Dialog */}
+      <Dialog open={verificationDialogOpen} onOpenChange={setVerificationDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Verify Domain Ownership</DialogTitle>
+            <DialogDescription>
+              To verify ownership of your domain, you'll need to add a DNS TXT record.
+            </DialogDescription>
+          </DialogHeader>
+          {domainToVerify && (
+            <DomainVerification 
+              forumId={domainToVerify.forumId}
+              domain={domainToVerify.domain}
+              onVerificationComplete={handleVerificationComplete}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
