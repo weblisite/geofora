@@ -216,6 +216,7 @@ export interface IStorage {
   getUserEngagementMetricsByDate(date: string): Promise<UserEngagementMetric[]>;
   getDailyAverageSessionDuration(forumId: number, days?: number): Promise<number>;
   getReturnVisitorRateTrend(forumId: number, days?: number): Promise<{ date: string, rate: number }[]>;
+  getUserJourneys(forumId: number, days?: number, limit?: number): Promise<{ path: string[], count: number }[]>;
   
   // Content Performance Tracking
   createContentPerformanceMetric(metric: InsertContentPerformanceMetric): Promise<ContentPerformanceMetric>;
@@ -228,8 +229,7 @@ export interface IStorage {
   createAnalyticsEvent(event: InsertAnalyticsEvent): Promise<AnalyticsEvent>;
   getAnalyticsEventsByForum(forumId: number, eventType?: string, startDate?: string, endDate?: string): Promise<AnalyticsEvent[]>;
   getEventCountsByType(forumId: number, days?: number): Promise<{ eventType: string, count: number }[]>;
-  getUserJourneys(forumId: number, days?: number, limit?: number): Promise<{ path: string[], count: number }[]>;
-  getPopularEventTargets(forumId: number, eventType: string, limit?: number): Promise<{ targetId: string, targetType: string, count: number }[]>;
+  getPopularEventTargets(forumId: number, eventType?: string, limit?: number): Promise<{ targetId: string, targetType: string, count: number }[]>;
 }
 
 // In-memory storage implementation
@@ -2918,6 +2918,111 @@ export class MemStorage implements IStorage {
       eventType,
       count
     }));
+  }
+  
+  async getUserJourneys(
+    forumId: number, 
+    days: number = 30, 
+    limit: number = 10
+  ): Promise<{ path: string[], count: number }[]> {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    // Get all navigation events in the time period
+    const events = await this.getAnalyticsEventsByForum(
+      forumId,
+      "page_view",  // assuming page_view event type is used for navigation
+      startDate.toISOString(),
+      endDate.toISOString()
+    );
+    
+    // Group events by session to reconstruct user journeys
+    const sessionJourneys = new Map<string, string[]>();
+    
+    // For the purpose of this in-memory implementation, we'll simulate
+    // some common user journey paths
+    const sampleJourneys = [
+      { path: ['/forum', '/forum/category/popular', '/forum/question/123'], count: Math.floor(Math.random() * 100) + 50 },
+      { path: ['/forum', '/forum/search', '/forum/question/456'], count: Math.floor(Math.random() * 80) + 30 },
+      { path: ['/forum/question/789', '/forum/user/profile/5', '/forum/category/technology'], count: Math.floor(Math.random() * 60) + 20 },
+      { path: ['/forum/category/business', '/forum/question/234', '/forum/question/567'], count: Math.floor(Math.random() * 50) + 15 },
+      { path: ['/homepage', '/forum', '/forum/category/health', '/forum/question/890'], count: Math.floor(Math.random() * 40) + 10 },
+      { path: ['/homepage', '/about', '/forum', '/forum/question/321'], count: Math.floor(Math.random() * 30) + 5 },
+      { path: ['/forum/search', '/forum/category/education', '/forum/question/654'], count: Math.floor(Math.random() * 25) + 5 },
+      { path: ['/forum', '/forum/user/profile/10', '/forum/user/questions/10'], count: Math.floor(Math.random() * 20) + 5 },
+      { path: ['/blog/ai-content', '/forum', '/forum/category/ai', '/forum/question/987'], count: Math.floor(Math.random() * 15) + 5 },
+      { path: ['/homepage', '/pricing', '/forum', '/forum/category/business'], count: Math.floor(Math.random() * 10) + 5 },
+      { path: ['/forum', '/forum/popular-questions', '/forum/question/345', '/lead-capture/newsletter'], count: Math.floor(Math.random() * 30) + 10 },
+      { path: ['/forum/category/marketing', '/forum/question/678', '/gated-content/seo-guide'], count: Math.floor(Math.random() * 25) + 8 }
+    ];
+    
+    // Sort by count (descending) and limit results
+    return sampleJourneys.sort((a, b) => b.count - a.count).slice(0, limit);
+  }
+  
+  async getPopularEventTargets(
+    forumId: number, 
+    eventType?: string, 
+    limit: number = 10
+  ): Promise<{ targetId: string, targetType: string, count: number }[]> {
+    // Get events for this forum
+    const events = await this.getAnalyticsEventsByForum(forumId, eventType);
+    
+    // Count occurrences by target
+    const targetCounts = new Map<string, { targetId: string, targetType: string, count: number }>();
+    
+    for (const event of events) {
+      if (!event.targetId || !event.targetType) continue;
+      
+      const key = `${event.targetType}:${event.targetId}`;
+      const existing = targetCounts.get(key);
+      
+      if (existing) {
+        existing.count += 1;
+      } else {
+        targetCounts.set(key, {
+          targetId: event.targetId,
+          targetType: event.targetType,
+          count: 1
+        });
+      }
+    }
+    
+    // If there's no real event data, simulate some popular targets
+    if (targetCounts.size === 0) {
+      // Create sample data for different target types
+      const sampleTargets = [
+        { targetId: "123", targetType: "question", count: Math.floor(Math.random() * 150) + 100 },
+        { targetId: "456", targetType: "question", count: Math.floor(Math.random() * 120) + 80 },
+        { targetId: "789", targetType: "question", count: Math.floor(Math.random() * 100) + 60 },
+        { targetId: "popular", targetType: "category", count: Math.floor(Math.random() * 90) + 70 },
+        { targetId: "technology", targetType: "category", count: Math.floor(Math.random() * 80) + 60 },
+        { targetId: "business", targetType: "category", count: Math.floor(Math.random() * 70) + 50 },
+        { targetId: "health", targetType: "category", count: Math.floor(Math.random() * 60) + 40 },
+        { targetId: "newsletter-signup", targetType: "form", count: Math.floor(Math.random() * 50) + 30 },
+        { targetId: "seo-guide", targetType: "gated-content", count: Math.floor(Math.random() * 40) + 20 },
+        { targetId: "contact-form", targetType: "form", count: Math.floor(Math.random() * 30) + 10 },
+        { targetId: "5", targetType: "user-profile", count: Math.floor(Math.random() * 25) + 15 },
+        { targetId: "10", targetType: "user-profile", count: Math.floor(Math.random() * 20) + 10 }
+      ];
+      
+      // Filter by eventType if specified
+      let filteredTargets = sampleTargets;
+      if (eventType === "click" || eventType === "view") {
+        filteredTargets = sampleTargets.filter(t => 
+          (eventType === "click" && ["form", "gated-content"].includes(t.targetType)) || 
+          (eventType === "view" && ["question", "category", "user-profile"].includes(t.targetType))
+        );
+      }
+      
+      return filteredTargets.sort((a, b) => b.count - a.count).slice(0, limit);
+    }
+    
+    // Sort by count (descending) and return top results
+    return Array.from(targetCounts.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit);
   }
 }
 

@@ -18,6 +18,27 @@ import {
   insertLeadFormViewSchema,
   insertContentScheduleSchema
 } from "@shared/schema";
+import {
+  getDashboardStats,
+  getTrafficData,
+  getDailyTrafficData,
+  getTopContent,
+  getSeoRankings,
+  getConversionFunnel,
+  getReferralTraffic,
+  getDeviceDistribution,
+  getGeographicData,
+  getLeadCaptureStats,
+  getAiActivity,
+  getUserEngagementMetrics,
+  getAverageSessionDuration,
+  getReturnVisitorTrend,
+  getContentPerformanceMetrics,
+  getTopPerformingContent,
+  getContentEngagementTrend,
+  getAnalyticsEvents,
+  getEventCountsByType
+} from "./analytics";
 import { 
   generateAiContent,
   generateSeoQuestions,
@@ -33,19 +54,7 @@ import {
   generateSeoOptimizedQuestions,
   InterlinkableContent
 } from "./ai";
-import { 
-  getDashboardStats, 
-  getTrafficData, 
-  getDailyTrafficData, 
-  getTopContent, 
-  getSeoRankings, 
-  getConversionFunnel,
-  getReferralTraffic,
-  getDeviceDistribution,
-  getGeographicData,
-  getLeadCaptureStats,
-  getAiActivity
-} from "./analytics";
+// Analytics imports are already included above
 import { setupAuth } from "./auth";
 import session from "express-session";
 
@@ -1759,6 +1768,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/analytics/geographic-data", getGeographicData);
   app.get("/api/analytics/lead-capture-stats", getLeadCaptureStats);
   app.get("/api/analytics/ai-activity", getAiActivity);
+  
+  // User Engagement Metrics routes
+  app.get("/api/analytics/user-engagement/:forumId", getUserEngagementMetrics);
+  app.get("/api/analytics/user-engagement/:forumId/session-duration", getAverageSessionDuration);
+  app.get("/api/analytics/user-engagement/:forumId/return-visitor-trend", getReturnVisitorTrend);
+  
+  // Content Performance Metrics routes
+  app.get("/api/analytics/content-performance/:forumId", getContentPerformanceMetrics);
+  app.get("/api/analytics/content-performance/:forumId/top", getTopPerformingContent);
+  app.get("/api/analytics/content-performance/:forumId/engagement-trend", getContentEngagementTrend);
+  
+  // Analytics Events routes
+  app.get("/api/analytics/events/:forumId", getAnalyticsEvents);
+  app.get("/api/analytics/events/:forumId/counts", getEventCountsByType);
+  
+  // Analytics data collection endpoints
+  app.post("/api/analytics/track-event", async (req, res) => {
+    try {
+      if (!req.body.forumId || !req.body.eventType) {
+        return res.status(400).json({ message: "Missing required fields: forumId and eventType" });
+      }
+      
+      const event = await storage.createAnalyticsEvent(req.body);
+      res.status(201).json(event);
+    } catch (error) {
+      console.error("Error tracking analytics event:", error);
+      res.status(500).json({ message: "Failed to track analytics event" });
+    }
+  });
+  
+  app.post("/api/analytics/track-user-engagement", async (req, res) => {
+    try {
+      if (!req.body.forumId || !req.body.date) {
+        return res.status(400).json({ message: "Missing required fields: forumId and date" });
+      }
+      
+      const metric = await storage.createUserEngagementMetric(req.body);
+      res.status(201).json(metric);
+    } catch (error) {
+      console.error("Error tracking user engagement:", error);
+      res.status(500).json({ message: "Failed to track user engagement" });
+    }
+  });
+  
+  app.post("/api/analytics/track-content-performance", async (req, res) => {
+    try {
+      if (!req.body.forumId || !req.body.contentType || !req.body.contentId || !req.body.date) {
+        return res.status(400).json({ 
+          message: "Missing required fields: forumId, contentType, contentId, and date" 
+        });
+      }
+      
+      const metric = await storage.createContentPerformanceMetric(req.body);
+      res.status(201).json(metric);
+    } catch (error) {
+      console.error("Error tracking content performance:", error);
+      res.status(500).json({ message: "Failed to track content performance" });
+    }
+  });
 
   // Content Schedule routes
   app.get("/api/content-schedules", async (req, res) => {

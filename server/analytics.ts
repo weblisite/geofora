@@ -568,3 +568,170 @@ export async function getAiActivity(req: Request, res: Response) {
     res.status(500).json({ message: "Failed to fetch AI activity" });
   }
 }
+
+// Get user engagement metrics
+export async function getUserEngagementMetrics(req: Request, res: Response) {
+  try {
+    const forumId = parseInt(req.params.forumId);
+    const startDate = req.query.startDate as string;
+    const endDate = req.query.endDate as string;
+    
+    if (isNaN(forumId)) {
+      return res.status(400).json({ message: "Invalid forum ID" });
+    }
+    
+    const metrics = await storage.getUserEngagementMetricsByForum(forumId, startDate, endDate);
+    res.json(metrics);
+  } catch (error) {
+    console.error("Error getting user engagement metrics:", error);
+    res.status(500).json({ message: "Failed to fetch user engagement metrics" });
+  }
+}
+
+// Get average session duration
+export async function getAverageSessionDuration(req: Request, res: Response) {
+  try {
+    const forumId = parseInt(req.params.forumId);
+    const days = req.query.days ? parseInt(req.query.days as string) : 30;
+    
+    if (isNaN(forumId)) {
+      return res.status(400).json({ message: "Invalid forum ID" });
+    }
+    
+    const avgDuration = await storage.getDailyAverageSessionDuration(forumId, days);
+    res.json({ 
+      forumId, 
+      days, 
+      averageSessionDuration: avgDuration,
+      formattedDuration: formatDuration(avgDuration)
+    });
+  } catch (error) {
+    console.error("Error getting average session duration:", error);
+    res.status(500).json({ message: "Failed to fetch average session duration" });
+  }
+}
+
+// Get return visitor rate trend
+export async function getReturnVisitorTrend(req: Request, res: Response) {
+  try {
+    const forumId = parseInt(req.params.forumId);
+    const days = req.query.days ? parseInt(req.query.days as string) : 30;
+    
+    if (isNaN(forumId)) {
+      return res.status(400).json({ message: "Invalid forum ID" });
+    }
+    
+    const trend = await storage.getReturnVisitorRateTrend(forumId, days);
+    res.json(trend);
+  } catch (error) {
+    console.error("Error getting return visitor trend:", error);
+    res.status(500).json({ message: "Failed to fetch return visitor trend" });
+  }
+}
+
+// Get content performance metrics
+export async function getContentPerformanceMetrics(req: Request, res: Response) {
+  try {
+    const forumId = parseInt(req.params.forumId);
+    const contentType = req.query.contentType as string;
+    
+    if (isNaN(forumId)) {
+      return res.status(400).json({ message: "Invalid forum ID" });
+    }
+    
+    const metrics = await storage.getContentPerformanceMetricsByForum(forumId, contentType);
+    res.json(metrics);
+  } catch (error) {
+    console.error("Error getting content performance metrics:", error);
+    res.status(500).json({ message: "Failed to fetch content performance metrics" });
+  }
+}
+
+// Get top performing content
+export async function getTopPerformingContent(req: Request, res: Response) {
+  try {
+    const forumId = parseInt(req.params.forumId);
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+    
+    if (isNaN(forumId)) {
+      return res.status(400).json({ message: "Invalid forum ID" });
+    }
+    
+    const topContent = await storage.getTopPerformingContent(forumId, limit);
+    res.json(topContent);
+  } catch (error) {
+    console.error("Error getting top performing content:", error);
+    res.status(500).json({ message: "Failed to fetch top performing content" });
+  }
+}
+
+// Get content engagement trend
+export async function getContentEngagementTrend(req: Request, res: Response) {
+  try {
+    const forumId = parseInt(req.params.forumId);
+    const days = req.query.days ? parseInt(req.query.days as string) : 30;
+    
+    if (isNaN(forumId)) {
+      return res.status(400).json({ message: "Invalid forum ID" });
+    }
+    
+    const trend = await storage.getContentEngagementTrend(forumId, days);
+    res.json(trend);
+  } catch (error) {
+    console.error("Error getting content engagement trend:", error);
+    res.status(500).json({ message: "Failed to fetch content engagement trend" });
+  }
+}
+
+// Get analytics events
+export async function getAnalyticsEvents(req: Request, res: Response) {
+  try {
+    const forumId = parseInt(req.params.forumId);
+    const eventType = req.query.eventType as string;
+    const startDate = req.query.startDate as string;
+    const endDate = req.query.endDate as string;
+    
+    if (isNaN(forumId)) {
+      return res.status(400).json({ message: "Invalid forum ID" });
+    }
+    
+    const events = await storage.getAnalyticsEventsByForum(forumId, eventType, startDate, endDate);
+    res.json(events);
+  } catch (error) {
+    console.error("Error getting analytics events:", error);
+    res.status(500).json({ message: "Failed to fetch analytics events" });
+  }
+}
+
+// Get event counts by type
+export async function getEventCountsByType(req: Request, res: Response) {
+  try {
+    const forumId = parseInt(req.params.forumId);
+    const days = req.query.days ? parseInt(req.query.days as string) : 30;
+    
+    if (isNaN(forumId)) {
+      return res.status(400).json({ message: "Invalid forum ID" });
+    }
+    
+    const counts = await storage.getEventCountsByType(forumId, days);
+    res.json(counts);
+  } catch (error) {
+    console.error("Error getting event counts by type:", error);
+    res.status(500).json({ message: "Failed to fetch event counts" });
+  }
+}
+
+// Helper function to format duration in seconds to a human-readable string
+function formatDuration(seconds: number): string {
+  if (seconds < 60) {
+    return `${seconds}s`;
+  } else if (seconds < 3600) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.round(seconds % 60);
+    return `${minutes}m ${remainingSeconds}s`;
+  } else {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}m`;
+  }
+}
