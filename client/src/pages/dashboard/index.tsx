@@ -6,6 +6,7 @@ import AIActivity from "@/components/dashboard/ai-activity";
 import AIPanel from "@/components/dashboard/ai-panel";
 import TopContent from "@/components/dashboard/top-content";
 import Sidebar from "@/components/dashboard/sidebar";
+import MobileNav from "@/components/dashboard/mobile-nav";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -239,8 +240,9 @@ export default function DashboardPage() {
   return (
     <div className="flex h-screen overflow-hidden bg-[#0c0f1a]">
       <Sidebar />
+      <MobileNav />
       
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden md:pt-0 pt-14">
         {renderDashboardContent()}
       </div>
     </div>
