@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@lib/queryClient";
-import { useToast } from "@hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 type PersonaType = "beginner" | "intermediate" | "expert" | "moderator";
 
@@ -29,7 +29,7 @@ export function useAI(options?: UseAIOptions) {
       const response = await apiRequest("/api/ai/generate-content", {
         method: "POST",
         body: JSON.stringify({ prompt, personaType }),
-      });
+      }) as any;
       return response.content;
     },
     onSuccess: defaultOptions.onSuccess,
@@ -50,7 +50,7 @@ export function useAI(options?: UseAIOptions) {
       const response = await apiRequest("/api/ai/generate-seo-questions", {
         method: "POST",
         body: JSON.stringify({ topic, count, personaType }),
-      });
+      }) as any;
       return response.questions;
     },
     onSuccess: defaultOptions.onSuccess,
@@ -69,7 +69,7 @@ export function useAI(options?: UseAIOptions) {
       const response = await apiRequest("/api/ai/analyze-seo", {
         method: "POST",
         body: JSON.stringify({ title, content }),
-      });
+      }) as any;
       return response;
     },
     onSuccess: defaultOptions.onSuccess,
@@ -88,7 +88,7 @@ export function useAI(options?: UseAIOptions) {
       const response = await apiRequest("/api/ai/generate-answer", {
         method: "POST",
         body: JSON.stringify({ questionId, personaType }),
-      });
+      }) as any;
       return response;
     },
     onSuccess: defaultOptions.onSuccess,
@@ -101,7 +101,7 @@ export function useAI(options?: UseAIOptions) {
       const response = await apiRequest("/api/ai/generate-interlinking", {
         method: "POST",
         body: JSON.stringify({ content }),
-      });
+      }) as any;
       return response.suggestions;
     },
     onSuccess: defaultOptions.onSuccess,

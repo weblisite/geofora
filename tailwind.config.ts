@@ -84,6 +84,9 @@ export default {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
+      boxShadow: {
+        'glow': '0 0 15px rgba(59, 130, 246, 0.5), 0 0 30px rgba(147, 51, 234, 0.3)',
+      },
     },
   },
   plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],

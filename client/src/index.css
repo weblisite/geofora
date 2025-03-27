@@ -64,11 +64,11 @@
 
 @layer components {
   .glass {
-    @apply bg-[rgba(30,31,53,0.7)] backdrop-blur-md border border-primary-500/10;
+    @apply bg-[rgba(30,31,53,0.7)] backdrop-blur-md border border-[#6366f11a];
   }
   
   .gradient-text {
-    @apply bg-gradient-to-r from-primary-500 to-secondary-500 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent;
   }
   
   .gradient-border {
@@ -77,7 +77,7 @@
   
   .gradient-border::before {
     content: "";
-    @apply absolute inset-0 rounded-lg p-[1px] bg-gradient-to-r from-primary-500 via-secondary-500 to-accent-500 -z-10;
+    @apply absolute inset-0 rounded-lg p-[1px] bg-gradient-to-r from-blue-500 via-purple-500 to-green-500 -z-10;
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask-composite: exclude;
   }
@@ -87,7 +87,7 @@
   }
   
   .animated-gradient-bg {
-    @apply bg-[length:200%_200%] bg-gradient-to-br from-primary-900 via-[#121526] to-primary-800 animate-gradient;
+    @apply bg-[length:200%_200%] bg-gradient-to-br from-blue-900 via-[#121526] to-blue-800 animate-gradient;
   }
   
   @keyframes gradient {
@@ -113,13 +113,13 @@
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-dark-100;
+  @apply bg-slate-900;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-primary-700 rounded;
+  @apply bg-blue-700 rounded;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-primary-500;
+  @apply bg-blue-500;
 }
