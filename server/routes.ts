@@ -28,6 +28,19 @@ import {
   generateKeywordOptimizedQuestions,
   InterlinkableContent
 } from "./ai";
+import { 
+  getDashboardStats, 
+  getTrafficData, 
+  getDailyTrafficData, 
+  getTopContent, 
+  getSeoRankings, 
+  getConversionFunnel,
+  getReferralTraffic,
+  getDeviceDistribution,
+  getGeographicData,
+  getLeadCaptureStats,
+  getAiActivity
+} from "./analytics";
 import { setupAuth } from "./auth";
 import session from "express-session";
 
@@ -1538,6 +1551,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to delete CRM integration" });
     }
   });
+
+  // Analytics routes
+  app.get("/api/analytics/dashboard-stats/:period", getDashboardStats);
+  app.get("/api/analytics/traffic/:period", getTrafficData);
+  app.get("/api/analytics/traffic/daily", getDailyTrafficData);
+  app.get("/api/analytics/top-content", getTopContent);
+  app.get("/api/analytics/seo-rankings", getSeoRankings);
+  app.get("/api/analytics/conversion-funnel", getConversionFunnel);
+  app.get("/api/analytics/referral-traffic", getReferralTraffic);
+  app.get("/api/analytics/device-distribution", getDeviceDistribution);
+  app.get("/api/analytics/geographic-data", getGeographicData);
+  app.get("/api/analytics/lead-capture-stats", getLeadCaptureStats);
+  app.get("/api/analytics/ai-activity", getAiActivity);
 
   const httpServer = createServer(app);
 

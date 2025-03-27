@@ -11,6 +11,7 @@ import InterlinkingPage from "@/pages/dashboard/interlinking";
 import LeadCapturePage from "@/pages/dashboard/lead-capture";
 import GatedContentPage from "@/pages/dashboard/gated-content";
 import CrmIntegrationsPage from "@/pages/dashboard/crm";
+import AnalyticsPage from "@/pages/dashboard/analytics";
 import LoginPage from "@/pages/auth/login";
 import RegisterPage from "@/pages/auth/register";
 import AuthPage from "@/pages/auth-page";
@@ -24,17 +25,17 @@ function App() {
         <Route path="/forum" component={ForumPage} />
         <Route path="/forum/new" component={NewQuestionPage} />
         <Route path="/forum/:id" component={QuestionDetailPage} />
-        <Route path="/dashboard" component={DashboardPage} />
-        <Route path="/dashboard/forum" component={DashboardPage} />
-        <Route path="/dashboard/personas" component={DashboardPage} />
-        <Route path="/dashboard/analytics" component={DashboardPage} />
-        <Route path="/dashboard/keyword-analysis" component={KeywordAnalysisPage} />
-        <Route path="/dashboard/interlinking" component={InterlinkingPage} />
-        <Route path="/dashboard/lead-capture" component={LeadCapturePage} />
-        <Route path="/dashboard/gated-content" component={GatedContentPage} />
-        <Route path="/dashboard/crm" component={CrmIntegrationsPage} />
-        <Route path="/dashboard/integration" component={DashboardPage} />
-        <Route path="/dashboard/settings" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/forum" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/personas" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/analytics" component={AnalyticsPage} />
+        <ProtectedRoute path="/dashboard/keyword-analysis" component={KeywordAnalysisPage} />
+        <ProtectedRoute path="/dashboard/interlinking" component={InterlinkingPage} />
+        <ProtectedRoute path="/dashboard/lead-capture" component={LeadCapturePage} />
+        <ProtectedRoute path="/dashboard/gated-content" component={GatedContentPage} />
+        <ProtectedRoute path="/dashboard/crm" component={CrmIntegrationsPage} />
+        <ProtectedRoute path="/dashboard/integration" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/settings" component={DashboardPage} />
         <Route path="/login" component={LoginPage} />
         <Route path="/register" component={RegisterPage} />
         <Route path="/auth" component={AuthPage} />
