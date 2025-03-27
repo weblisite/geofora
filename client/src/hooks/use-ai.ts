@@ -79,15 +79,17 @@ export function useAI(options?: UseAIOptions) {
   // Generate an AI answer to a question
   const generateAnswer = useMutation({
     mutationFn: async ({ 
-      questionId, 
+      questionTitle, 
+      questionContent,
       personaType = "expert" 
     }: { 
-      questionId: number; 
+      questionTitle: string;
+      questionContent: string;
       personaType?: PersonaType 
     }) => {
       const response = await apiRequest("/api/ai/generate-answer", {
         method: "POST",
-        body: JSON.stringify({ questionId, personaType }),
+        body: JSON.stringify({ questionTitle, questionContent, personaType }),
       }) as any;
       return response;
     },

@@ -232,47 +232,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/ai/generate-answer", async (req, res) => {
     try {
-      const { questionId, personaType = "expert" } = req.body;
+      const { questionTitle, questionContent, personaType = "expert" } = req.body;
       
-      if (!questionId) {
-        return res.status(400).json({ message: "Question ID is required" });
+      if (!questionTitle || !questionContent) {
+        return res.status(400).json({ message: "Question title and content are required" });
       }
       
-      // Get the question details
-      const question = await storage.getQuestionWithDetails(parseInt(questionId));
-      if (!question) {
-        return res.status(404).json({ message: "Question not found" });
-      }
+      const answer = await generateAnswer(questionTitle, questionContent, personaType);
       
-      const answer = await generateAnswer(question.title, question.content, personaType);
-      
-      // If user is authenticated, save the AI-generated answer
-      if (req.session?.userId) {
-        // Default to a standard AI user ID since we can't access private properties of the storage class
-        // In a production app, we would have a method in the storage class to find AI users by persona type
-        
-        // Use specific AI user IDs based on persona type
-        let aiUserId = 6; // Default to AI Expert ID
-        if (personaType === "beginner") {
-          aiUserId = 7; // AI Beginner ID
-        } else if (personaType === "intermediate") {
-          aiUserId = 8; // AI Intermediate ID
-        } else if (personaType === "moderator") {
-          aiUserId = 9; // AI Moderator ID
-        }
-        
-        const newAnswer = await storage.createAnswer({
-          questionId: parseInt(questionId),
-          userId: aiUserId,
-          content: answer,
-          isAiGenerated: true,
-          aiPersonaType: personaType
-        });
-        
-        return res.json({ answer, saved: true, answerId: newAnswer.id });
-      }
-      
-      res.json({ answer, saved: false });
+      // Return the generated answer
+      res.json(answer);
     } catch (error) {
       console.error("Error generating AI answer:", error);
       res.status(500).json({ message: "Failed to generate AI answer" });

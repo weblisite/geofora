@@ -29,15 +29,19 @@ export default function QuestionDetail() {
   // Track question view
   useEffect(() => {
     if (questionId) {
-      apiRequest("POST", `/api/questions/${questionId}/view`, {})
-        .catch((error) => console.error("Failed to track view:", error));
+      apiRequest(`/api/questions/${questionId}/view`, {
+        method: "POST"
+      }).catch((error) => console.error("Failed to track view:", error));
     }
   }, [questionId]);
 
   // Vote on an answer
   const voteMutation = useMutation({
     mutationFn: async ({ answerId, isUpvote }: { answerId: number; isUpvote: boolean }) => {
-      return apiRequest("POST", `/api/answers/${answerId}/vote`, { isUpvote });
+      return apiRequest(`/api/answers/${answerId}/vote`, {
+        method: "POST",
+        body: JSON.stringify({ isUpvote })
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/questions/${questionId}/answers`] });
@@ -83,16 +87,14 @@ export default function QuestionDetail() {
       {/* Question Header */}
       <div className="p-6 border-b border-dark-300">
         <div className="flex items-center space-x-3 mb-4">
-          <Link href="/forum">
-            <a className="text-primary-400 hover:text-primary-300">
-              <span className="material-icons">arrow_back</span>
-            </a>
+          <Link href="/forum" className="text-primary-400 hover:text-primary-300">
+            <span className="material-icons">arrow_back</span>
           </Link>
           <div>
             <div className="flex items-center text-xs text-gray-400 mb-2">
               <span>{question.category?.name || "Uncategorized"}</span>
               <span className="mx-2">•</span>
-              <span>Posted {formatDate(question.createdAt)}</span>
+              <span>Posted {formatDate(question.createdAt || new Date())}</span>
             </div>
             <h3 className="text-2xl font-semibold">{question.title}</h3>
           </div>
@@ -192,7 +194,7 @@ export default function QuestionDetail() {
                       </div>
                     )}
                     <div className="ml-2 text-xs text-gray-400">
-                      {formatDate(answer.createdAt)}
+                      {formatDate(answer.createdAt || new Date())}
                     </div>
                   </div>
 

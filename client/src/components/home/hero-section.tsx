@@ -21,11 +21,9 @@ export default function HeroSection() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              <Link href="/register">
-                <a className="inline-flex items-center justify-center px-8 py-3 text-base font-medium text-white transition-all rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 shadow-glow">
-                  <span>Launch Now</span>
-                  <span className="ml-2 material-icons">rocket_launch</span>
-                </a>
+              <Link href="/register" className="inline-flex items-center justify-center px-8 py-3 text-base font-medium text-white transition-all rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 shadow-glow">
+                <span>Launch Now</span>
+                <span className="ml-2 material-icons">rocket_launch</span>
               </Link>
 
               <button className="inline-flex items-center justify-center px-8 py-3 text-base font-medium text-white transition-all bg-dark-200 rounded-lg hover:bg-dark-300 border border-primary-500/30">
