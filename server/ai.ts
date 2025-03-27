@@ -194,6 +194,11 @@ export interface InterlinkingSuggestion {
   title: string;
   relevanceScore: number;
   anchorText: string;
+  contextRelevance?: string; // Explanation of why this link is relevant in the current context
+  semanticSimilarity?: number; // Score from 0-1 indicating semantic similarity
+  userIntentAlignment?: number; // Score from 0-1 indicating alignment with likely user intent
+  seoImpact?: number; // Score from 0-1 indicating potential SEO impact
+  preview?: string; // Short preview of the target content
 }
 
 /**
@@ -212,17 +217,21 @@ export async function generateInterlinkingSuggestions(
       id: c.id,
       type: c.type,
       title: c.title,
-      excerpt: c.content.substring(0, 200) + "..."
+      excerpt: c.content.substring(0, 250) + "..." // Increased excerpt length for better context
     }));
 
     const userPrompt = `Source Content Title: ${sourceTitle}
     Source Content: ${sourceContent}
     Source Type: ${sourceType}
     
-    Analyze this content and identify opportunities for interlinking with these existing content items:
+    Analyze this content and identify high-quality opportunities for interlinking with these existing content items:
     ${JSON.stringify(contentsData)}
     
-    Provide recommendations for strategic interlinking that would add value to readers, improve SEO, and enhance the user journey between forum content and main site content.`;
+    Provide strategic interlinking recommendations that would:
+    1. Add genuine value to readers by connecting them to related information they'd want to know
+    2. Improve SEO through a logical content hierarchy and relevance-based linking
+    3. Enhance the user journey between forum content and main site content
+    4. Create a context-aware web of information that feels natural, not forced`;
 
     const response = await openai.chat.completions.create({
       model: AI_MODELS.default,
@@ -236,28 +245,37 @@ export async function generateInterlinkingSuggestions(
           {
             "suggestions": [
               {
-                "contentId": number,          // The ID of the content to link to
-                "contentType": string,        // The type of content ("question", "answer", or "main_page")
-                "title": string,              // The title of the content
-                "relevanceScore": number,     // A score from 0-100 indicating relevance
-                "anchorText": string          // The text in the source content that should become the link
+                "contentId": number,            // The ID of the content to link to
+                "contentType": string,          // The type of content ("question", "answer", or "main_page")
+                "title": string,                // The title of the content
+                "relevanceScore": number,       // A score from 0-100 indicating relevance
+                "anchorText": string,           // The text in the source content that should become the link
+                "contextRelevance": string,     // Brief explanation of why this link is relevant in this context
+                "semanticSimilarity": number,   // Score from 0-1 indicating semantic similarity
+                "userIntentAlignment": number,  // Score from 0-1 indicating alignment with likely user intent
+                "seoImpact": number,            // Score from 0-1 indicating potential SEO impact
+                "preview": string               // Short preview of the target content (max 100 chars)
               },
               ...
             ]
           }
           
           Important guidelines:
-          1. Make sure the "anchorText" is an exact substring that exists in the original content.
+          1. The "anchorText" MUST be an exact substring that exists in the original content.
           2. Only provide suggestions where the anchorText appears exactly in the content.
-          3. Focus on creating a semantic web that helps users navigate between related topics.
-          4. Consider user intent and journey when suggesting interlinks.
-          5. Prefer higher relevance scores (70+) for the most valuable connections.
-          6. Limit results to the most valuable links (max ${limit}).`
+          3. Focus on creating meaningful connections that help users navigate between related topics.
+          4. Consider user intent and journey when suggesting interlinks - only suggest links a user would genuinely want to click.
+          5. Prefer higher relevance scores (75+) for the most valuable connections.
+          6. The contextRelevance field should explain why this specific link makes sense in this location.
+          7. Calculate semantic similarity based on conceptual overlap between source and target.
+          8. Calculate userIntentAlignment based on how well the target content satisfies the likely next question/need of someone reading the source.
+          9. Calculate seoImpact based on keyword relevance and potential for building topical authority.
+          10. Limit results to only the most valuable links that add real value (max ${limit}).`
         },
         { role: "user", content: userPrompt }
       ],
       response_format: { type: "json_object" },
-      temperature: 0.4,
+      temperature: 0.3, // Lower temperature for more focused results
     });
     
     const responseContent = response.choices[0].message.content || "{}";
@@ -273,22 +291,35 @@ export async function generateInterlinkingSuggestions(
             contentType: item.contentType || item.type || "",
             title: item.title || "",
             relevanceScore: typeof item.relevanceScore === 'number' ? item.relevanceScore : 0,
-            anchorText: item.anchorText || ""
+            anchorText: item.anchorText || "",
+            contextRelevance: item.contextRelevance || "",
+            semanticSimilarity: typeof item.semanticSimilarity === 'number' ? item.semanticSimilarity : 0,
+            userIntentAlignment: typeof item.userIntentAlignment === 'number' ? item.userIntentAlignment : 0,
+            seoImpact: typeof item.seoImpact === 'number' ? item.seoImpact : 0,
+            preview: item.preview || ""
           }))
           .filter((item: InterlinkingSuggestion) => 
-            // Filter out invalid suggestions
+            // Filter out invalid suggestions with higher threshold (75 vs 50 previously)
             item.contentId > 0 && 
             item.anchorText.length > 0 && 
-            item.relevanceScore >= 50 &&
+            sourceContent.includes(item.anchorText) && // Verify anchor text exists in source
+            item.relevanceScore >= 75 && // Higher threshold for quality
             ["question", "answer", "main_page"].includes(item.contentType)
           )
           .sort((a: InterlinkingSuggestion, b: InterlinkingSuggestion) => 
-            // Sort by relevance score (descending)
-            b.relevanceScore - a.relevanceScore
+            // Sort by combined score (relevance + weighted additional factors)
+            ((b.relevanceScore / 100) * 0.6 + 
+             (b.semanticSimilarity || 0) * 0.15 + 
+             (b.userIntentAlignment || 0) * 0.15 + 
+             (b.seoImpact || 0) * 0.1) - 
+            ((a.relevanceScore / 100) * 0.6 + 
+             (a.semanticSimilarity || 0) * 0.15 + 
+             (a.userIntentAlignment || 0) * 0.15 + 
+             (a.seoImpact || 0) * 0.1)
           )
           .slice(0, limit); // Limit results
       } 
-      // Fallback formats
+      // Fallback formats - maintain backward compatibility
       else if (Array.isArray(result)) {
         return result
           .map((item: any) => ({
@@ -296,11 +327,18 @@ export async function generateInterlinkingSuggestions(
             contentType: item.contentType || item.type || "",
             title: item.title || "",
             relevanceScore: typeof item.relevanceScore === 'number' ? item.relevanceScore : 0,
-            anchorText: item.anchorText || ""
+            anchorText: item.anchorText || "",
+            // Add default values for new fields
+            contextRelevance: item.contextRelevance || "",
+            semanticSimilarity: typeof item.semanticSimilarity === 'number' ? item.semanticSimilarity : 0,
+            userIntentAlignment: typeof item.userIntentAlignment === 'number' ? item.userIntentAlignment : 0,
+            seoImpact: typeof item.seoImpact === 'number' ? item.seoImpact : 0,
+            preview: item.preview || ""
           }))
           .filter((item: InterlinkingSuggestion) => 
             item.contentId > 0 && 
             item.anchorText.length > 0 && 
+            sourceContent.includes(item.anchorText) &&
             item.relevanceScore >= 50 &&
             ["question", "answer", "main_page"].includes(item.contentType)
           )
@@ -317,11 +355,18 @@ export async function generateInterlinkingSuggestions(
             contentType: item.contentType || item.type || "",
             title: item.title || "",
             relevanceScore: typeof item.relevanceScore === 'number' ? item.relevanceScore : 0,
-            anchorText: item.anchorText || ""
+            anchorText: item.anchorText || "",
+            // Add default values for new fields
+            contextRelevance: item.contextRelevance || "",
+            semanticSimilarity: typeof item.semanticSimilarity === 'number' ? item.semanticSimilarity : 0,
+            userIntentAlignment: typeof item.userIntentAlignment === 'number' ? item.userIntentAlignment : 0,
+            seoImpact: typeof item.seoImpact === 'number' ? item.seoImpact : 0,
+            preview: item.preview || ""
           }))
           .filter((item: InterlinkingSuggestion) => 
             item.contentId > 0 && 
             item.anchorText.length > 0 && 
+            sourceContent.includes(item.anchorText) &&
             item.relevanceScore >= 50 &&
             ["question", "answer", "main_page"].includes(item.contentType)
           )
@@ -381,6 +426,142 @@ export async function generateQuestionInterlinkingSuggestions(
     }));
   } catch (error) {
     console.error("Error generating question interlinking suggestions:", error);
+    return [];
+  }
+}
+
+/**
+ * Generate bidirectional interlinking suggestions between forum content and main website content
+ * This specialized function analyzes both the forum content and main website content to suggest
+ * optimal bidirectional links that enhance SEO and user experience
+ * @param forumContent An array of forum content items (questions/answers)
+ * @param mainSiteContent An array of main site content items
+ * @param maxSuggestionsPerItem Maximum number of suggestions to return per content item
+ */
+export async function generateBidirectionalInterlinkingSuggestions(
+  forumContent: InterlinkableContent[],
+  mainSiteContent: InterlinkableContent[],
+  maxSuggestionsPerItem: number = 3
+): Promise<Array<{
+  sourceId: number;
+  sourceType: string;
+  sourceTitle: string;
+  targetId: number;
+  targetType: string;
+  targetTitle: string;
+  anchorText: string;
+  relevanceScore: number;
+  contextRelevance: string;
+  bidirectional: boolean; // Whether a reciprocal link is also recommended
+}>> {
+  try {
+    if (!forumContent.length || !mainSiteContent.length) {
+      return [];
+    }
+
+    // Prepare data for the prompt
+    const forumData = forumContent.map(c => ({
+      id: c.id,
+      type: c.type,
+      title: c.title,
+      excerpt: c.content.substring(0, 150) + "..."
+    }));
+
+    const mainSiteData = mainSiteContent.map(c => ({
+      id: c.id,
+      type: c.type,
+      title: c.title,
+      excerpt: c.content.substring(0, 150) + "..."
+    }));
+
+    const prompt = `Analyze the relationship between these forum content items and main website content items to identify optimal bidirectional interlinking opportunities:
+
+    Forum Content:
+    ${JSON.stringify(forumData)}
+
+    Main Website Content:
+    ${JSON.stringify(mainSiteData)}
+
+    Provide strategic bidirectional interlinking recommendations that would:
+    1. Create a semantic web connecting related topics between the forum and main site
+    2. Enhance SEO by establishing topic clusters and topical authority
+    3. Improve user experience by guiding users to relevant content across platforms
+    4. Identify where reciprocal (bidirectional) links make sense for both content items`;
+
+    const response = await openai.chat.completions.create({
+      model: AI_MODELS.default,
+      messages: [
+        { 
+          role: "system", 
+          content: `You are an advanced SEO interlinking specialist focusing on creating optimal bidirectional links between forum content and main website content.
+          
+          Provide output as a JSON object with a key called "interlinkingSuggestions" containing an array of objects with these exact properties:
+          {
+            "interlinkingSuggestions": [
+              {
+                "sourceId": number,           // The ID of the source content
+                "sourceType": string,         // The type of source content ("question", "answer", or "main_page")
+                "sourceTitle": string,        // The title of the source content
+                "targetId": number,           // The ID of the target content to link to
+                "targetType": string,         // The type of target content ("question", "answer", or "main_page")
+                "targetTitle": string,        // The title of the target content
+                "anchorText": string,         // The text in the source that should become the link
+                "relevanceScore": number,     // A score from 0-100 indicating relevance
+                "contextRelevance": string,   // Brief explanation of why this link is relevant
+                "bidirectional": boolean      // Whether a reciprocal link is also recommended
+              },
+              ...
+            ]
+          }
+          
+          Important guidelines:
+          1. Focus on creating meaningful connections that enhance both user experience and SEO
+          2. Prioritize links between forum questions/answers and related main site pages
+          3. Recommend bidirectional links (bidirectional: true) only when it makes sense for both pieces of content
+          4. Provide a mix of forum-to-site and site-to-forum links
+          5. Ensure high relevance scores (75+) for all suggestions
+          6. The contextRelevance field should clearly explain the topical relationship
+          7. Limit to the most valuable ${maxSuggestionsPerItem} links per content item`
+        },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.3,
+    });
+    
+    const responseContent = response.choices[0].message.content || "{}";
+    const result = JSON.parse(responseContent);
+    
+    if (result.interlinkingSuggestions && Array.isArray(result.interlinkingSuggestions)) {
+      return result.interlinkingSuggestions
+        .map((item: any) => ({
+          sourceId: typeof item.sourceId === 'number' ? item.sourceId : 0,
+          sourceType: item.sourceType || "",
+          sourceTitle: item.sourceTitle || "",
+          targetId: typeof item.targetId === 'number' ? item.targetId : 0,
+          targetType: item.targetType || "",
+          targetTitle: item.targetTitle || "",
+          anchorText: item.anchorText || "",
+          relevanceScore: typeof item.relevanceScore === 'number' ? item.relevanceScore : 0,
+          contextRelevance: item.contextRelevance || "",
+          bidirectional: !!item.bidirectional
+        }))
+        .filter(item => 
+          // Filter out invalid suggestions
+          item.sourceId > 0 && 
+          item.targetId > 0 && 
+          item.anchorText.length > 0 && 
+          item.relevanceScore >= 75 &&
+          ["question", "answer", "main_page"].includes(item.sourceType) &&
+          ["question", "answer", "main_page"].includes(item.targetType)
+        )
+        .sort((a, b) => b.relevanceScore - a.relevanceScore);
+    }
+    
+    console.warn("Unexpected response format from OpenAI:", result);
+    return [];
+  } catch (error) {
+    console.error("Error generating bidirectional interlinking suggestions:", error);
     return [];
   }
 }

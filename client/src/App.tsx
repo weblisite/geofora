@@ -7,6 +7,7 @@ import QuestionDetailPage from "@/pages/forum/[id]";
 import NewQuestionPage from "@/pages/forum/new";
 import DashboardPage from "@/pages/dashboard";
 import KeywordAnalysisPage from "@/pages/dashboard/keyword-analysis";
+import InterlinkingPage from "@/pages/dashboard/interlinking";
 import LoginPage from "@/pages/auth/login";
 import RegisterPage from "@/pages/auth/register";
 import AuthPage from "@/pages/auth-page";
@@ -25,6 +26,7 @@ function App() {
         <Route path="/dashboard/personas" component={DashboardPage} />
         <Route path="/dashboard/analytics" component={DashboardPage} />
         <Route path="/dashboard/keyword-analysis" component={KeywordAnalysisPage} />
+        <Route path="/dashboard/interlinking" component={InterlinkingPage} />
         <Route path="/dashboard/integration" component={DashboardPage} />
         <Route path="/dashboard/settings" component={DashboardPage} />
         <Route path="/login" component={LoginPage} />
