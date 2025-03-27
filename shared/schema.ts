@@ -430,3 +430,50 @@ export type LeadCaptureFormWithStats = LeadCaptureForm & {
   totalSubmissions: number;
   conversionRate: number;
 };
+
+// Content Schedule schema
+export const contentSchedules = pgTable("content_schedules", {
+  id: serial("id").primaryKey(),
+  forumId: integer("forum_id").notNull().references(() => forums.id),
+  title: text("title").notNull(),
+  contentType: text("content_type").notNull(), // "question", "answer", "both"
+  keyword: text("keyword").notNull(),
+  scheduledFor: timestamp("scheduled_for").notNull(),
+  personaType: text("persona_type").default("expert"), // "beginner", "intermediate", "expert", "moderator"
+  status: text("status").default("scheduled"), // "scheduled", "published", "failed", "cancelled"
+  isRecurring: boolean("is_recurring").default(false),
+  recurrencePattern: text("recurrence_pattern"), // JSON string with recurrence details
+  categoryId: integer("category_id").references(() => categories.id),
+  questionsCount: integer("questions_count").default(1),
+  userId: integer("user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  publishedAt: timestamp("published_at"),
+  questionIds: text("question_ids"), // JSON array of created question IDs
+});
+
+export const insertContentScheduleSchema = createInsertSchema(contentSchedules).pick({
+  forumId: true,
+  title: true,
+  contentType: true,
+  keyword: true,
+  scheduledFor: true,
+  personaType: true,
+  status: true,
+  isRecurring: true,
+  recurrencePattern: true,
+  categoryId: true,
+  questionsCount: true,
+  userId: true,
+});
+
+export type ContentSchedule = typeof contentSchedules.$inferSelect;
+export type InsertContentSchedule = z.infer<typeof insertContentScheduleSchema>;
+
+// Extended type for content schedules with status info
+export type ContentScheduleWithDetails = ContentSchedule & {
+  forum: Forum;
+  category?: Category;
+  questionsGenerated?: number;
+  answersGenerated?: number;
+};

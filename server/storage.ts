@@ -13,7 +13,8 @@ import {
   leadSubmissions, type LeadSubmission, type InsertLeadSubmission,
   gatedContents, type GatedContent, type InsertGatedContent,
   crmIntegrations, type CrmIntegration, type InsertCrmIntegration,
-  leadFormViews, type LeadFormView, type InsertLeadFormView
+  leadFormViews, type LeadFormView, type InsertLeadFormView,
+  contentSchedules, type ContentSchedule, type InsertContentSchedule, type ContentScheduleWithDetails
 } from "@shared/schema";
 // Import this way to make TypeScript happy in an ESM context
 import memorystore from 'memorystore';
@@ -123,6 +124,17 @@ export interface IStorage {
   recordLeadFormView(view: InsertLeadFormView): Promise<LeadFormView>;
   getLeadFormStats(formId: number): Promise<{ views: number; submissions: number; conversionRate: number }>;
   
+  // Content Schedule methods
+  getContentSchedule(id: number): Promise<ContentSchedule | undefined>;
+  getContentScheduleWithDetails(id: number): Promise<ContentScheduleWithDetails | undefined>;
+  getContentSchedulesByForum(forumId: number): Promise<ContentScheduleWithDetails[]>;
+  getContentSchedulesByUser(userId: number): Promise<ContentScheduleWithDetails[]>;
+  getUpcomingContentSchedules(limit?: number): Promise<ContentScheduleWithDetails[]>;
+  createContentSchedule(schedule: InsertContentSchedule): Promise<ContentSchedule>;
+  updateContentSchedule(id: number, data: Partial<InsertContentSchedule>): Promise<ContentSchedule>;
+  updateContentScheduleStatus(id: number, status: string, questionIds?: number[]): Promise<ContentSchedule>;
+  deleteContentSchedule(id: number): Promise<void>;
+  
   // Session store
   sessionStore: any;
 }
@@ -144,6 +156,7 @@ export class MemStorage implements IStorage {
   private gatedContentsStore: Map<number, GatedContent>;
   private crmIntegrationsStore: Map<number, CrmIntegration>;
   private leadFormViewsStore: Map<number, LeadFormView>;
+  private contentSchedulesStore: Map<number, ContentSchedule>;
   
   private userId: number;
   private categoryId: number;
@@ -160,6 +173,7 @@ export class MemStorage implements IStorage {
   private gatedContentId: number;
   private crmIntegrationId: number;
   private leadFormViewId: number;
+  private contentScheduleId: number;
   public sessionStore: any;
 
   constructor() {
@@ -178,6 +192,7 @@ export class MemStorage implements IStorage {
     this.gatedContentsStore = new Map();
     this.crmIntegrationsStore = new Map();
     this.leadFormViewsStore = new Map();
+    this.contentSchedulesStore = new Map();
     
     // Create session store from memorystore
     this.sessionStore = new MemoryStore({
@@ -199,6 +214,7 @@ export class MemStorage implements IStorage {
     this.gatedContentId = 1;
     this.crmIntegrationId = 1;
     this.leadFormViewId = 1;
+    this.contentScheduleId = 1;
 
     // Initialize with sample data
     this.initSampleData();
