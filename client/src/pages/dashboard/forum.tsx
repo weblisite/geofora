@@ -1,0 +1,677 @@
+import { useState, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Glassmorphism } from "@/components/ui/glassmorphism";
+import { GradientText } from "@/components/ui/gradient-text";
+import { useToast } from "@/hooks/use-toast";
+import { Eye, Plus, Settings, Shield, Trash2, Globe, Edit, Server } from "lucide-react";
+
+type Forum = {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  subdomain?: string; 
+  customDomain?: string;
+  themeColor: string;
+  isPublic: boolean;
+  requiresApproval: boolean;
+  createdAt: string;
+  totalQuestions: number;
+  totalAnswers: number;
+};
+
+export default function ForumManagementPage() {
+  const [activeTab, setActiveTab] = useState("forums");
+  const [forumFormVisible, setForumFormVisible] = useState(false);
+  const [domainFormVisible, setDomainFormVisible] = useState<number | null>(null);
+  const [editForumId, setEditForumId] = useState<number | null>(null);
+  
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    name: "",
+    slug: "",
+    description: "",
+    themeColor: "#3B82F6",
+    isPublic: true,
+    requiresApproval: false
+  });
+  
+  // Domain form state
+  const [domainData, setDomainData] = useState({
+    subdomain: "",
+    customDomain: ""
+  });
+
+  // Fetch forums
+  const { data: forums, isLoading } = useQuery<Forum[]>({
+    queryKey: ["/api/forums"]
+  });
+  
+  // Create forum mutation
+  const createForumMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      const response = await apiRequest("/api/forums", {
+        method: "POST",
+        body: JSON.stringify(data)
+      });
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Forum created",
+        description: "Your forum has been created successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/forums"] });
+      setForumFormVisible(false);
+      resetFormData();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to create forum: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Update forum mutation
+  const updateForumMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number, data: typeof formData }) => {
+      const response = await apiRequest(`/api/forums/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data)
+      });
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Forum updated",
+        description: "Your forum has been updated successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/forums"] });
+      setForumFormVisible(false);
+      setEditForumId(null);
+      resetFormData();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to update forum: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Delete forum mutation
+  const deleteForumMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest(`/api/forums/${id}`, {
+        method: "DELETE"
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Forum deleted",
+        description: "The forum has been deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/forums"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to delete forum: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Update domain mutation
+  const updateDomainMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number, data: typeof domainData }) => {
+      const response = await apiRequest(`/api/forums/${id}/domain`, {
+        method: "PATCH",
+        body: JSON.stringify(data)
+      });
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Domain updated",
+        description: "The domain settings have been updated successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/forums"] });
+      setDomainFormVisible(null);
+      setDomainData({ subdomain: "", customDomain: "" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to update domain: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Handle form input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handle checkbox/switch changes
+  const handleSwitchChange = (name: string, checked: boolean) => {
+    setFormData(prev => ({ ...prev, [name]: checked }));
+  };
+  
+  // Handle domain form input changes
+  const handleDomainInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setDomainData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Reset form data
+  const resetFormData = () => {
+    setFormData({
+      name: "",
+      slug: "",
+      description: "",
+      themeColor: "#3B82F6",
+      isPublic: true,
+      requiresApproval: false
+    });
+  };
+
+  // Handle edit forum
+  const handleEditForum = (forum: Forum) => {
+    setEditForumId(forum.id);
+    setFormData({
+      name: forum.name,
+      slug: forum.slug,
+      description: forum.description,
+      themeColor: forum.themeColor,
+      isPublic: forum.isPublic,
+      requiresApproval: forum.requiresApproval
+    });
+    setForumFormVisible(true);
+  };
+
+  // Handle edit domain
+  const handleEditDomain = (forum: Forum) => {
+    setDomainFormVisible(forum.id);
+    setDomainData({
+      subdomain: forum.subdomain || "",
+      customDomain: forum.customDomain || ""
+    });
+  };
+
+  // Handle form submission
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (editForumId) {
+      updateForumMutation.mutate({ id: editForumId, data: formData });
+    } else {
+      createForumMutation.mutate(formData);
+    }
+  };
+  
+  // Handle domain form submission
+  const handleDomainSubmit = (e: React.FormEvent, forumId: number) => {
+    e.preventDefault();
+    updateDomainMutation.mutate({ id: forumId, data: domainData });
+  };
+
+  // Auto-generate slug from name
+  useEffect(() => {
+    if (!formData.slug || editForumId === null) {
+      setFormData(prev => ({
+        ...prev,
+        slug: prev.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+      }));
+    }
+  }, [formData.name, editForumId]);
+
+  // Mock data for development - will be replaced with actual API data
+  const mockForums: Forum[] = [
+    {
+      id: 1,
+      name: "Tech Discussion",
+      slug: "tech-discussion",
+      description: "Forum for discussing technology topics and trends",
+      subdomain: "tech",
+      themeColor: "#3B82F6",
+      isPublic: true,
+      requiresApproval: false,
+      createdAt: "2023-05-15T10:30:00Z",
+      totalQuestions: 156,
+      totalAnswers: 892
+    },
+    {
+      id: 2,
+      name: "Health & Wellness",
+      slug: "health-wellness",
+      description: "Discussions about health, fitness, and wellbeing",
+      themeColor: "#10B981",
+      isPublic: true,
+      requiresApproval: true,
+      createdAt: "2023-06-20T14:15:00Z",
+      totalQuestions: 87,
+      totalAnswers: 342
+    }
+  ];
+
+  // Use the actual forums data if available, otherwise use mock data
+  const forumsToDisplay: Forum[] = forums || mockForums;
+
+  return (
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Forum Management</h1>
+        
+        <Tabs 
+          value={activeTab} 
+          onValueChange={setActiveTab}
+          className="w-full max-w-md"
+        >
+          <TabsList className="grid grid-cols-2">
+            <TabsTrigger value="forums">My Forums</TabsTrigger>
+            <TabsTrigger value="settings">Global Settings</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {activeTab === "forums" && !forumFormVisible && (
+          <Button onClick={() => setForumFormVisible(true)} className="flex items-center">
+            <Plus className="w-4 h-4 mr-2" />
+            Create Forum
+          </Button>
+        )}
+      </div>
+
+      <TabsContent value="forums" className="space-y-6">
+        {forumFormVisible ? (
+          <Glassmorphism className="p-6 rounded-lg max-w-2xl mx-auto">
+            <h2 className="text-xl font-semibold mb-4">
+              {editForumId ? "Edit Forum" : "Create New Forum"}
+            </h2>
+            
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Forum Name</Label>
+                <Input 
+                  id="name" 
+                  name="name" 
+                  value={formData.name} 
+                  onChange={handleInputChange} 
+                  placeholder="e.g. Tech Discussion" 
+                  required 
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="slug">URL Slug</Label>
+                <Input 
+                  id="slug" 
+                  name="slug" 
+                  value={formData.slug} 
+                  onChange={handleInputChange} 
+                  placeholder="tech-discussion"
+                  required 
+                />
+                <p className="text-xs text-gray-400">
+                  This will be used in your forum URL: yourdomain.com/forum/{formData.slug || 'slug'}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea 
+                  id="description" 
+                  name="description" 
+                  value={formData.description} 
+                  onChange={handleInputChange} 
+                  placeholder="Describe what your forum is about..."
+                  rows={3}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="themeColor">Theme Color</Label>
+                <div className="flex items-center gap-3">
+                  <Input 
+                    id="themeColor" 
+                    name="themeColor" 
+                    type="color" 
+                    value={formData.themeColor} 
+                    onChange={handleInputChange} 
+                    className="w-12 h-12 p-1 cursor-pointer"
+                  />
+                  <Input 
+                    value={formData.themeColor} 
+                    onChange={handleInputChange} 
+                    name="themeColor"
+                    className="w-32"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="isPublic" 
+                    checked={formData.isPublic} 
+                    onCheckedChange={(checked) => handleSwitchChange('isPublic', checked)} 
+                  />
+                  <Label htmlFor="isPublic">Public Forum</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="requiresApproval" 
+                    checked={formData.requiresApproval} 
+                    onCheckedChange={(checked) => handleSwitchChange('requiresApproval', checked)} 
+                  />
+                  <Label htmlFor="requiresApproval">Require Post Approval</Label>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3 pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setForumFormVisible(false);
+                    setEditForumId(null);
+                    resetFormData();
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createForumMutation.isPending || updateForumMutation.isPending}>
+                  {createForumMutation.isPending || updateForumMutation.isPending ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                      {editForumId ? "Updating..." : "Creating..."}
+                    </>
+                  ) : (
+                    editForumId ? "Update Forum" : "Create Forum"
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Glassmorphism>
+        ) : (
+          <>
+            {isLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin w-12 h-12 border-t-2 border-b-2 border-primary-500 rounded-full"></div>
+              </div>
+            ) : forumsToDisplay.length === 0 ? (
+              <div className="text-center py-12">
+                <h3 className="text-xl font-medium mb-3">No forums yet</h3>
+                <p className="text-gray-400 mb-6">Create your first forum to get started</p>
+                <Button onClick={() => setForumFormVisible(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Forum
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {forumsToDisplay.map(forum => (
+                  <Glassmorphism key={forum.id} className="rounded-lg overflow-hidden">
+                    {domainFormVisible === forum.id ? (
+                      <form onSubmit={(e) => handleDomainSubmit(e, forum.id)} className="p-6 space-y-4">
+                        <h3 className="text-lg font-medium mb-4">Domain Settings</h3>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="subdomain">Subdomain</Label>
+                          <div className="flex items-center">
+                            <Input 
+                              id="subdomain" 
+                              name="subdomain" 
+                              value={domainData.subdomain} 
+                              onChange={handleDomainInputChange} 
+                              placeholder="mysubdomain" 
+                              className="rounded-r-none border-r-0"
+                            />
+                            <div className="bg-dark-400 text-gray-300 px-3 py-2 rounded-r-md border border-dark-400">
+                              .formai.repl.app
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="customDomain">Custom Domain (optional)</Label>
+                          <Input 
+                            id="customDomain" 
+                            name="customDomain" 
+                            value={domainData.customDomain} 
+                            onChange={handleDomainInputChange} 
+                            placeholder="forum.mydomain.com" 
+                          />
+                          <p className="text-xs text-gray-400">
+                            You'll need to configure DNS settings with your domain provider
+                          </p>
+                        </div>
+                        
+                        <div className="flex justify-end space-x-3 pt-3">
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => setDomainFormVisible(null)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button 
+                            type="submit" 
+                            disabled={updateDomainMutation.isPending}
+                          >
+                            {updateDomainMutation.isPending ? (
+                              <>
+                                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                                Updating...
+                              </>
+                            ) : 'Save Domain Settings'}
+                          </Button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        <div className="p-6 border-b border-dark-300">
+                          <div className="flex justify-between">
+                            <h3 className="text-xl font-medium mb-1">{forum.name}</h3>
+                            <Badge variant={forum.isPublic ? "default" : "secondary"}>
+                              {forum.isPublic ? "Public" : "Private"}
+                            </Badge>
+                          </div>
+                          <p className="text-gray-400 mb-4">{forum.description}</p>
+                          
+                          <div className="flex flex-wrap gap-2 text-sm">
+                            <Badge variant="outline" className="flex items-center gap-1">
+                              <Server className="w-3 h-3" />
+                              {forum.slug}
+                            </Badge>
+                            
+                            {forum.subdomain && (
+                              <Badge variant="outline" className="flex items-center gap-1">
+                                <Globe className="w-3 h-3" />
+                                {forum.subdomain}.formai.repl.app
+                              </Badge>
+                            )}
+                            
+                            {forum.customDomain && (
+                              <Badge variant="outline" className="flex items-center gap-1">
+                                <Globe className="w-3 h-3" />
+                                {forum.customDomain}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="px-6 py-4 flex items-center justify-between">
+                          <div className="flex gap-6">
+                            <div className="text-center">
+                              <p className="text-lg font-semibold">{forum.totalQuestions}</p>
+                              <p className="text-xs text-gray-400">Questions</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-lg font-semibold">{forum.totalAnswers}</p>
+                              <p className="text-xs text-gray-400">Answers</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleEditDomain(forum)}
+                              className="flex items-center"
+                            >
+                              <Globe className="w-4 h-4 mr-1" />
+                              Domains
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleEditForum(forum)}
+                              className="flex items-center"
+                            >
+                              <Edit className="w-4 h-4 mr-1" />
+                              Edit
+                            </Button>
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => {
+                                if (confirm(`Are you sure you want to delete "${forum.name}"? This action cannot be undone.`)) {
+                                  deleteForumMutation.mutate(forum.id);
+                                }
+                              }}
+                              className="flex items-center"
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </Glassmorphism>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </TabsContent>
+
+      <TabsContent value="settings">
+        <Glassmorphism className="p-6 rounded-lg max-w-4xl">
+          <h2 className="text-xl font-semibold mb-6">Global Forum Settings</h2>
+          
+          <div className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>User Registration</CardTitle>
+                  <CardDescription>Control how users can register on your forums</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="allowRegistration">Allow User Registration</Label>
+                      <p className="text-sm text-gray-400">Enable or disable new user registrations</p>
+                    </div>
+                    <Switch id="allowRegistration" defaultChecked />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="emailVerification">Require Email Verification</Label>
+                      <p className="text-sm text-gray-400">Users must verify their email to post</p>
+                    </div>
+                    <Switch id="emailVerification" defaultChecked />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Content Moderation</CardTitle>
+                  <CardDescription>Manage how content is moderated across forums</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="aiModeration">AI Moderation</Label>
+                      <p className="text-sm text-gray-400">Use AI to flag inappropriate content</p>
+                    </div>
+                    <Switch id="aiModeration" defaultChecked />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="moderatorApproval">Moderator Approval</Label>
+                      <p className="text-sm text-gray-400">Require moderator approval for all posts</p>
+                    </div>
+                    <Switch id="moderatorApproval" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Default Forum Settings</CardTitle>
+                <CardDescription>Set default values for new forums</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="defaultTheme">Default Theme</Label>
+                    <Select defaultValue="dark">
+                      <SelectTrigger id="defaultTheme">
+                        <SelectValue placeholder="Select theme" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="dark">Dark Theme</SelectItem>
+                        <SelectItem value="light">Light Theme</SelectItem>
+                        <SelectItem value="auto">Auto (System Default)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="defaultColor">Default Color</Label>
+                    <div className="flex gap-3">
+                      <Input 
+                        id="defaultColor" 
+                        type="color" 
+                        defaultValue="#3B82F6" 
+                        className="w-12 h-10 p-1 cursor-pointer"
+                      />
+                      <Input defaultValue="#3B82F6" className="w-32" />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="flex justify-end">
+                <Button>Save Settings</Button>
+              </CardFooter>
+            </Card>
+          </div>
+        </Glassmorphism>
+      </TabsContent>
+    </div>
+  );
+}

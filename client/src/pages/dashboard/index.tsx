@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import StatsCard from "@/components/dashboard/stats-card";
 import TrafficChart from "@/components/dashboard/traffic-chart";
 import AIActivity from "@/components/dashboard/ai-activity";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, LayoutDashboard, Lightbulb, LineChart, MousePointerClick, Zap } from "lucide-react";
+import ForumManagementPage from "./forum";
 
 // Define the stats type
 interface DashboardStats {
@@ -36,6 +37,7 @@ interface DashboardStats {
 }
 
 export default function DashboardPage() {
+  const [location] = useLocation();
   const [dateRange, setDateRange] = useState("30d");
   const [activeTab, setActiveTab] = useState("overview");
   
@@ -70,6 +72,95 @@ export default function DashboardPage() {
 
   // Use fallback stats if API data isn't available
   const displayStats = stats || getFallbackStats();
+
+  // Determine which content to render based on the URL path
+  const renderDashboardContent = () => {
+    // Forum management page
+    if (location === "/dashboard/forum") {
+      return <ForumManagementPage />;
+    }
+    
+    // Overview page (main dashboard)
+    return (
+      <>
+        <header className="h-16 flex items-center justify-between px-6 border-b border-dark-300">
+          <div className="flex items-center">
+            <h1 className="text-xl font-semibold mr-6">Dashboard</h1>
+            
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="hidden md:block">
+              <TabsList>
+                <TabsTrigger value="overview" className="flex items-center">
+                  <LayoutDashboard className="w-4 h-4 mr-1" />
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger value="ai" className="flex items-center">
+                  <Lightbulb className="w-4 h-4 mr-1" />
+                  AI Tools
+                </TabsTrigger>
+                <TabsTrigger value="traffic" className="flex items-center">
+                  <LineChart className="w-4 h-4 mr-1" />
+                  Traffic Analysis
+                </TabsTrigger>
+                <TabsTrigger value="conversions" className="flex items-center">
+                  <MousePointerClick className="w-4 h-4 mr-1" />
+                  Conversions
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <Button 
+              variant="outline" 
+              className="inline-flex items-center px-4 py-2 text-sm font-medium border-dark-400 bg-dark-300 hover:bg-dark-400"
+            >
+              <Calendar className="w-4 h-4 mr-2" />
+              <span>Last {dateRange === "30d" ? "30" : dateRange === "7d" ? "7" : "90"} Days</span>
+            </Button>
+            
+            <div className="relative">
+              <button className="flex items-center space-x-1 text-white">
+                <img
+                  src="https://i.pravatar.cc/100?img=4"
+                  alt="Admin avatar"
+                  className="w-8 h-8 rounded-full"
+                />
+                <span className="material-icons text-sm">expand_more</span>
+              </button>
+            </div>
+          </div>
+        </header>
+        
+        {/* Mobile Tabs */}
+        <div className="md:hidden border-b border-dark-300 px-4 py-2">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid grid-cols-4 w-full">
+              <TabsTrigger value="overview" className="flex flex-col items-center py-2">
+                <LayoutDashboard className="w-4 h-4 mb-1" />
+                <span className="text-xs">Overview</span>
+              </TabsTrigger>
+              <TabsTrigger value="ai" className="flex flex-col items-center py-2">
+                <Lightbulb className="w-4 h-4 mb-1" />
+                <span className="text-xs">AI Tools</span>
+              </TabsTrigger>
+              <TabsTrigger value="traffic" className="flex flex-col items-center py-2">
+                <LineChart className="w-4 h-4 mb-1" />
+                <span className="text-xs">Traffic</span>
+              </TabsTrigger>
+              <TabsTrigger value="conversions" className="flex flex-col items-center py-2">
+                <MousePointerClick className="w-4 h-4 mb-1" />
+                <span className="text-xs">Conversions</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+        
+        <main className="flex-1 overflow-y-auto p-6">
+          {renderTabContent()}
+        </main>
+      </>
+    );
+  };
 
   const renderTabContent = () => {
     switch(activeTab) {
@@ -150,81 +241,7 @@ export default function DashboardPage() {
       <Sidebar />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 flex items-center justify-between px-6 border-b border-dark-300">
-          <div className="flex items-center">
-            <h1 className="text-xl font-semibold mr-6">Dashboard</h1>
-            
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="hidden md:block">
-              <TabsList>
-                <TabsTrigger value="overview" className="flex items-center">
-                  <LayoutDashboard className="w-4 h-4 mr-1" />
-                  Overview
-                </TabsTrigger>
-                <TabsTrigger value="ai" className="flex items-center">
-                  <Lightbulb className="w-4 h-4 mr-1" />
-                  AI Tools
-                </TabsTrigger>
-                <TabsTrigger value="traffic" className="flex items-center">
-                  <LineChart className="w-4 h-4 mr-1" />
-                  Traffic Analysis
-                </TabsTrigger>
-                <TabsTrigger value="conversions" className="flex items-center">
-                  <MousePointerClick className="w-4 h-4 mr-1" />
-                  Conversions
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            <Button 
-              variant="outline" 
-              className="inline-flex items-center px-4 py-2 text-sm font-medium border-dark-400 bg-dark-300 hover:bg-dark-400"
-            >
-              <Calendar className="w-4 h-4 mr-2" />
-              <span>Last {dateRange === "30d" ? "30" : dateRange === "7d" ? "7" : "90"} Days</span>
-            </Button>
-            
-            <div className="relative">
-              <button className="flex items-center space-x-1 text-white">
-                <img
-                  src="https://i.pravatar.cc/100?img=4"
-                  alt="Admin avatar"
-                  className="w-8 h-8 rounded-full"
-                />
-                <span className="material-icons text-sm">expand_more</span>
-              </button>
-            </div>
-          </div>
-        </header>
-        
-        {/* Mobile Tabs */}
-        <div className="md:hidden border-b border-dark-300 px-4 py-2">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-4 w-full">
-              <TabsTrigger value="overview" className="flex flex-col items-center py-2">
-                <LayoutDashboard className="w-4 h-4 mb-1" />
-                <span className="text-xs">Overview</span>
-              </TabsTrigger>
-              <TabsTrigger value="ai" className="flex flex-col items-center py-2">
-                <Lightbulb className="w-4 h-4 mb-1" />
-                <span className="text-xs">AI Tools</span>
-              </TabsTrigger>
-              <TabsTrigger value="traffic" className="flex flex-col items-center py-2">
-                <LineChart className="w-4 h-4 mb-1" />
-                <span className="text-xs">Traffic</span>
-              </TabsTrigger>
-              <TabsTrigger value="conversions" className="flex flex-col items-center py-2">
-                <MousePointerClick className="w-4 h-4 mb-1" />
-                <span className="text-xs">Conversions</span>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-        
-        <main className="flex-1 overflow-y-auto p-6">
-          {renderTabContent()}
-        </main>
+        {renderDashboardContent()}
       </div>
     </div>
   );

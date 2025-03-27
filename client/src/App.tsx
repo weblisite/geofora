@@ -8,24 +8,26 @@ import NewQuestionPage from "@/pages/forum/new";
 import DashboardPage from "@/pages/dashboard";
 import LoginPage from "@/pages/auth/login";
 import RegisterPage from "@/pages/auth/register";
+import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
-//import { useAuth } from "@/hooks/use-auth";
 
 function App() {
-  // Do NOT use auth hook inside the App to avoid auth provider context issue
-  // This was causing the "useAuth must be used within an AuthProvider" error
-  
   return (
     <>
       <Switch>
         <Route path="/" component={HomePage} />
-        <ProtectedRoute path="/forum" component={ForumPage} />
-        <ProtectedRoute path="/forum/new" component={NewQuestionPage} />
-        <ProtectedRoute path="/forum/:id" component={QuestionDetailPage} />
-        <ProtectedRoute path="/dashboard" component={DashboardPage} />
+        <Route path="/forum" component={ForumPage} />
+        <Route path="/forum/new" component={NewQuestionPage} />
+        <Route path="/forum/:id" component={QuestionDetailPage} />
+        <Route path="/dashboard" component={DashboardPage} />
+        <Route path="/dashboard/forum" component={DashboardPage} />
+        <Route path="/dashboard/personas" component={DashboardPage} />
+        <Route path="/dashboard/analytics" component={DashboardPage} />
+        <Route path="/dashboard/integration" component={DashboardPage} />
+        <Route path="/dashboard/settings" component={DashboardPage} />
         <Route path="/login" component={LoginPage} />
         <Route path="/register" component={RegisterPage} />
-        <Route path="/auth" component={LoginPage} /> {/* Default auth route redirects to login */}
+        <Route path="/auth" component={AuthPage} />
         <Route component={NotFound} />
       </Switch>
       <Toaster />
