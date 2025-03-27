@@ -91,25 +91,38 @@ export default function AIPanel() {
     // Format the analysis results
     let formattedResult = "# SEO Analysis Results\n\n";
     
-    // Format keywords section
+    // Format primary and secondary keywords section
     formattedResult += "## Keywords\n";
-    if (result.keywords && result.keywords.length > 0) {
-      formattedResult += result.keywords.map(keyword => `- ${keyword}`).join("\n");
-    } else {
-      formattedResult += "No keywords identified.";
+    if (result.primaryKeyword) {
+      formattedResult += `### Primary Keyword\n- ${result.primaryKeyword}\n\n`;
     }
     
-    // Format suggestions section
-    formattedResult += "\n\n## Suggestions\n";
-    if (result.suggestions && result.suggestions.length > 0) {
-      formattedResult += result.suggestions.map(suggestion => `- ${suggestion}`).join("\n");
+    formattedResult += "### Secondary Keywords\n";
+    if (result.secondaryKeywords && result.secondaryKeywords.length > 0) {
+      formattedResult += result.secondaryKeywords.map((keyword: string) => `- ${keyword}`).join("\n");
     } else {
-      formattedResult += "No suggestions provided.";
+      formattedResult += "No secondary keywords identified.";
+    }
+    
+    // Format suggested tags section
+    formattedResult += "\n\n## Suggested Tags\n";
+    if (result.suggestedTags && result.suggestedTags.length > 0) {
+      formattedResult += result.suggestedTags.map((tag: string) => `- ${tag}`).join("\n");
+    } else {
+      formattedResult += "No tags suggested.";
+    }
+    
+    // Format improvement tips section
+    formattedResult += "\n\n## Improvement Tips\n";
+    if (result.improvementTips && result.improvementTips.length > 0) {
+      formattedResult += result.improvementTips.map((suggestion: string) => `- ${suggestion}`).join("\n");
+    } else {
+      formattedResult += "No improvement tips provided.";
     }
     
     // Format score section
-    if (result.score !== undefined) {
-      formattedResult += `\n\n## SEO Score\n${result.score}/10`;
+    if (result.seoScore !== undefined) {
+      formattedResult += `\n\n## SEO Score\n${result.seoScore}/100`;
     }
 
     setContent(formattedResult);
@@ -133,11 +146,11 @@ export default function AIPanel() {
     let formattedResult = "# Interlinking Suggestions\n\n";
     
     if (result && result.length > 0) {
-      result.forEach((item, index) => {
+      result.forEach((item: { questionId: number, questionTitle: string, relevanceScore: number, anchorText: string }, index: number) => {
         formattedResult += `## Suggestion ${index + 1}\n\n`;
-        formattedResult += `- **Target Question:** ${item.questionTitle}\n`;
-        formattedResult += `- **Relevance Score:** ${item.relevanceScore}/10\n`;
-        formattedResult += `- **Suggested Link Text:** "${item.suggestedLinkText}"\n`;
+        formattedResult += `- **Target Question:** ${item.questionTitle || "Unknown Title"}\n`;
+        formattedResult += `- **Relevance Score:** ${item.relevanceScore}/100\n`;
+        formattedResult += `- **Suggested Link Text:** "${item.anchorText}"\n`;
         formattedResult += `- **Link to:** /forum/${item.questionId}\n\n`;
       });
     } else {

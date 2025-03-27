@@ -2,10 +2,23 @@ export const SITE_NAME = "ForumAI";
 export const SITE_DESCRIPTION = "AI-Powered Q&A Forums for Maximizing SEO and Traffic";
 
 export const PERSONA_TYPES = {
-  BEGINNER: "beginner",
-  INTERMEDIATE: "intermediate",
-  EXPERT: "expert",
-} as const;
+  beginner: {
+    name: "Beginner",
+    description: "Asks basic questions with limited knowledge"
+  },
+  intermediate: {
+    name: "Intermediate",
+    description: "Has moderate expertise with solid understanding"
+  },
+  expert: {
+    name: "Expert",
+    description: "Provides authoritative, detailed insights"
+  },
+  moderator: {
+    name: "Moderator",
+    description: "Guides discussions, ensures quality content"
+  }
+};
 
 export const PRICING_PLANS = [
   {
