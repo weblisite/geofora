@@ -99,10 +99,35 @@ export function useAI(options?: UseAIOptions) {
 
   // Generate interlinking suggestions for content
   const generateInterlinking = useMutation({
-    mutationFn: async ({ content }: { content: string }) => {
+    mutationFn: async ({ 
+      content, 
+      sourceTitle, 
+      sourceType, 
+      sourceId 
+    }: { 
+      content: string; 
+      sourceTitle?: string; 
+      sourceType?: string;
+      sourceId?: number;
+    }) => {
+      // For backward compatibility
+      if (!sourceTitle || !sourceType) {
+        const response = await apiRequest("/api/ai/generate-interlinking", {
+          method: "POST",
+          body: JSON.stringify({ content }),
+        });
+        return response.suggestions || [];
+      }
+      
+      // Enhanced interlinking with source information
       const response = await apiRequest("/api/ai/generate-interlinking", {
         method: "POST",
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ 
+          content, 
+          sourceTitle, 
+          sourceType, 
+          sourceId 
+        }),
       });
       
       // Return the suggestions array from the response

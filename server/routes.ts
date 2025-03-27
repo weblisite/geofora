@@ -2,13 +2,22 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { insertUserSchema, insertQuestionSchema, insertAnswerSchema, insertVoteSchema } from "@shared/schema";
+import { 
+  insertUserSchema, 
+  insertQuestionSchema, 
+  insertAnswerSchema, 
+  insertVoteSchema,
+  insertMainSitePageSchema,
+  insertContentInterlinkSchema 
+} from "@shared/schema";
 import { 
   generateAiContent,
   generateSeoQuestions,
   analyzeQuestionSeo,
   generateAnswer,
-  generateInterlinkingSuggestions
+  generateInterlinkingSuggestions,
+  generateQuestionInterlinkingSuggestions,
+  InterlinkableContent
 } from "./ai";
 import { setupAuth } from "./auth";
 import session from "express-session";
@@ -250,25 +259,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/ai/generate-interlinking", async (req, res) => {
     try {
-      const { content } = req.body;
+      const { content, sourceTitle, sourceType } = req.body;
       
       if (!content) {
         return res.status(400).json({ message: "Content is required" });
       }
       
-      // Get all questions to analyze for interlinking
-      const questions = await storage.getAllQuestionsWithDetails();
-      const existingQuestions = questions.map(q => ({
-        id: q.id,
-        title: q.title,
-        content: q.content
-      }));
+      // For backward compatibility
+      if (!sourceTitle || !sourceType) {
+        // Use the old method
+        const questions = await storage.getAllQuestionsWithDetails();
+        const existingQuestions = questions.map(q => ({
+          id: q.id,
+          title: q.title,
+          content: q.content
+        }));
+        
+        const suggestions = await generateQuestionInterlinkingSuggestions(content, existingQuestions);
+        return res.json({ suggestions });
+      }
       
-      const suggestions = await generateInterlinkingSuggestions(content, existingQuestions);
+      // Collect all potential target contents for interlinking
+      const targetContents: InterlinkableContent[] = [];
+      
+      // Add questions as potential targets (except if the source is the same question)
+      const questions = await storage.getAllQuestionsWithDetails();
+      questions.forEach(q => {
+        if (!(sourceType === 'question' && req.body.sourceId === q.id)) {
+          targetContents.push({
+            id: q.id,
+            type: 'question',
+            title: q.title,
+            content: q.content
+          });
+        }
+      });
+      
+      // Add main site pages as potential targets
+      const mainSitePages = await storage.getAllMainSitePages();
+      mainSitePages.forEach(p => {
+        if (!(sourceType === 'main_page' && req.body.sourceId === p.id)) {
+          targetContents.push({
+            id: p.id,
+            type: 'main_page',
+            title: p.title,
+            content: p.content
+          });
+        }
+      });
+      
+      // Generate interlinking suggestions
+      const suggestions = await generateInterlinkingSuggestions(
+        content,
+        sourceTitle,
+        sourceType,
+        targetContents,
+        5 // limit to 5 suggestions
+      );
+      
       res.json({ suggestions });
     } catch (error) {
       console.error("Error generating interlinking suggestions:", error);
       res.status(500).json({ message: "Failed to generate interlinking suggestions" });
+    }
+  });
+
+  // Main Site Pages routes
+  app.get("/api/main-pages", async (req, res) => {
+    try {
+      const pages = await storage.getAllMainSitePages();
+      res.json(pages);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch main site pages" });
+    }
+  });
+
+  app.get("/api/main-pages/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const page = await storage.getMainSitePageWithLinks(id);
+      
+      if (!page) {
+        return res.status(404).json({ message: "Page not found" });
+      }
+      
+      res.json(page);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch page" });
+    }
+  });
+
+  app.get("/api/main-pages/by-slug/:slug", async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const page = await storage.getMainSitePageBySlug(slug);
+      
+      if (!page) {
+        return res.status(404).json({ message: "Page not found" });
+      }
+      
+      res.json(page);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch page" });
+    }
+  });
+
+  app.post("/api/main-pages", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to create a page" });
+      }
+
+      const validatedData = insertMainSitePageSchema.parse({
+        ...req.body,
+        userId: req.session.userId,
+      });
+      
+      const page = await storage.createMainSitePage(validatedData);
+      res.status(201).json(page);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Failed to create page" });
+      }
+    }
+  });
+
+  // Content Interlinks routes
+  app.post("/api/interlinks", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to create an interlink" });
+      }
+
+      const validatedData = insertContentInterlinkSchema.parse({
+        ...req.body,
+        userId: req.session.userId,
+      });
+      
+      const interlink = await storage.createContentInterlink(validatedData);
+      res.status(201).json(interlink);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Failed to create interlink" });
+      }
+    }
+  });
+
+  app.get("/api/interlinks/source/:type/:id", async (req, res) => {
+    try {
+      const sourceType = req.params.type;
+      const sourceId = parseInt(req.params.id);
+      
+      const interlinks = await storage.getInterlinksForSource(sourceType, sourceId);
+      res.json(interlinks);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch interlinks" });
+    }
+  });
+
+  app.get("/api/interlinks/target/:type/:id", async (req, res) => {
+    try {
+      const targetType = req.params.type;
+      const targetId = parseInt(req.params.id);
+      
+      const interlinks = await storage.getInterlinksForTarget(targetType, targetId);
+      res.json(interlinks);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch interlinks" });
+    }
+  });
+
+  app.get("/api/interlinks/relevant/:type/:id", async (req, res) => {
+    try {
+      const contentType = req.params.type;
+      const contentId = parseInt(req.params.id);
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 5;
+      
+      const relevantContent = await storage.getRelevantContentForInterlinking(contentType, contentId, limit);
+      res.json(relevantContent);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch relevant content" });
     }
   });
 

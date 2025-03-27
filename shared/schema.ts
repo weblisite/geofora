@@ -140,3 +140,64 @@ export type AnswerWithDetails = Answer & {
   user: User;
   votes: number;
 };
+
+// Main site pages schema
+export const mainSitePages = pgTable("main_site_pages", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
+  content: text("content").notNull(),
+  metaDescription: text("meta_description"),
+  metaKeywords: text("meta_keywords"),
+  pageType: text("page_type").notNull(), // e.g., 'product', 'blog', 'landing', etc.
+  featuredImage: text("featured_image"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertMainSitePageSchema = createInsertSchema(mainSitePages).pick({
+  title: true,
+  slug: true,
+  content: true,
+  metaDescription: true,
+  metaKeywords: true,
+  pageType: true,
+  featuredImage: true,
+});
+
+// Content interlinking schema (for bidirectional links between forum content and main site)
+export const contentInterlinks = pgTable("content_interlinks", {
+  id: serial("id").primaryKey(),
+  sourceType: text("source_type").notNull(), // 'question', 'answer', 'main_page'
+  sourceId: integer("source_id").notNull(),
+  targetType: text("target_type").notNull(), // 'question', 'answer', 'main_page'
+  targetId: integer("target_id").notNull(),
+  anchorText: text("anchor_text"),
+  relevanceScore: integer("relevance_score"),
+  createdAt: timestamp("created_at").defaultNow(),
+  createdByUserId: integer("created_by_user_id").references(() => users.id),
+  automatic: boolean("automatic").default(false), // Whether link was auto-generated
+});
+
+export const insertContentInterlinkSchema = createInsertSchema(contentInterlinks).pick({
+  sourceType: true,
+  sourceId: true,
+  targetType: true, 
+  targetId: true,
+  anchorText: true,
+  relevanceScore: true,
+  createdByUserId: true,
+  automatic: true,
+});
+
+export type MainSitePage = typeof mainSitePages.$inferSelect;
+export type InsertMainSitePage = z.infer<typeof insertMainSitePageSchema>;
+
+export type ContentInterlink = typeof contentInterlinks.$inferSelect;
+export type InsertContentInterlink = z.infer<typeof insertContentInterlinkSchema>;
+
+// Extended type for pages with interlinked content
+export type MainSitePageWithLinks = MainSitePage & {
+  incomingLinks: ContentInterlink[];
+  outgoingLinks: ContentInterlink[];
+};

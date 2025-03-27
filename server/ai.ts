@@ -176,50 +176,83 @@ export async function generateAnswer(
 }
 
 /**
- * Generate interlinking suggestions for a question or answer
+ * Interface for content items that can be interlinked
+ */
+export interface InterlinkableContent {
+  id: number;
+  type: string; // 'question', 'answer', 'main_page'
+  title: string;
+  content: string;
+}
+
+/**
+ * Interface for interlinking suggestions
+ */
+export interface InterlinkingSuggestion {
+  contentId: number;
+  contentType: string;
+  title: string;
+  relevanceScore: number;
+  anchorText: string;
+}
+
+/**
+ * Generate interlinking suggestions for content (questions, answers, or main site pages)
  */
 export async function generateInterlinkingSuggestions(
-  content: string,
-  existingQuestions: Array<{ id: number; title: string; content: string }>
-): Promise<Array<{ questionId: number; title: string; relevanceScore: number; anchorText: string }>> {
+  sourceContent: string,
+  sourceTitle: string,
+  sourceType: string,
+  targetContents: InterlinkableContent[],
+  limit: number = 3
+): Promise<InterlinkingSuggestion[]> {
   try {
-    // Map questions to a format suitable for OpenAI prompt
-    const questionsData = existingQuestions.map(q => ({
-      id: q.id,
-      title: q.title,
-      excerpt: q.content.substring(0, 200) + "..."
+    // Map content items to a format suitable for OpenAI prompt
+    const contentsData = targetContents.map(c => ({
+      id: c.id,
+      type: c.type,
+      title: c.title,
+      excerpt: c.content.substring(0, 200) + "..."
     }));
 
-    const userPrompt = `Content: ${content}
+    const userPrompt = `Source Content Title: ${sourceTitle}
+    Source Content: ${sourceContent}
+    Source Type: ${sourceType}
     
-    Analyze this content and identify opportunities for interlinking with these existing questions:
-    ${JSON.stringify(questionsData)}
+    Analyze this content and identify opportunities for interlinking with these existing content items:
+    ${JSON.stringify(contentsData)}
     
-    Provide recommendations for natural interlinking that would add value to readers and improve SEO.`;
+    Provide recommendations for strategic interlinking that would add value to readers, improve SEO, and enhance the user journey between forum content and main site content.`;
 
     const response = await openai.chat.completions.create({
       model: AI_MODELS.default,
       messages: [
         { 
           role: "system", 
-          content: `You are an interlinking analysis tool for a Q&A forum. 
-          Analyze user-provided content and identify opportunities for interlinking with existing forum questions.
+          content: `You are an advanced interlinking analysis tool for a content platform that includes both a Q&A forum and a main website. 
+          Your job is to analyze user-provided content and identify opportunities for interlinking between forum questions/answers and main site pages.
           
           Provide output as a JSON object with a key called "suggestions" containing an array of objects with these exact properties:
           {
             "suggestions": [
               {
-                "questionId": number,          // The ID of the question to link to
-                "title": string,               // The title of the question
-                "relevanceScore": number,      // A score from 0-100 indicating relevance
-                "anchorText": string           // The text in the original content that should become the link
+                "contentId": number,          // The ID of the content to link to
+                "contentType": string,        // The type of content ("question", "answer", or "main_page")
+                "title": string,              // The title of the content
+                "relevanceScore": number,     // A score from 0-100 indicating relevance
+                "anchorText": string          // The text in the source content that should become the link
               },
               ...
             ]
           }
           
-          Important: Make sure the "anchorText" is an exact substring that exists in the original content.
-          Only provide suggestions where the anchorText appears exactly in the content.`
+          Important guidelines:
+          1. Make sure the "anchorText" is an exact substring that exists in the original content.
+          2. Only provide suggestions where the anchorText appears exactly in the content.
+          3. Focus on creating a semantic web that helps users navigate between related topics.
+          4. Consider user intent and journey when suggesting interlinks.
+          5. Prefer higher relevance scores (70+) for the most valuable connections.
+          6. Limit results to the most valuable links (max ${limit}).`
         },
         { role: "user", content: userPrompt }
       ],
@@ -234,30 +267,68 @@ export async function generateInterlinkingSuggestions(
       
       // Primary expected format is a JSON object with a "suggestions" array
       if (result.suggestions && Array.isArray(result.suggestions)) {
-        return result.suggestions.map((item: any) => ({
-          questionId: item.questionId || item.id || 0,
-          title: item.title || "",
-          relevanceScore: typeof item.relevanceScore === 'number' ? item.relevanceScore : 0,
-          anchorText: item.anchorText || ""
-        }));
+        return result.suggestions
+          .map((item: any) => ({
+            contentId: item.contentId || item.id || 0,
+            contentType: item.contentType || item.type || "",
+            title: item.title || "",
+            relevanceScore: typeof item.relevanceScore === 'number' ? item.relevanceScore : 0,
+            anchorText: item.anchorText || ""
+          }))
+          .filter((item: InterlinkingSuggestion) => 
+            // Filter out invalid suggestions
+            item.contentId > 0 && 
+            item.anchorText.length > 0 && 
+            item.relevanceScore >= 50 &&
+            ["question", "answer", "main_page"].includes(item.contentType)
+          )
+          .sort((a: InterlinkingSuggestion, b: InterlinkingSuggestion) => 
+            // Sort by relevance score (descending)
+            b.relevanceScore - a.relevanceScore
+          )
+          .slice(0, limit); // Limit results
       } 
-      // Fallback: the entire response is an array of suggestion objects
+      // Fallback formats
       else if (Array.isArray(result)) {
-        return result.map((item: any) => ({
-          questionId: item.questionId || item.id || 0,
-          title: item.title || "",
-          relevanceScore: typeof item.relevanceScore === 'number' ? item.relevanceScore : 0,
-          anchorText: item.anchorText || ""
-        }));
+        return result
+          .map((item: any) => ({
+            contentId: item.contentId || item.id || 0,
+            contentType: item.contentType || item.type || "",
+            title: item.title || "",
+            relevanceScore: typeof item.relevanceScore === 'number' ? item.relevanceScore : 0,
+            anchorText: item.anchorText || ""
+          }))
+          .filter((item: InterlinkingSuggestion) => 
+            item.contentId > 0 && 
+            item.anchorText.length > 0 && 
+            item.relevanceScore >= 50 &&
+            ["question", "answer", "main_page"].includes(item.contentType)
+          )
+          .sort((a: InterlinkingSuggestion, b: InterlinkingSuggestion) => 
+            b.relevanceScore - a.relevanceScore
+          )
+          .slice(0, limit);
       }
-      // Alternate format that might come from OpenAI
+      // Another alternate format
       else if (result.interlinkingSuggestions && Array.isArray(result.interlinkingSuggestions)) {
-        return result.interlinkingSuggestions.map((item: any) => ({
-          questionId: item.questionId || item.id || 0,
-          title: item.title || "",
-          relevanceScore: typeof item.relevanceScore === 'number' ? item.relevanceScore : 0,
-          anchorText: item.anchorText || ""
-        }));
+        return result.interlinkingSuggestions
+          .map((item: any) => ({
+            contentId: item.contentId || item.id || 0,
+            contentType: item.contentType || item.type || "",
+            title: item.title || "",
+            relevanceScore: typeof item.relevanceScore === 'number' ? item.relevanceScore : 0,
+            anchorText: item.anchorText || ""
+          }))
+          .filter((item: InterlinkingSuggestion) => 
+            item.contentId > 0 && 
+            item.anchorText.length > 0 && 
+            item.relevanceScore >= 50 &&
+            ["question", "answer", "main_page"].includes(item.contentType)
+          )
+          .sort((a: InterlinkingSuggestion, b: InterlinkingSuggestion) => 
+            b.relevanceScore - a.relevanceScore
+          )
+          .slice(0, limit);
       }
       
       console.warn("Unexpected response format from OpenAI:", result);
@@ -268,6 +339,48 @@ export async function generateInterlinkingSuggestions(
     }
   } catch (error) {
     console.error("Error generating interlinking suggestions:", error);
+    return [];
+  }
+}
+
+/**
+ * Generate interlinking suggestions specifically for questions (backwards compatibility)
+ */
+export async function generateQuestionInterlinkingSuggestions(
+  content: string,
+  existingQuestions: Array<{ id: number; title: string; content: string }>
+): Promise<Array<{ questionId: number; title: string; relevanceScore: number; anchorText: string }>> {
+  try {
+    // Convert to the new format
+    const sourceContent = content;
+    const sourceTitle = "Question Content"; // Default title for backward compatibility
+    const sourceType = "question";
+    
+    // Convert questions to the new InterlinkableContent format
+    const targetContents: InterlinkableContent[] = existingQuestions.map(q => ({
+      id: q.id,
+      type: "question",
+      title: q.title,
+      content: q.content
+    }));
+    
+    // Call the new function
+    const suggestions = await generateInterlinkingSuggestions(
+      sourceContent,
+      sourceTitle,
+      sourceType,
+      targetContents
+    );
+    
+    // Convert back to the old format for backward compatibility
+    return suggestions.map(s => ({
+      questionId: s.contentId,
+      title: s.title,
+      relevanceScore: s.relevanceScore,
+      anchorText: s.anchorText
+    }));
+  } catch (error) {
+    console.error("Error generating question interlinking suggestions:", error);
     return [];
   }
 }

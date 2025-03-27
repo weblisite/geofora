@@ -4,7 +4,9 @@ import {
   questions, type Question, type InsertQuestion, type QuestionWithDetails,
   answers, type Answer, type InsertAnswer, type AnswerWithDetails,
   votes, type Vote, type InsertVote,
-  aiPersonas, type AiPersona, type InsertAiPersona
+  aiPersonas, type AiPersona, type InsertAiPersona,
+  mainSitePages, type MainSitePage, type InsertMainSitePage, type MainSitePageWithLinks,
+  contentInterlinks, type ContentInterlink, type InsertContentInterlink
 } from "@shared/schema";
 // Import this way to make TypeScript happy in an ESM context
 import memorystore from 'memorystore';
@@ -50,6 +52,20 @@ export interface IStorage {
   getAllAIPersonas(): Promise<AiPersona[]>;
   createAIPersona(persona: InsertAiPersona): Promise<AiPersona>;
   
+  // Main Site Pages methods
+  getMainSitePage(id: number): Promise<MainSitePage | undefined>;
+  getMainSitePageBySlug(slug: string): Promise<MainSitePage | undefined>;
+  getAllMainSitePages(): Promise<MainSitePage[]>;
+  createMainSitePage(page: InsertMainSitePage): Promise<MainSitePage>;
+  getMainSitePageWithLinks(id: number): Promise<MainSitePageWithLinks | undefined>;
+  
+  // Content Interlinking methods
+  getContentInterlink(id: number): Promise<ContentInterlink | undefined>;
+  createContentInterlink(interlink: InsertContentInterlink): Promise<ContentInterlink>;
+  getInterlinksForSource(sourceType: string, sourceId: number): Promise<ContentInterlink[]>;
+  getInterlinksForTarget(targetType: string, targetId: number): Promise<ContentInterlink[]>;
+  getRelevantContentForInterlinking(contentType: string, contentId: number, limit?: number): Promise<Array<{id: number, type: string, title: string, relevanceScore: number}>>;
+  
   // Session store
   sessionStore: any;
 }
@@ -62,6 +78,8 @@ export class MemStorage implements IStorage {
   private answersStore: Map<number, Answer>;
   private votesStore: Map<number, Vote>;
   private aiPersonasStore: Map<number, AiPersona>;
+  private mainSitePagesStore: Map<number, MainSitePage>;
+  private contentInterlinksStore: Map<number, ContentInterlink>;
   
   private userId: number;
   private categoryId: number;
@@ -69,6 +87,8 @@ export class MemStorage implements IStorage {
   private answerId: number;
   private voteId: number;
   private aiPersonaId: number;
+  private mainSitePageId: number;
+  private contentInterlinkId: number;
   public sessionStore: any;
 
   constructor() {
@@ -78,6 +98,8 @@ export class MemStorage implements IStorage {
     this.answersStore = new Map();
     this.votesStore = new Map();
     this.aiPersonasStore = new Map();
+    this.mainSitePagesStore = new Map();
+    this.contentInterlinksStore = new Map();
     
     // Create session store from memorystore
     this.sessionStore = new MemoryStore({
@@ -90,6 +112,8 @@ export class MemStorage implements IStorage {
     this.answerId = 1;
     this.voteId = 1;
     this.aiPersonaId = 1;
+    this.mainSitePageId = 1;
+    this.contentInterlinkId = 1;
 
     // Initialize with sample data
     this.initSampleData();
@@ -272,6 +296,85 @@ export class MemStorage implements IStorage {
     ];
 
     votes.forEach(vote => this.createOrUpdateVote(vote));
+    
+    // Create sample main site pages
+    const mainSitePages = [
+      {
+        title: "Maximize SEO with AI-Powered Content Strategies",
+        slug: "ai-powered-content-strategies",
+        content: "Learn how to leverage artificial intelligence to create SEO-optimized content at scale...",
+        metaDescription: "Discover effective AI-driven content strategies to improve your SEO and boost organic traffic.",
+        metaKeywords: "AI content, SEO optimization, content strategy, machine learning",
+        pageType: "blog",
+        featuredImage: "https://example.com/images/ai-content.jpg"
+      },
+      {
+        title: "ROI Measurement for SEO Investments",
+        slug: "seo-roi-measurement",
+        content: "A comprehensive guide to tracking and demonstrating the value of your SEO investments...",
+        metaDescription: "Learn effective methods to measure and report SEO ROI to stakeholders and executives.",
+        metaKeywords: "SEO ROI, search engine optimization, analytics, metrics",
+        pageType: "guide",
+        featuredImage: "https://example.com/images/seo-roi.jpg"
+      },
+      {
+        title: "Top Keyword Research Tools Comparison",
+        slug: "keyword-research-tools-comparison",
+        content: "We compare the best keyword research tools for businesses of all sizes...",
+        metaDescription: "Find the best keyword research tools for your business with our comprehensive comparison.",
+        metaKeywords: "keyword research tools, SEO tools, organic traffic, keyword analysis",
+        pageType: "comparison",
+        featuredImage: "https://example.com/images/keyword-tools.jpg"
+      }
+    ];
+    
+    mainSitePages.forEach(page => this.createMainSitePage(page));
+    
+    // Create sample interlinks
+    const contentInterlinks = [
+      {
+        sourceType: "main_page",
+        sourceId: 1, // AI-powered content strategies page
+        targetType: "question",
+        targetId: 1, // Question about AI-driven content strategies
+        anchorText: "Learn from forum discussions on AI content strategies",
+        relevanceScore: 85,
+        createdByUserId: 1,
+        automatic: true
+      },
+      {
+        sourceType: "question",
+        sourceId: 1, // Question about AI-driven content strategies
+        targetType: "main_page",
+        targetId: 1, // AI-powered content strategies page
+        anchorText: "Check out our detailed guide on AI content strategies",
+        relevanceScore: 90,
+        createdByUserId: 1,
+        automatic: true
+      },
+      {
+        sourceType: "main_page",
+        sourceId: 2, // ROI measurement page
+        targetType: "question",
+        targetId: 2, // Question about measuring SEO ROI
+        anchorText: "See how our users measure ROI in this discussion",
+        relevanceScore: 82,
+        createdByUserId: 1,
+        automatic: true
+      },
+      {
+        sourceType: "answer",
+        sourceId: 2, // Answer about ROI measurement
+        targetType: "main_page",
+        targetId: 2, // ROI measurement page
+        anchorText: "Our comprehensive ROI guide covers this in detail",
+        relevanceScore: 88,
+        createdByUserId: 1,
+        automatic: true
+      }
+    ];
+    
+    contentInterlinks.forEach(interlink => this.createContentInterlink(interlink));
   }
 
   // User methods
@@ -517,6 +620,202 @@ export class MemStorage implements IStorage {
     const newPersona = { ...persona, id };
     this.aiPersonasStore.set(id, newPersona);
     return newPersona;
+  }
+
+  // Main Site Pages methods
+  async getMainSitePage(id: number): Promise<MainSitePage | undefined> {
+    return this.mainSitePagesStore.get(id);
+  }
+
+  async getMainSitePageBySlug(slug: string): Promise<MainSitePage | undefined> {
+    for (const page of this.mainSitePagesStore.values()) {
+      if (page.slug === slug) {
+        return page;
+      }
+    }
+    return undefined;
+  }
+
+  async getAllMainSitePages(): Promise<MainSitePage[]> {
+    return Array.from(this.mainSitePagesStore.values());
+  }
+
+  async createMainSitePage(page: InsertMainSitePage): Promise<MainSitePage> {
+    const id = this.mainSitePageId++;
+    const newPage: MainSitePage = { 
+      ...page, 
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.mainSitePagesStore.set(id, newPage);
+    return newPage;
+  }
+
+  async getMainSitePageWithLinks(id: number): Promise<MainSitePageWithLinks | undefined> {
+    const page = this.mainSitePagesStore.get(id);
+    if (!page) return undefined;
+
+    const incomingLinks = Array.from(this.contentInterlinksStore.values()).filter(
+      link => link.targetType === 'main_page' && link.targetId === id
+    );
+
+    const outgoingLinks = Array.from(this.contentInterlinksStore.values()).filter(
+      link => link.sourceType === 'main_page' && link.sourceId === id
+    );
+
+    return {
+      ...page,
+      incomingLinks,
+      outgoingLinks
+    };
+  }
+
+  // Content Interlinking methods
+  async getContentInterlink(id: number): Promise<ContentInterlink | undefined> {
+    return this.contentInterlinksStore.get(id);
+  }
+
+  async createContentInterlink(interlink: InsertContentInterlink): Promise<ContentInterlink> {
+    const id = this.contentInterlinkId++;
+    const newInterlink: ContentInterlink = { 
+      ...interlink, 
+      id,
+      createdAt: new Date().toISOString()
+    };
+    this.contentInterlinksStore.set(id, newInterlink);
+    return newInterlink;
+  }
+
+  async getInterlinksForSource(sourceType: string, sourceId: number): Promise<ContentInterlink[]> {
+    return Array.from(this.contentInterlinksStore.values()).filter(
+      link => link.sourceType === sourceType && link.sourceId === sourceId
+    );
+  }
+
+  async getInterlinksForTarget(targetType: string, targetId: number): Promise<ContentInterlink[]> {
+    return Array.from(this.contentInterlinksStore.values()).filter(
+      link => link.targetType === targetType && link.targetId === targetId
+    );
+  }
+
+  async getRelevantContentForInterlinking(contentType: string, contentId: number, limit: number = 5): Promise<Array<{id: number, type: string, title: string, relevanceScore: number}>> {
+    const results: Array<{id: number, type: string, title: string, relevanceScore: number}> = [];
+    
+    // Get the source content to compare with
+    let sourceContent = '';
+    let sourceTitle = '';
+    
+    if (contentType === 'question') {
+      const question = this.questionsStore.get(contentId);
+      if (question) {
+        sourceContent = question.content;
+        sourceTitle = question.title;
+      }
+    } else if (contentType === 'answer') {
+      const answer = this.answersStore.get(contentId);
+      if (answer) {
+        sourceContent = answer.content;
+        // Get the question title for context
+        const question = this.questionsStore.get(answer.questionId);
+        if (question) {
+          sourceTitle = question.title;
+        }
+      }
+    } else if (contentType === 'main_page') {
+      const page = this.mainSitePagesStore.get(contentId);
+      if (page) {
+        sourceContent = page.content;
+        sourceTitle = page.title;
+      }
+    }
+    
+    if (!sourceContent) return results;
+    
+    // Calculate relevance for main site pages
+    if (contentType !== 'main_page') {
+      for (const page of this.mainSitePagesStore.values()) {
+        if (page.id === contentId && contentType === 'main_page') continue;
+        
+        // Simple relevance calculation (in a real app, this would use more sophisticated NLP)
+        const relevanceScore = this.calculateRelevanceScore(
+          sourceTitle, 
+          sourceContent, 
+          page.title, 
+          page.content
+        );
+        
+        if (relevanceScore > 50) { // Minimum threshold for relevance
+          results.push({
+            id: page.id,
+            type: 'main_page',
+            title: page.title,
+            relevanceScore
+          });
+        }
+      }
+    }
+    
+    // Calculate relevance for questions
+    if (contentType !== 'question') {
+      for (const question of this.questionsStore.values()) {
+        if (question.id === contentId && contentType === 'question') continue;
+        
+        // Calculate relevance
+        const relevanceScore = this.calculateRelevanceScore(
+          sourceTitle, 
+          sourceContent, 
+          question.title, 
+          question.content
+        );
+        
+        if (relevanceScore > 50) { // Minimum threshold for relevance
+          results.push({
+            id: question.id,
+            type: 'question',
+            title: question.title,
+            relevanceScore
+          });
+        }
+      }
+    }
+    
+    // Sort by relevance score (descending) and limit results
+    return results
+      .sort((a, b) => b.relevanceScore - a.relevanceScore)
+      .slice(0, limit);
+  }
+  
+  // Helper method to calculate relevance between two pieces of content
+  private calculateRelevanceScore(sourceTitle: string, sourceContent: string, targetTitle: string, targetContent: string): number {
+    // Simple implementation for demo purposes
+    // In a real app, this would use NLP, TF-IDF, cosine similarity, etc.
+    
+    const sourceLower = (sourceTitle + ' ' + sourceContent).toLowerCase();
+    const targetLower = (targetTitle + ' ' + targetContent).toLowerCase();
+    
+    // Extract keywords (simplified version)
+    const sourceWords = sourceLower.split(/\s+/).filter(word => word.length > 4);
+    const targetWords = targetLower.split(/\s+/).filter(word => word.length > 4);
+    
+    // Count matching keywords
+    let matchCount = 0;
+    for (const sourceWord of sourceWords) {
+      if (targetWords.includes(sourceWord)) {
+        matchCount++;
+      }
+    }
+    
+    // Calculate percentage match and normalize to 0-100 range
+    const maxPossibleMatches = Math.min(sourceWords.length, targetWords.length);
+    if (maxPossibleMatches === 0) return 0;
+    
+    // Give extra weight to title matches
+    const titleMatchBonus = sourceTitle.toLowerCase().includes(targetTitle.toLowerCase()) ||
+                            targetTitle.toLowerCase().includes(sourceTitle.toLowerCase())
+                            ? 20 : 0;
+    
+    return Math.min(100, Math.floor((matchCount / maxPossibleMatches) * 80) + titleMatchBonus);
   }
 }
 
