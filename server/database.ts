@@ -66,34 +66,22 @@ export async function initDatabase(): Promise<void> {
     
     log('Initializing database schema...');
     
-    // Check if the sessions table exists (required for connect-pg-simple)
-    try {
-      await db.execute(sql`
-        CREATE TABLE IF NOT EXISTS "session" (
-          "sid" varchar NOT NULL COLLATE "default" PRIMARY KEY,
-          "sess" json NOT NULL,
-          "expire" timestamp(6) NOT NULL
-        )
-      `);
-      
-      await db.execute(sql`
-        CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire")
-      `);
-      
-      log('Sessions table initialized');
-    } catch (error: any) {
-      log(`Error creating sessions table: ${error.message}`);
-    }
+    // For Supabase, we'll handle session tables differently
+    // Session tables are automatically handled by connect-pg-simple when using the session store
     
-    // Instead of using the drizzle-kit push command, we'll return early and let the ORM handle the tables
-    // This is a simpler approach for development and avoids issues with child processes
-    
-    // Create a default forum if none exists - only attempt if DATABASE_URL is available
-    if (process.env.DATABASE_URL) {
+    // Create a default forum if none exists
+    if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
       try {
-        const defaultForum = await db.select().from(schema.forums).limit(1);
-        if (!defaultForum.length) {
-          await db.insert(schema.forums).values({
+        // Check if forums table exists
+        const { data: forumData, error: forumError } = await supabase.from('forums').select('*').limit(1);
+        
+        // If we get a "relation does not exist" error, we need to create initial schema
+        if (forumError && forumError.message.includes('does not exist')) {
+          log('Forums table does not exist yet. Schema will be created as needed.');
+          // Tables will be created as needed through the Supabase API
+        } else if (!forumData || forumData.length === 0) {
+          // Forum table exists but no forums yet, create a default one
+          const { data, error } = await supabase.from('forums').insert({
             name: 'Default Forum',
             slug: 'default',
             description: 'The default forum',
@@ -105,13 +93,20 @@ export async function initDatabase(): Promise<void> {
             bodyFontSize: '1rem',
             isPublic: true,
             requiresApproval: false,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          });
-          log('Default forum created');
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }).select();
+          
+          if (error) {
+            log(`Error creating default forum: ${error.message}`);
+          } else {
+            log('Default forum created successfully');
+          }
+        } else {
+          log(`Found ${forumData.length} existing forum(s)`);
         }
       } catch (error: any) {
-        log(`Error creating default forum: ${error.message}`);
+        log(`Error checking forums table: ${error.message}`);
       }
     }
     
