@@ -102,6 +102,7 @@ export default function GatedContent() {
   const { user } = useClerk();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("content");
+  const [editingContentId, setEditingContentId] = useState<number | null>(null);
   
   // Interface for Forum
   interface Forum {
@@ -276,8 +277,13 @@ export default function GatedContent() {
   // Create mutation for saving gated content
   const createContentMutation = useMutation({
     mutationFn: async (values: z.infer<typeof contentSchema>) => {
-      const res = await apiRequest(`/api/forums/${values.forumId}/gated-content`, {
-        method: "POST",
+      const method = editingContentId ? "PUT" : "POST";
+      const endpoint = editingContentId 
+        ? `/api/forums/${values.forumId}/gated-content/${editingContentId}` 
+        : `/api/forums/${values.forumId}/gated-content`;
+      
+      const res = await apiRequest(endpoint, {
+        method: method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
@@ -286,15 +292,18 @@ export default function GatedContent() {
     onSuccess: () => {
       toast({
         title: "Success",
-        description: "Gated content created successfully",
+        description: editingContentId ? "Gated content updated successfully" : "Gated content created successfully",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/user/forums/gated-content"] });
       setActiveTab("content");
+      if (editingContentId) {
+        setEditingContentId(null);
+      }
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: `Failed to create gated content: ${error.message}`,
+        description: `Failed to ${editingContentId ? "update" : "create"} gated content: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -330,7 +339,31 @@ export default function GatedContent() {
       <div className="flex flex-col gap-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Gated Content</h1>
-          <Button onClick={() => setActiveTab("create")}>
+          <Button 
+            onClick={(e) => {
+              e.preventDefault();
+              // Reset the form to default values when creating new content
+              form.reset({
+                title: "",
+                description: "",
+                contentType: "download",
+                content: "",
+                teaser: "",
+                slug: "",
+                forumId: forums && forums.length > 0 ? forums[0].id : undefined,
+                featuredImage: "",
+                downloadFile: "",
+                metaDescription: "",
+                metaKeywords: "",
+                formId: null,
+                requireEmail: true,
+                requireName: true,
+                collectPhoneNumber: false,
+              });
+              setEditingContentId(null);
+              setActiveTab("create");
+            }}
+          >
             <PlusCircle className="mr-2 h-4 w-4" />
             Create New
           </Button>
@@ -410,9 +443,27 @@ export default function GatedContent() {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => {
-                            // Here we would handle edit functionality
-                            console.log("Edit content", content.id);
+                          onClick={(e) => {
+                            e.preventDefault();
+                            // Load the data into the form and switch to edit mode
+                            form.reset({
+                              title: content.title,
+                              slug: content.slug,
+                              description: content.description || "",
+                              teaser: content.teaser,
+                              content: content.content,
+                              forumId: content.forumId,
+                              formId: content.formId,
+                              contentType: (content.contentType as "download" | "redirect" | "embed") || "download",
+                              featuredImage: content.featuredImage || "",
+                              requireName: true,
+                              requireEmail: true,
+                              downloadFile: content.downloadFile || "",
+                              metaDescription: content.metaDescription || "",
+                              metaKeywords: content.metaKeywords || ""
+                            });
+                            setEditingContentId(content.id);
+                            setActiveTab("create");
                           }}
                         >
                           Edit
@@ -443,7 +494,31 @@ export default function GatedContent() {
                   <p className="text-sm text-muted-foreground mb-4">
                     You haven't created any gated content yet.
                   </p>
-                  <Button onClick={() => setActiveTab("create")}>
+                  <Button 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      // Reset the form to default values
+                      form.reset({
+                        title: "",
+                        description: "",
+                        contentType: "download",
+                        content: "",
+                        teaser: "",
+                        slug: "",
+                        forumId: forums && forums.length > 0 ? forums[0].id : undefined,
+                        featuredImage: "",
+                        downloadFile: "",
+                        metaDescription: "",
+                        metaKeywords: "",
+                        formId: null,
+                        requireEmail: true,
+                        requireName: true,
+                        collectPhoneNumber: false,
+                      });
+                      setEditingContentId(null);
+                      setActiveTab("create");
+                    }}
+                  >
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Create New Content
                   </Button>
@@ -559,9 +634,11 @@ export default function GatedContent() {
           <TabsContent value="create" className="pt-4">
             <Card>
               <CardHeader>
-                <CardTitle>Create Gated Content</CardTitle>
+                <CardTitle>{editingContentId ? "Edit" : "Create"} Gated Content</CardTitle>
                 <CardDescription>
-                  Configure your content and lead generation settings
+                  {editingContentId 
+                    ? "Update your gated content settings" 
+                    : "Configure your content and lead generation settings"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -841,8 +918,24 @@ export default function GatedContent() {
                       )}
                     />
 
-                    <div className="flex justify-end">
-                      <Button type="submit">Create Gated Content</Button>
+                    <div className="flex justify-between">
+                      {editingContentId && (
+                        <Button 
+                          type="button" 
+                          variant="outline"
+                          onClick={() => {
+                            form.reset();
+                            setEditingContentId(null);
+                          }}
+                        >
+                          Cancel Edit
+                        </Button>
+                      )}
+                      <div className={editingContentId ? "" : "ml-auto"}>
+                        <Button type="submit">
+                          {editingContentId ? "Update" : "Create"} Gated Content
+                        </Button>
+                      </div>
                     </div>
                   </form>
                 </Form>
