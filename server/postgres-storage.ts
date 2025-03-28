@@ -680,6 +680,53 @@ async getForumBySlug(slug: string): Promise<Forum | undefined> {
   // Additional method implementations would continue here...
   // For brevity, we're not implementing every method in the interface,
   // but you would follow the same pattern for all the rest
+  
+  // Gated Content methods
+  async getGatedContent(id: number): Promise<GatedContent | undefined> {
+    const result = await db.select().from(gatedContents).where(eq(gatedContents.id, id));
+    return result[0];
+  }
+
+  async getGatedContentBySlug(slug: string): Promise<GatedContent | undefined> {
+    const result = await db.select().from(gatedContents).where(eq(gatedContents.slug, slug));
+    return result[0];
+  }
+
+  async getGatedContentsByForum(forumId: number): Promise<GatedContent[]> {
+    return await db.select()
+      .from(gatedContents)
+      .where(eq(gatedContents.forumId, forumId));
+  }
+
+  async createGatedContent(content: InsertGatedContent): Promise<GatedContent> {
+    const result = await db.insert(gatedContents).values({
+      ...content,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
+    
+    return result[0];
+  }
+
+  async updateGatedContent(id: number, data: Partial<InsertGatedContent>): Promise<GatedContent> {
+    const result = await db.update(gatedContents)
+      .set({
+        ...data,
+        updatedAt: new Date()
+      })
+      .where(eq(gatedContents.id, id))
+      .returning();
+      
+    if (result.length === 0) {
+      throw new Error(`Gated content with ID ${id} not found`);
+    }
+    
+    return result[0];
+  }
+
+  async deleteGatedContent(id: number): Promise<void> {
+    await db.delete(gatedContents).where(eq(gatedContents.id, id));
+  }
 
   async getUserEngagementMetrics(forumId: number, startDate?: Date, endDate?: Date): Promise<UserEngagementMetric[]> {
     let query = db.select().from(userEngagementMetrics).where(eq(userEngagementMetrics.forumId, forumId));
