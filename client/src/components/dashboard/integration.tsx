@@ -160,28 +160,36 @@ export default function Integration() {
     enabled: !!user,
   });
 
-  // Generate embed code using forum ID or a default if not available
+  // Generate embed code using forum ID from API resources
   const getEmbedCode = () => {
-    const forumId = apiResources?.forumId || "YOUR_FORUM_ID";
+    // If no forumId is available, return instructional message instead of hardcoded value
+    if (!apiResources?.forumId) {
+      return '<!-- No forum ID available. Please create a forum first -->';
+    }
+    
     return `<script type="text/javascript">
   (function() {
     var fm = document.createElement('script');
     fm.type = 'text/javascript';
     fm.async = true;
-    fm.src = '${window.location.origin}/embed.js?id=${forumId}';
+    fm.src = '${window.location.origin}/embed.js?id=${apiResources.forumId}';
     var s = document.getElementsByTagName('script')[0];
     s.parentNode.insertBefore(fm, s);
   })();
 </script>`;
   };
 
-  // Generate API sample code using real API key or placeholder
+  // Generate API sample code using API key from API resources
   const getApiSampleCode = () => {
-    const apiKey = apiResources?.apiKey || "YOUR_API_KEY";
+    // If no API key is available, return instructional message instead of hardcoded value
+    if (!apiResources?.apiKey) {
+      return '// No API key available. Please check your account settings.';
+    }
+    
     return `fetch('${window.location.origin}/api/v1/questions', {
   method: 'GET',
   headers: {
-    'Authorization': 'Bearer ${apiKey}',
+    'Authorization': 'Bearer ${apiResources.apiKey}',
     'Content-Type': 'application/json'
   }
 })
@@ -190,42 +198,16 @@ export default function Integration() {
 .catch(error => console.error('Error:', error));`;
   };
 
-  // Get JSON sample response from API resources or use a default
+  // Get JSON sample response from API resources
   const getJsonSampleResponse = () => {
+    // Use the provided sample response if available
     if (apiResources?.sampleResponse) {
       return JSON.stringify(apiResources.sampleResponse, null, 2);
     }
-    return JSON.stringify({
-      data: {
-        questions: [
-          {
-            id: 123,
-            title: "How to implement API integration?",
-            content: "I'm trying to understand how to integrate with your API...",
-            created_at: new Date().toISOString(),
-            user_id: 456,
-            vote_count: 5,
-            answer_count: 2,
-            is_answered: true
-          },
-          {
-            id: 124,
-            title: "Authentication with the API",
-            content: "What's the proper way to authenticate API requests?",
-            created_at: new Date().toISOString(),
-            user_id: 789,
-            vote_count: 3,
-            answer_count: 1,
-            is_answered: false
-          }
-        ],
-        pagination: {
-          total: 45,
-          page: 1,
-          per_page: 10,
-          total_pages: 5
-        }
-      }
+    
+    // Return a minimal response if none is available
+    return JSON.stringify({ 
+      message: "No sample response available. Please check API documentation." 
     }, null, 2);
   };
 
@@ -521,7 +503,10 @@ export default function Integration() {
                         To use the ForumAI API, you need to include your API key in the Authorization header:
                       </p>
                       <div className="bg-dark-200 p-3 rounded-md font-mono text-sm">
-                        Authorization: Bearer YOUR_API_KEY
+                        {apiResources?.apiKey ? 
+                          `Authorization: Bearer ${apiResources.apiKey}` : 
+                          "No API key available. Generate one from your account settings."
+                        }
                       </div>
                     </div>
 
@@ -529,12 +514,12 @@ export default function Integration() {
                       <h3 className="text-lg font-medium mb-2">Base URL</h3>
                       <div className="flex items-center">
                         <div className="bg-dark-200 p-3 rounded-md font-mono text-sm flex-grow mr-2">
-                          https://forumAI.com/api/v1
+                          {`${window.location.origin}/api/v1`}
                         </div>
                         <Button 
                           size="sm" 
                           variant="outline" 
-                          onClick={() => copyToClipboard("https://forumAI.com/api/v1", 'baseUrl')}
+                          onClick={() => copyToClipboard(`${window.location.origin}/api/v1`, 'baseUrl')}
                         >
                           {copiedState['baseUrl'] ? (
                             <Check className="h-4 w-4" />
@@ -900,19 +885,7 @@ export default function Integration() {
                       <pre>{apiResources?.webhookSamplePayload ? 
                         apiResources.webhookSamplePayload : 
                         JSON.stringify({
-                          id: "evt_" + Math.floor(Math.random() * 1000000000),
-                          type: "question.created",
-                          created: new Date().toISOString(),
-                          data: {
-                            question: {
-                              id: Math.floor(Math.random() * 1000),
-                              title: "How to implement webhooks?",
-                              content: "I'm trying to set up webhook integration...",
-                              userId: Math.floor(Math.random() * 1000),
-                              createdAt: new Date().toISOString(),
-                              tags: ["integration", "webhook", "api"]
-                            }
-                          }
+                          message: "No webhook payload data available. Please check API documentation."
                         }, null, 2)
                       }</pre>
                     </div>
