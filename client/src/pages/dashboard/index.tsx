@@ -7,6 +7,8 @@ import AIPanel from "@/components/dashboard/ai-panel";
 import TopContent from "@/components/dashboard/top-content";
 import Sidebar from "@/components/dashboard/sidebar";
 import MobileNav from "@/components/dashboard/mobile-nav";
+import TrafficAnalysis from "@/components/dashboard/traffic-analysis";
+import Conversions from "@/components/dashboard/conversions";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -322,6 +324,10 @@ export default function DashboardPage() {
         );
       case "ai":
         return <AIPanel />;
+      case "traffic":
+        return <TrafficAnalysis />;
+      case "conversions":
+        return <Conversions />;
       default:
         return null;
     }
