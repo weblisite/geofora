@@ -33,43 +33,64 @@ import {
   ResponsiveContainer 
 } from "recharts";
 
-// Sample data for charts
-const conversionData = [
-  { name: "Jan", leads: 65, subscriptions: 45, downloads: 75 },
-  { name: "Feb", leads: 75, subscriptions: 48, downloads: 83 },
-  { name: "Mar", leads: 82, subscriptions: 51, downloads: 76 },
-  { name: "Apr", leads: 79, subscriptions: 55, downloads: 80 },
-  { name: "May", leads: 89, subscriptions: 60, downloads: 85 },
-  { name: "Jun", leads: 95, subscriptions: 65, downloads: 90 },
-  { name: "Jul", leads: 110, subscriptions: 70, downloads: 97 },
-];
+// Define interfaces for our data structures
+interface ConversionTrend {
+  name: string;
+  leads: number;
+  subscriptions: number;
+  downloads: number;
+}
 
-const funnelData = [
-  { name: "Website Visitors", value: 15000 },
-  { name: "Forum Visitors", value: 7500 },
-  { name: "Engaged Users", value: 3200 },
-  { name: "Lead Form Views", value: 1800 },
-  { name: "Leads Captured", value: 720 },
-  { name: "Converted Customers", value: 215 },
-];
+interface FunnelStage {
+  name: string;
+  value: number;
+  percentage: string;
+  stage: string;
+  count: string;
+}
 
-const leadSourceData = [
-  { name: "Forum Questions", value: 40 },
-  { name: "Gated Content", value: 30 },
-  { name: "Newsletter Signup", value: 15 },
-  { name: "Contact Form", value: 10 },
-  { name: "Other", value: 5 },
-];
+interface LeadCapture {
+  name: string;
+  email: string;
+  source: string;
+  interest: string;
+  date: string;
+}
 
-const conversionRateData = [
-  { name: "Mon", rate: 3.2 },
-  { name: "Tue", rate: 3.5 },
-  { name: "Wed", rate: 4.1 },
-  { name: "Thu", rate: 3.8 },
-  { name: "Fri", rate: 3.6 },
-  { name: "Sat", rate: 2.9 },
-  { name: "Sun", rate: 2.7 },
-];
+interface LeadCaptureStats {
+  recentLeads: LeadCapture[];
+  formMetrics: {
+    views: number;
+    starts: number;
+    completions: number;
+    qualifiedLeads: number;
+    convertedCustomers: number;
+  };
+  formPerformance: {
+    name: string;
+    views: string;
+    submissions: string;
+    rate: string;
+    trend: string;
+  }[];
+}
+
+interface ConversionStats {
+  trends: ConversionTrend[];
+  funnelStages: FunnelStage[];
+  metrics: {
+    visitorToLeadRate: string;
+    leadToCustomerRate: string;
+    overallConversionRate: string;
+    funnelDropOff: string;
+  };
+  optimization: {
+    step: string;
+    opportunity: string;
+    impact: 'High' | 'Medium' | 'Low';
+    effort: 'High' | 'Medium' | 'Low';
+  }[];
+}
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
@@ -78,12 +99,12 @@ export default function Conversions() {
   const [dateRange, setDateRange] = useState("30");
 
   // Fetch conversion stats
-  const { data: conversionStats, isLoading: isLoadingConversions } = useQuery({
+  const { data: conversionStats, isLoading: isLoadingConversions } = useQuery<ConversionStats>({
     queryKey: [`/api/analytics/conversion-funnel/${dateRange}`],
   });
 
   // Fetch lead capture stats
-  const { data: leadCaptureStats, isLoading: isLoadingLeadCapture } = useQuery({
+  const { data: leadCaptureStats, isLoading: isLoadingLeadCapture } = useQuery<LeadCaptureStats>({
     queryKey: [`/api/analytics/lead-capture-stats/${dateRange}`],
   });
   
@@ -227,27 +248,38 @@ export default function Conversions() {
               </CardHeader>
               <CardContent className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={conversionData}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip 
-                      contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
-                      itemStyle={{ color: "#fff" }}
-                    />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="leads"
-                      stroke="#8884d8"
-                      activeDot={{ r: 8 }}
-                    />
-                    <Line type="monotone" dataKey="subscriptions" stroke="#82ca9d" />
-                    <Line type="monotone" dataKey="downloads" stroke="#ffc658" />
-                  </LineChart>
+                  {isLoadingConversions ? (
+                    <div className="flex h-full items-center justify-center">
+                      <div className="animate-spin w-8 h-8 border-t-2 border-b-2 border-primary rounded-full mr-2"></div>
+                      <span>Loading trend data...</span>
+                    </div>
+                  ) : !conversionStats?.trends || conversionStats.trends.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-muted-foreground">
+                      <p>No conversion trend data available</p>
+                    </div>
+                  ) : (
+                    <LineChart
+                      data={conversionStats.trends}
+                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip 
+                        contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
+                        itemStyle={{ color: "#fff" }}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="leads"
+                        stroke="#8884d8"
+                        activeDot={{ r: 8 }}
+                      />
+                      <Line type="monotone" dataKey="subscriptions" stroke="#82ca9d" />
+                      <Line type="monotone" dataKey="downloads" stroke="#ffc658" />
+                    </LineChart>
+                  )}
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -259,25 +291,36 @@ export default function Conversions() {
               </CardHeader>
               <CardContent className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={funnelData}
-                    layout="vertical"
-                    margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="name" type="category" width={140} />
-                    <Tooltip
-                      contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
-                      itemStyle={{ color: "#fff" }}
-                      formatter={(value) => [`${value.toLocaleString()} users`, '']}
-                    />
-                    <Bar dataKey="value" fill="#8884d8">
-                      {funnelData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
+                  {isLoadingConversions ? (
+                    <div className="flex h-full items-center justify-center">
+                      <div className="animate-spin w-8 h-8 border-t-2 border-b-2 border-primary rounded-full mr-2"></div>
+                      <span>Loading funnel data...</span>
+                    </div>
+                  ) : !conversionStats?.funnelStages || conversionStats.funnelStages.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-muted-foreground">
+                      <p>No funnel data available</p>
+                    </div>
+                  ) : (
+                    <BarChart
+                      data={conversionStats.funnelStages}
+                      layout="vertical"
+                      margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="name" type="category" width={140} />
+                      <Tooltip
+                        contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
+                        itemStyle={{ color: "#fff" }}
+                        formatter={(value) => [`${value.toLocaleString()} users`, '']}
+                      />
+                      <Bar dataKey="value" fill="#8884d8">
+                        {conversionStats.funnelStages.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  )}
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -291,27 +334,38 @@ export default function Conversions() {
               </CardHeader>
               <CardContent className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={leadSourceData || []}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={90}
-                      fill="#8884d8"
-                      paddingAngle={5}
-                      dataKey="value"
-                      label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {(leadSourceData || []).map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
-                      itemStyle={{ color: "#fff" }}
-                    />
-                  </PieChart>
+                  {isLoadingLeadSources ? (
+                    <div className="flex h-full items-center justify-center">
+                      <div className="animate-spin w-8 h-8 border-t-2 border-b-2 border-primary rounded-full mr-2"></div>
+                      <span>Loading lead source data...</span>
+                    </div>
+                  ) : !leadSourceData || leadSourceData.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-muted-foreground">
+                      <p>No lead source data available</p>
+                    </div>
+                  ) : (
+                    <PieChart>
+                      <Pie
+                        data={leadSourceData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        fill="#8884d8"
+                        paddingAngle={5}
+                        dataKey="value"
+                        label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {leadSourceData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
+                        itemStyle={{ color: "#fff" }}
+                      />
+                    </PieChart>
+                  )}
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -323,22 +377,33 @@ export default function Conversions() {
               </CardHeader>
               <CardContent className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={conversionRateData || []}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis 
-                      tickFormatter={(value) => `${value}%`}
-                    />
-                    <Tooltip
-                      contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
-                      itemStyle={{ color: "#fff" }}
-                      formatter={(value) => [`${value}%`, 'Conversion Rate']}
-                    />
-                    <Bar dataKey="rate" fill="#8884d8" radius={[4, 4, 0, 0]} />
-                  </BarChart>
+                  {isLoadingConversionRate ? (
+                    <div className="flex h-full items-center justify-center">
+                      <div className="animate-spin w-8 h-8 border-t-2 border-b-2 border-primary rounded-full mr-2"></div>
+                      <span>Loading conversion rate data...</span>
+                    </div>
+                  ) : !conversionRateData || conversionRateData.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-muted-foreground">
+                      <p>No conversion rate data available</p>
+                    </div>
+                  ) : (
+                    <BarChart
+                      data={conversionRateData}
+                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis 
+                        tickFormatter={(value) => `${value}%`}
+                      />
+                      <Tooltip
+                        contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
+                        itemStyle={{ color: "#fff" }}
+                        formatter={(value) => [`${value}%`, 'Conversion Rate']}
+                      />
+                      <Bar dataKey="rate" fill="#8884d8" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  )}
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -353,77 +418,88 @@ export default function Conversions() {
                 <CardDescription>Form completions and conversion rates</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-8">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Form Views</span>
-                      <span className="font-medium">4,872</span>
+                {isLoadingLeadCapture ? (
+                  <div className="flex h-40 items-center justify-center">
+                    <div className="animate-spin w-8 h-8 border-t-2 border-b-2 border-primary rounded-full mr-2"></div>
+                    <span>Loading lead capture data...</span>
+                  </div>
+                ) : !leadCaptureStats?.formMetrics ? (
+                  <div className="h-40 flex items-center justify-center text-muted-foreground">
+                    <p>No lead capture data available</p>
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Form Views</span>
+                        <span className="font-medium">{leadCaptureStats.formMetrics.views.toLocaleString()}</span>
+                      </div>
+                      <div className="h-2 bg-dark-300 rounded-full">
+                        <div className="h-full bg-primary rounded-full" style={{ width: "100%" }}></div>
+                      </div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>+24.5% vs previous</span>
+                        <span>100%</span>
+                      </div>
                     </div>
-                    <div className="h-2 bg-dark-300 rounded-full">
-                      <div className="h-full bg-primary rounded-full" style={{ width: "100%" }}></div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Form Starts</span>
+                        <span className="font-medium">{leadCaptureStats.formMetrics.starts.toLocaleString()}</span>
+                      </div>
+                      <div className="h-2 bg-dark-300 rounded-full">
+                        <div className="h-full bg-cyan-600 rounded-full" style={{ width: `${(leadCaptureStats.formMetrics.starts / leadCaptureStats.formMetrics.views * 100).toFixed(1)}%` }}></div>
+                      </div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>+18.3% vs previous</span>
+                        <span>{(leadCaptureStats.formMetrics.starts / leadCaptureStats.formMetrics.views * 100).toFixed(1)}%</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>+24.5% vs previous</span>
-                      <span>100%</span>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Form Completions</span>
+                        <span className="font-medium">{leadCaptureStats.formMetrics.completions.toLocaleString()}</span>
+                      </div>
+                      <div className="h-2 bg-dark-300 rounded-full">
+                        <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${(leadCaptureStats.formMetrics.completions / leadCaptureStats.formMetrics.views * 100).toFixed(1)}%` }}></div>
+                      </div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>+21.2% vs previous</span>
+                        <span>{(leadCaptureStats.formMetrics.completions / leadCaptureStats.formMetrics.views * 100).toFixed(1)}%</span>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Qualified Leads</span>
+                        <span className="font-medium">{leadCaptureStats.formMetrics.qualifiedLeads.toLocaleString()}</span>
+                      </div>
+                      <div className="h-2 bg-dark-300 rounded-full">
+                        <div className="h-full bg-yellow-600 rounded-full" style={{ width: `${(leadCaptureStats.formMetrics.qualifiedLeads / leadCaptureStats.formMetrics.views * 100).toFixed(1)}%` }}></div>
+                      </div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>+15.8% vs previous</span>
+                        <span>{(leadCaptureStats.formMetrics.qualifiedLeads / leadCaptureStats.formMetrics.views * 100).toFixed(1)}%</span>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Converted Customers</span>
+                        <span className="font-medium">{leadCaptureStats.formMetrics.convertedCustomers.toLocaleString()}</span>
+                      </div>
+                      <div className="h-2 bg-dark-300 rounded-full">
+                        <div className="h-full bg-red-600 rounded-full" style={{ width: `${(leadCaptureStats.formMetrics.convertedCustomers / leadCaptureStats.formMetrics.views * 100).toFixed(1)}%` }}></div>
+                      </div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>+8.7% vs previous</span>
+                        <span>{(leadCaptureStats.formMetrics.convertedCustomers / leadCaptureStats.formMetrics.views * 100).toFixed(1)}%</span>
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Form Starts</span>
-                      <span className="font-medium">2,764</span>
-                    </div>
-                    <div className="h-2 bg-dark-300 rounded-full">
-                      <div className="h-full bg-cyan-600 rounded-full" style={{ width: "56.7%" }}></div>
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>+18.3% vs previous</span>
-                      <span>56.7%</span>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Form Completions</span>
-                      <span className="font-medium">1,892</span>
-                    </div>
-                    <div className="h-2 bg-dark-300 rounded-full">
-                      <div className="h-full bg-emerald-600 rounded-full" style={{ width: "38.8%" }}></div>
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>+21.2% vs previous</span>
-                      <span>38.8%</span>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Qualified Leads</span>
-                      <span className="font-medium">1,247</span>
-                    </div>
-                    <div className="h-2 bg-dark-300 rounded-full">
-                      <div className="h-full bg-yellow-600 rounded-full" style={{ width: "25.6%" }}></div>
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>+15.8% vs previous</span>
-                      <span>25.6%</span>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Converted Customers</span>
-                      <span className="font-medium">215</span>
-                    </div>
-                    <div className="h-2 bg-dark-300 rounded-full">
-                      <div className="h-full bg-red-600 rounded-full" style={{ width: "4.4%" }}></div>
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>+8.7% vs previous</span>
-                      <span>4.4%</span>
-                    </div>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
             
@@ -445,61 +521,42 @@ export default function Conversions() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-dark-300">
-                      {[
-                        { 
-                          name: "Newsletter Signup",
-                          views: "1,842",
-                          submissions: "764",
-                          rate: "41.5%",
-                          trend: "+5.2%"
-                        },
-                        { 
-                          name: "Gated Content Access",
-                          views: "1,247",
-                          submissions: "578",
-                          rate: "46.4%",
-                          trend: "+8.7%"
-                        },
-                        { 
-                          name: "SEO Content Download",
-                          views: "928",
-                          submissions: "325",
-                          rate: "35.0%",
-                          trend: "+3.4%"
-                        },
-                        { 
-                          name: "Webinar Registration",
-                          views: "512",
-                          submissions: "154",
-                          rate: "30.1%",
-                          trend: "-2.3%"
-                        },
-                        { 
-                          name: "Contact Form",
-                          views: "343",
-                          submissions: "71",
-                          rate: "20.7%",
-                          trend: "+1.8%"
-                        },
-                      ].map((item, i) => (
-                        <tr key={i}>
-                          <td className="py-2 px-4">
-                            <div className="flex items-center">
-                              <span className="ml-2">{item.name}</span>
+                      {isLoadingLeadCapture ? (
+                        <tr>
+                          <td colSpan={5} className="text-center py-4">
+                            <div className="flex justify-center items-center">
+                              <div className="animate-spin w-6 h-6 border-t-2 border-b-2 border-primary rounded-full mr-2"></div>
+                              <span>Loading form performance data...</span>
                             </div>
                           </td>
-                          <td className="text-center py-2 px-4">{item.views}</td>
-                          <td className="text-center py-2 px-4">{item.submissions}</td>
-                          <td className="text-center py-2 px-4">{item.rate}</td>
-                          <td className="text-center py-2 px-4">
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              item.trend.startsWith("+") ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
-                            }`}>
-                              {item.trend}
-                            </span>
+                        </tr>
+                      ) : !leadCaptureStats?.formPerformance || leadCaptureStats.formPerformance.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="text-center py-4">
+                            <p className="text-muted-foreground">No form performance data available</p>
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        leadCaptureStats.formPerformance.map((item, i) => (
+                          <tr key={i}>
+                            <td className="py-2 px-4">
+                              <div className="flex items-center">
+                                <span className="ml-2">{item.name}</span>
+                              </div>
+                            </td>
+                            <td className="text-center py-2 px-4">{item.views}</td>
+                            <td className="text-center py-2 px-4">{item.submissions}</td>
+                            <td className="text-center py-2 px-4">{item.rate}</td>
+                            <td className="text-center py-2 px-4">
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                item.trend.startsWith("+") ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
+                              }`}>
+                                {item.trend}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -526,44 +583,24 @@ export default function Conversions() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-dark-300">
-                    {[
-                      { 
-                        name: "John Smith",
-                        email: "john.smith@example.com",
-                        source: "SEO Guide Download",
-                        interest: "Keyword Analysis",
-                        date: "1 hour ago"
-                      },
-                      { 
-                        name: "Emma Johnson",
-                        email: "emma.j@company.co",
-                        source: "Newsletter Signup",
-                        interest: "Content Strategy",
-                        date: "3 hours ago"
-                      },
-                      { 
-                        name: "Alex Chen",
-                        email: "alex.chen@startup.io",
-                        source: "Forum Engagement",
-                        interest: "Lead Generation",
-                        date: "5 hours ago"
-                      },
-                      { 
-                        name: "Sarah Miller",
-                        email: "sarah.m@agency.net",
-                        source: "Webinar Registration",
-                        interest: "AI Integration",
-                        date: "Yesterday"
-                      },
-                      { 
-                        name: "David Wilson",
-                        email: "d.wilson@business.org",
-                        source: "Contact Form",
-                        interest: "Enterprise Solutions",
-                        date: "Yesterday"
-                      },
-                    ].map((item, i) => (
-                      <tr key={i}>
+                    {isLoadingLeadCapture ? (
+                      <tr>
+                        <td colSpan={6} className="text-center py-4">
+                          <div className="flex justify-center items-center">
+                            <div className="animate-spin w-6 h-6 border-t-2 border-b-2 border-primary rounded-full mr-2"></div>
+                            <span>Loading lead data...</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : !leadCaptureStats?.recentLeads || leadCaptureStats.recentLeads.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="text-center py-4">
+                          <p className="text-muted-foreground">No recent leads available</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      leadCaptureStats.recentLeads.map((item: LeadCapture, i: number) => (
+                        <tr key={i}>
                         <td className="py-2 px-4">
                           <div className="font-medium">{item.name}</div>
                         </td>
@@ -581,7 +618,8 @@ export default function Conversions() {
                           </Button>
                         </td>
                       </tr>
-                    ))}
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -600,44 +638,50 @@ export default function Conversions() {
                 <CardContent className="h-[400px]">
                   <div className="h-full flex flex-col justify-center">
                     <div className="flex flex-col items-center">
-                      {[
-                        { stage: "Website Visitors", count: "15,000", percentage: "100%" },
-                        { stage: "Forum Visitors", count: "7,500", percentage: "50%" },
-                        { stage: "Engaged Users", count: "3,200", percentage: "21.3%" },
-                        { stage: "Lead Form Views", count: "1,800", percentage: "12%" },
-                        { stage: "Leads Captured", count: "720", percentage: "4.8%" },
-                        { stage: "Converted Customers", count: "215", percentage: "1.4%" },
-                      ].map((item, i, arr) => (
-                        <div key={i} className="w-full">
-                          <div 
-                            className="bg-primary/80 text-white text-center py-3 rounded-t-lg mx-auto"
-                            style={{ 
-                              width: `${100 - (i * (100 / arr.length))}%`,
-                              opacity: 1 - (i * 0.15)
-                            }}
-                          >
-                            <div className="font-medium">{item.stage}</div>
-                            <div className="flex justify-center items-center gap-3">
-                              <span>{item.count}</span>
-                              <span className="text-xs px-2 py-0.5 bg-white/20 rounded-full">
-                                {item.percentage}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {i < arr.length - 1 && (
-                            <div className="w-0 h-0 mx-auto" 
-                              style={{ 
-                                borderLeft: `${25 - (i * 4)}px solid transparent`,
-                                borderRight: `${25 - (i * 4)}px solid transparent`,
-                                borderTop: '15px solid rgba(var(--primary), 0.8)',
-                                opacity: 0.8 - (i * 0.1),
-                                filter: 'drop-shadow(0 2px 2px rgba(0, 0, 0, 0.1))'
-                              }}
-                            ></div>
-                          )}
+                      {isLoadingConversions ? (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <div className="animate-spin w-8 h-8 border-t-2 border-b-2 border-primary rounded-full mr-2"></div>
+                          <span>Loading funnel data...</span>
                         </div>
-                      ))}
+                      ) : !conversionStats?.funnelStages || conversionStats.funnelStages.length === 0 ? (
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                          <p>No funnel data available</p>
+                        </div>
+                      ) : (
+                        <div className="w-full flex flex-col space-y-4">
+                          {conversionStats.funnelStages.map((item: FunnelStage, i: number, arr: FunnelStage[]) => (
+                            <div key={i} className="w-full">
+                              <div 
+                                className="bg-primary/80 text-white text-center py-3 rounded-t-lg mx-auto"
+                                style={{ 
+                                  width: `${100 - (i * (100 / arr.length))}%`,
+                                  opacity: 1 - (i * 0.15)
+                                }}
+                              >
+                                <div className="font-medium">{item.stage}</div>
+                                <div className="flex justify-center items-center gap-3">
+                                  <span>{item.count}</span>
+                                  <span className="text-xs px-2 py-0.5 bg-white/20 rounded-full">
+                                    {item.percentage}
+                                  </span>
+                                </div>
+                              </div>
+                            
+                              {i < arr.length - 1 && (
+                                <div className="w-0 h-0 mx-auto" 
+                                  style={{ 
+                                    borderLeft: `${25 - (i * 4)}px solid transparent`,
+                                    borderRight: `${25 - (i * 4)}px solid transparent`,
+                                    borderTop: '15px solid rgba(var(--primary), 0.8)',
+                                    opacity: 0.8 - (i * 0.1),
+                                    filter: 'drop-shadow(0 2px 2px rgba(0, 0, 0, 0.1))'
+                                  }}
+                                ></div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>
