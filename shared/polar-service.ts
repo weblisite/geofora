@@ -97,6 +97,19 @@ export const getSubscriptionUrl = (planId: string, userId: string, returnUrl: st
 };
 
 /**
+ * Specifies trial-specific parameters for the subscription
+ * @param planId - The plan ID 
+ * @param userId - The user ID
+ * @param returnUrl - The URL to return to after payment
+ * @returns Subscription URL with trial parameters
+ */
+export const getTrialSubscriptionUrl = (planId: string, userId: string, returnUrl: string) => {
+  // For trial, we use the same subscription URL but with trial parameters
+  // Polar allows setting trial_period_days parameter
+  return `https://polar.sh/subscribe/${planId}?user_id=${userId}&return_url=${encodeURIComponent(returnUrl)}&trial_period_days=7`;
+};
+
+/**
  * Plan information interface
  */
 export interface PlanInfo {

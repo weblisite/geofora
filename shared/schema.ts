@@ -50,6 +50,11 @@ export const users = pgTable("users", {
   plan: text("plan").default("starter"), // User's subscription plan: 'starter', 'professional', 'enterprise'
   planActiveUntil: timestamp("plan_active_until"), // When the subscription expires
   polarSubscriptionId: text("polar_subscription_id"), // Polar.sh subscription ID
+  isInTrial: boolean("is_in_trial").default(false), // Whether user is in trial period
+  trialStartedAt: timestamp("trial_started_at"), // When the trial started
+  trialEndsAt: timestamp("trial_ends_at"), // When the trial ends
+  trialPlan: text("trial_plan"), // Plan selected for trial: 'starter', 'professional', 'enterprise'
+  trialHasPaymentMethod: boolean("trial_has_payment_method").default(false), // Whether payment method was added during trial
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   lastLoginAt: timestamp("last_login_at"),

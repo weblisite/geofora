@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import { planStore } from "@/lib/planStore";
-import { PLAN_INFO, POLAR_PLAN_IDS, getSubscriptionUrl } from "@shared/polar-service";
+import { PLAN_INFO, POLAR_PLAN_IDS, getSubscriptionUrl, getTrialSubscriptionUrl } from "@shared/polar-service";
 import { Button } from "@/components/ui/button";
 import { Glassmorphism } from "@/components/ui/glassmorphism";
 import { useLocation } from "wouter";
 import { toast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 export default function PaymentPage() {
   const { user } = useUser();
@@ -15,6 +17,8 @@ export default function PaymentPage() {
   const [loading, setLoading] = useState(true);
   const [planType, setPlanType] = useState<string | null>(null);
   const [planInfo, setPlanInfo] = useState<typeof PLAN_INFO[keyof typeof PLAN_INFO] | null>(null);
+  const [trialMode, setTrialMode] = useState(true);
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
 
   useEffect(() => {
     const initPage = async () => {
@@ -77,6 +81,15 @@ export default function PaymentPage() {
         return;
       }
       
+      if (!agreeToTerms) {
+        toast({
+          title: "Terms Agreement Required",
+          description: "Please agree to the terms and conditions to continue",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       setLoading(true);
       
       // Store user plan selection in database
@@ -84,7 +97,8 @@ export default function PaymentPage() {
         method: 'POST',
         body: JSON.stringify({
           userId: user.id,
-          planType
+          planType,
+          isTrial: trialMode
         })
       });
       
@@ -94,8 +108,10 @@ export default function PaymentPage() {
       // Generate the return URL (dashboard)
       const returnUrl = `${window.location.origin}/dashboard`;
       
-      // Generate subscription URL and redirect
-      const subscriptionUrl = getSubscriptionUrl(polarPlanId, user.id, returnUrl);
+      // Generate subscription URL based on trial mode
+      const subscriptionUrl = trialMode 
+        ? getTrialSubscriptionUrl(polarPlanId, user.id, returnUrl)
+        : getSubscriptionUrl(polarPlanId, user.id, returnUrl);
       
       // Redirect to Polar payment page
       window.location.href = subscriptionUrl;
@@ -144,12 +160,23 @@ export default function PaymentPage() {
     <div className="min-h-screen py-16 bg-dark-100">
       <div className="container px-4 mx-auto">
         <Glassmorphism className="p-8 rounded-xl max-w-2xl mx-auto" border>
-          <h1 className="text-2xl font-bold mb-6">Complete Your Subscription</h1>
+          <h1 className="text-2xl font-bold mb-6">
+            {trialMode ? "Start Your 7-Day Free Trial" : "Complete Your Subscription"}
+          </h1>
           
           <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">
+            <h2 className="text-xl font-semibold mb-2">
               {planInfo.name} Plan - {planInfo.price}
             </h2>
+            
+            {trialMode && (
+              <div className="bg-primary-900/20 text-primary-400 border border-primary-800 p-3 rounded-lg mb-4 flex items-start">
+                <span className="material-icons text-lg mr-2 mt-0.5">info</span>
+                <p className="text-sm">
+                  You'll get full access to all features for 7 days. Your card won't be charged until the trial ends.
+                </p>
+              </div>
+            )}
             
             <div className="bg-dark-300 p-4 rounded-lg mb-6">
               <h3 className="font-medium mb-2">Plan Features:</h3>
@@ -167,10 +194,29 @@ export default function PaymentPage() {
               <h3 className="font-medium mb-2">What happens next:</h3>
               <ol className="list-decimal list-inside space-y-2 text-sm text-gray-300">
                 <li>You'll be redirected to Polar's secure payment page</li>
-                <li>Enter your payment details to complete the subscription</li>
-                <li>After successful payment, you'll be returned to your dashboard</li>
+                <li>Enter your payment details {trialMode ? 'to set up your trial' : 'to complete the subscription'}</li>
+                <li>After confirmation, you'll be returned to your dashboard</li>
                 <li>Your plan features will be immediately activated</li>
+                {trialMode && <li>After 7 days, your subscription will automatically begin at {planInfo.price}</li>}
               </ol>
+            </div>
+            
+            <div className="mb-6">
+              <div className="flex items-center space-x-2 mb-2">
+                <Checkbox 
+                  id="terms" 
+                  checked={agreeToTerms}
+                  onCheckedChange={(checked) => setAgreeToTerms(checked === true)}
+                />
+                <Label 
+                  htmlFor="terms"
+                  className="text-sm text-gray-300 cursor-pointer"
+                >
+                  I agree to the terms of service and understand that {trialMode 
+                    ? `my card will be charged ${planInfo.price} after the 7-day trial ends unless I cancel.` 
+                    : `my subscription will begin immediately at ${planInfo.price}.`}
+                </Label>
+              </div>
             </div>
           </div>
           
@@ -181,11 +227,23 @@ export default function PaymentPage() {
             <Button 
               className="bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500"
               onClick={handleProceedToPayment}
+              disabled={!agreeToTerms}
             >
               <span className="material-icons mr-2">credit_card</span>
-              Proceed to Payment
+              {trialMode ? "Start Free Trial" : "Proceed to Payment"}
             </Button>
           </div>
+          
+          {trialMode && (
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => setTrialMode(false)} 
+                className="text-sm text-gray-400 hover:text-white underline"
+              >
+                I'd prefer to subscribe immediately without a trial
+              </button>
+            </div>
+          )}
         </Glassmorphism>
       </div>
     </div>
