@@ -1,4 +1,3 @@
-import { useAuth } from "@/hooks/use-auth";
 import { useClerkAuth } from "@/hooks/use-clerk-auth";
 import { Loader2 } from "lucide-react";
 import { Redirect, Route } from "wouter";
@@ -12,12 +11,11 @@ export function ProtectedRoute({
 }) {
   // Try-catch block to handle potential errors when using auth hooks
   try {
-    // We use both auth systems during the migration
-    const { user: legacyUser, isLoading: legacyLoading } = useAuth();
+    // Now exclusively using Clerk auth
     const { user: clerkUser, isLoading: clerkLoading } = useClerkAuth();
 
-    const isLoading = legacyLoading || clerkLoading;
-    const isAuthenticated = !!legacyUser || !!clerkUser;
+    const isLoading = clerkLoading;
+    const isAuthenticated = !!clerkUser;
 
     if (isLoading) {
       return (
