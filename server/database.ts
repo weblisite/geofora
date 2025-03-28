@@ -3,6 +3,8 @@ import { db } from './db';
 import { log } from './vite';
 import { sql } from 'drizzle-orm';
 import { forums } from '@shared/schema';
+import { logSecretStructure } from './debug-env';
+import { supabase } from './supabase';
 
 // Re-export the db instance
 export { db };
@@ -13,6 +15,28 @@ export { db };
  */
 export async function checkDatabaseConnection(): Promise<boolean> {
   try {
+    // Log environment variables structure (without exposing sensitive data)
+    logSecretStructure();
+    
+    // First check Supabase connection
+    if (supabase) {
+      // Test Supabase connection with a simple query
+      const { data, error } = await supabase.from('_dummy_check').select('*').limit(1);
+      
+      // Expected error for non-existent table indicates working connection
+      if (error && (error.message.includes('does not exist') || error.code === 'PGRST116')) {
+        log('Supabase connection check: success (expected error about non-existent table)');
+        return true;
+      } else if (error) {
+        log(`Supabase connection error: ${error.message}`);
+        // Fall through to try direct db connection
+      } else {
+        log('Supabase connection check: success');
+        return true;
+      }
+    }
+    
+    // Fallback to direct DB connection if Supabase fails or is not available
     if (!db) {
       log('Database connection check: failed - db is not initialized');
       return false;
@@ -21,10 +45,10 @@ export async function checkDatabaseConnection(): Promise<boolean> {
     // Check the connection with a simple query that doesn't rely on tables existing
     const result = await db.execute(sql`SELECT 1 as check_connection`);
     
-    log('Database connection check: success');
+    log('Database connection check: success via direct connection');
     return true;
   } catch (error: any) {
-    log(`Database connection error: ${error.message}`);
+    log(`Database connection error: ${error?.message || 'Unknown error'}`);
     return false;
   }
 }

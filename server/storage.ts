@@ -3560,5 +3560,23 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Use PostgreSQL storage instead of in-memory storage
-export const storage = new PostgresStorage();
+// Import both storage implementations
+import { PostgresStorage } from './postgres-storage';
+import { SupabaseStorage } from './supabase-storage';
+import { log } from './vite';
+
+// Use Supabase storage if credentials are available, otherwise fallback to PostgreSQL
+let storageImplementation: IStorage;
+
+if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
+  log('Using Supabase storage implementation');
+  storageImplementation = new SupabaseStorage();
+} else if (process.env.DATABASE_URL) {
+  log('Using PostgreSQL storage implementation');
+  storageImplementation = new PostgresStorage();
+} else {
+  log('WARNING: No database credentials available. Using in-memory storage');
+  storageImplementation = new MemStorage();
+}
+
+export const storage = storageImplementation;

@@ -1,14 +1,12 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import { Express } from "express";
+import { Express, Request, Response, NextFunction } from "express";
 import session from "express-session";
-import { scrypt, randomBytes, timingSafeEqual } from "crypto";
-import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 import { log } from "./vite";
-import { checkDatabaseConnection } from "./database";
 import createMemoryStore from "memorystore";
+import { supabase } from "./supabase";
 
 declare global {
   namespace Express {
@@ -16,25 +14,11 @@ declare global {
   }
 }
 
-const scryptAsync = promisify(scrypt);
 const MemoryStore = createMemoryStore(session);
-
-async function hashPassword(password: string) {
-  const salt = randomBytes(16).toString("hex");
-  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-  return `${buf.toString("hex")}.${salt}`;
-}
-
-async function comparePasswords(supplied: string, stored: string) {
-  const [hashed, salt] = stored.split(".");
-  const hashedBuf = Buffer.from(hashed, "hex");
-  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
-}
 
 export function setupAuth(app: Express) {
   // Determine if we should use the database session store or fallback to memory store
-  const useDbSessionStore = process.env.DATABASE_URL && storage.sessionStore;
+  const useDbSessionStore = process.env.SUPABASE_URL && process.env.SUPABASE_KEY && storage.sessionStore;
   
   // Set up session middleware
   const sessionSettings: session.SessionOptions = {
@@ -57,15 +41,29 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Use Supabase for authentication, but still adapt to Passport
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
-        const user = await storage.getUserByUsername(username);
-        if (!user || !(await comparePasswords(password, user.password))) {
-          return done(null, false);
-        } else {
-          return done(null, user);
+        // First check if the user exists in our database
+        const dbUser = await storage.getUserByUsername(username);
+        if (!dbUser) {
+          return done(null, false, { message: 'User not found' });
         }
+        
+        // Try to authenticate with Supabase using email/password
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: dbUser.email, // Use email from database
+          password: password, // Plain text password will be verified by Supabase
+        });
+        
+        if (error) {
+          log(`Supabase authentication error: ${error.message}`);
+          return done(null, false, { message: 'Invalid credentials' });
+        }
+        
+        // If supabase auth succeeded, return the user
+        return done(null, dbUser);
       } catch (error) {
         log(`Authentication error: ${error.message}`);
         return done(error);
@@ -86,23 +84,47 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
-      // Check if database is available
-      if (!process.env.DATABASE_URL) {
+      // Check if Supabase is available
+      if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY) {
         return res.status(503).json({ 
-          error: "Registration is unavailable - database connection not configured" 
+          error: "Registration is unavailable - Supabase connection not configured" 
         });
       }
       
-      const existingUser = await storage.getUserByUsername(req.body.username);
+      const { username, email, password, displayName } = req.body;
+      
+      // Check if username already exists
+      const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
         return res.status(400).json({ error: "Username already exists" });
       }
-
+      
+      // Create the user in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username,
+            display_name: displayName
+          }
+        }
+      });
+      
+      if (authError) {
+        log(`Supabase registration error: ${authError.message}`);
+        return res.status(400).json({ error: authError.message });
+      }
+      
+      // Create user in our database
       const user = await storage.createUser({
-        ...req.body,
-        password: await hashPassword(req.body.password),
+        username,
+        email,
+        password: 'supabase_auth', // Placeholder - actual auth handled by Supabase
+        displayName,
       });
 
+      // Log the user in
       req.login(user, (err) => {
         if (err) return next(err);
         res.status(201).json(user);
@@ -113,11 +135,11 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", (req, res, next) => {
-    // Check if database is available
-    if (!process.env.DATABASE_URL) {
+  app.post("/api/login", async (req, res, next) => {
+    // Check if Supabase is available
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY) {
       return res.status(503).json({ 
-        error: "Login is unavailable - database connection not configured" 
+        error: "Login is unavailable - Supabase connection not configured" 
       });
     }
     
@@ -135,8 +157,15 @@ export function setupAuth(app: Express) {
     })(req, res, next);
   });
 
-  app.post("/api/logout", (req, res, next) => {
+  app.post("/api/logout", async (req, res, next) => {
     if (req.isAuthenticated()) {
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        log(`Supabase sign out error: ${error.message}`);
+      }
+      
+      // Also terminate session
       req.logout((err) => {
         if (err) return next(err);
         res.sendStatus(200);
@@ -149,5 +178,28 @@ export function setupAuth(app: Express) {
   app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Not authenticated" });
     res.json(req.user);
+  });
+  
+  // Supabase auth endpoints
+  app.post("/api/auth/reset-password", async (req, res) => {
+    const { email } = req.body;
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+    
+    res.status(200).json({ message: "Password reset email sent" });
+  });
+  
+  app.post("/api/auth/update-password", async (req, res) => {
+    const { password } = req.body;
+    
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+    
+    res.status(200).json({ message: "Password updated successfully" });
   });
 }
