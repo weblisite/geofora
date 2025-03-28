@@ -78,13 +78,13 @@ function App() {
         <ProtectedRoute path="/dashboard" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/forum" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/personas" component={DashboardPage} />
-        <ProtectedRoute path="/dashboard/analytics" component={AnalyticsPage} />
-        <ProtectedRoute path="/dashboard/keyword-analysis" component={KeywordAnalysisPage} />
-        <ProtectedRoute path="/dashboard/interlinking" component={InterlinkingPage} />
-        <ProtectedRoute path="/dashboard/lead-capture" component={LeadCapturePage} />
-        <ProtectedRoute path="/dashboard/gated-content" component={GatedContentPage} />
-        <ProtectedRoute path="/dashboard/crm" component={CrmIntegrationsPage} />
-        <ProtectedRoute path="/dashboard/content-scheduling" component={ContentSchedulingPage} />
+        <ProtectedRoute path="/dashboard/analytics" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/keyword-analysis" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/interlinking" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/lead-capture" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/gated-content" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/crm" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/content-scheduling" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/integration" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/settings" component={DashboardPage} />
         <Route path="/sign-in" component={SignInPage} />

@@ -77,9 +77,27 @@ export default function DashboardPage() {
 
   // Determine which content to render based on the URL path
   const renderDashboardContent = () => {
-    // Forum management page
+    // Different pages based on the URL path
     if (location === "/dashboard/forum") {
       return <ForumManagementPage />;
+    } else if (location === "/dashboard/interlinking") {
+      return <h1 className="p-6 text-xl font-semibold">Interlinking</h1>;
+    } else if (location === "/dashboard/keyword-analysis") {
+      return <h1 className="p-6 text-xl font-semibold">Keyword Analysis</h1>;
+    } else if (location === "/dashboard/lead-capture") {
+      return <h1 className="p-6 text-xl font-semibold">Lead Capture</h1>;
+    } else if (location === "/dashboard/gated-content") {
+      return <h1 className="p-6 text-xl font-semibold">Gated Content</h1>;
+    } else if (location === "/dashboard/crm") {
+      return <h1 className="p-6 text-xl font-semibold">CRM Integrations</h1>;
+    } else if (location === "/dashboard/personas") {
+      return <h1 className="p-6 text-xl font-semibold">AI Personas</h1>;
+    } else if (location === "/dashboard/analytics") {
+      return <h1 className="p-6 text-xl font-semibold">Analytics</h1>;
+    } else if (location === "/dashboard/integration") {
+      return <h1 className="p-6 text-xl font-semibold">Integration</h1>;
+    } else if (location === "/dashboard/settings") {
+      return <h1 className="p-6 text-xl font-semibold">Settings</h1>;
     }
     
     // Overview page (main dashboard)
