@@ -24,11 +24,12 @@ export const PRICING_PLANS = [
   {
     name: "Starter",
     description: "Launch your AI forum",
-    price: "$49",
+    price: "$99",
     interval: "month",
     features: [
       "Up to 500 AI-generated questions",
-      "3 AI personas",
+      "Up to 10,000 AI-generated answers",
+      "20 AI personas",
       "Basic keyword optimization",
       "Lead capture forms",
       "Standard analytics",
@@ -43,11 +44,12 @@ export const PRICING_PLANS = [
   {
     name: "Professional",
     description: "Scale with precision",
-    price: "$99",
+    price: "$199",
     interval: "month",
     features: [
       "Unlimited AI-generated questions",
-      "7 AI personas",
+      "Up to 50,000 AI-generated answers",
+      "100 AI personas",
       "Advanced keyword optimization",
       "Premium lead capture system",
       "Comprehensive analytics",
@@ -65,6 +67,7 @@ export const PRICING_PLANS = [
     interval: "",
     features: [
       "Everything in Professional",
+      "Unlimited AI-generated answers",
       "Unlimited AI personas",
       "Enterprise-grade security",
       "Custom AI training",
