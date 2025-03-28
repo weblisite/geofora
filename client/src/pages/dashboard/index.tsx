@@ -81,9 +81,20 @@ export default function DashboardPage() {
     if (location === "/dashboard/forum") {
       return <ForumManagementPage />;
     } else if (location === "/dashboard/interlinking") {
-      return <h1 className="p-6 text-xl font-semibold">Interlinking</h1>;
+      // Import the component directly to avoid having to add to imports
+      const Interlinking = require("@/components/dashboard/interlinking").default;
+      return (
+        <div className="p-6">
+          <Interlinking />
+        </div>
+      );
     } else if (location === "/dashboard/keyword-analysis") {
-      return <h1 className="p-6 text-xl font-semibold">Keyword Analysis</h1>;
+      const KeywordAnalysis = require("@/components/dashboard/keyword-analysis").default;
+      return (
+        <div className="p-6">
+          <KeywordAnalysis />
+        </div>
+      );
     } else if (location === "/dashboard/lead-capture") {
       return <h1 className="p-6 text-xl font-semibold">Lead Capture</h1>;
     } else if (location === "/dashboard/gated-content") {
@@ -93,7 +104,12 @@ export default function DashboardPage() {
     } else if (location === "/dashboard/personas") {
       return <h1 className="p-6 text-xl font-semibold">AI Personas</h1>;
     } else if (location === "/dashboard/analytics") {
-      return <h1 className="p-6 text-xl font-semibold">Analytics</h1>;
+      const Analytics = require("@/components/dashboard/analytics").default;
+      return (
+        <div className="p-6">
+          <Analytics />
+        </div>
+      );
     } else if (location === "/dashboard/integration") {
       return <h1 className="p-6 text-xl font-semibold">Integration</h1>;
     } else if (location === "/dashboard/settings") {
