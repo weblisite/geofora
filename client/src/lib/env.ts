@@ -24,5 +24,5 @@ export function getEnv(name: string): string | undefined {
 
 // Common environment variables used in the application
 export const ENV = {
-  CLERK_PUBLISHABLE_KEY: getEnv('CLERK_PUBLISHABLE_KEY'),
+  CLERK_PUBLISHABLE_KEY: import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
 }
