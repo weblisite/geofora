@@ -18,6 +18,12 @@ import ForumManagementPage from "./forum";
 const KeywordAnalysis = lazy(() => import("@/components/dashboard/keyword-analysis"));
 const Interlinking = lazy(() => import("@/components/dashboard/interlinking"));
 const Analytics = lazy(() => import("@/components/dashboard/analytics"));
+const LeadCapture = lazy(() => import("@/components/dashboard/lead-capture"));
+const GatedContent = lazy(() => import("@/components/dashboard/gated-content"));
+const CRMIntegrations = lazy(() => import("@/components/dashboard/crm-integrations"));
+const AIPersonas = lazy(() => import("@/components/dashboard/ai-personas"));
+const Integration = lazy(() => import("@/components/dashboard/integration"));
+const Settings = lazy(() => import("@/components/dashboard/settings"));
 
 // Define the stats type
 interface DashboardStats {
@@ -80,16 +86,16 @@ export default function DashboardPage() {
   // Use fallback stats if API data isn't available
   const displayStats = stats || getFallbackStats();
 
+  // Loading component for all lazy-loaded sections
+  const LoadingComponent = () => (
+    <div className="flex items-center justify-center p-12">
+      <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      <span className="ml-2 text-lg">Loading content...</span>
+    </div>
+  );
+
   // Determine which content to render based on the URL path
   const renderDashboardContent = () => {
-    // Define a loading component
-    const LoadingComponent = () => (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <span className="ml-2 text-lg">Loading content...</span>
-      </div>
-    );
-
     // Different pages based on the URL path
     if (location === "/dashboard/forum") {
       return <ForumManagementPage />;
@@ -110,13 +116,37 @@ export default function DashboardPage() {
         </div>
       );
     } else if (location === "/dashboard/lead-capture") {
-      return <h1 className="p-6 text-xl font-semibold">Lead Capture</h1>;
+      return (
+        <div className="p-6">
+          <Suspense fallback={<LoadingComponent />}>
+            <LeadCapture />
+          </Suspense>
+        </div>
+      );
     } else if (location === "/dashboard/gated-content") {
-      return <h1 className="p-6 text-xl font-semibold">Gated Content</h1>;
+      return (
+        <div className="p-6">
+          <Suspense fallback={<LoadingComponent />}>
+            <GatedContent />
+          </Suspense>
+        </div>
+      );
     } else if (location === "/dashboard/crm") {
-      return <h1 className="p-6 text-xl font-semibold">CRM Integrations</h1>;
+      return (
+        <div className="p-6">
+          <Suspense fallback={<LoadingComponent />}>
+            <CRMIntegrations />
+          </Suspense>
+        </div>
+      );
     } else if (location === "/dashboard/personas") {
-      return <h1 className="p-6 text-xl font-semibold">AI Personas</h1>;
+      return (
+        <div className="p-6">
+          <Suspense fallback={<LoadingComponent />}>
+            <AIPersonas />
+          </Suspense>
+        </div>
+      );
     } else if (location === "/dashboard/analytics") {
       return (
         <div className="p-6">
@@ -126,9 +156,21 @@ export default function DashboardPage() {
         </div>
       );
     } else if (location === "/dashboard/integration") {
-      return <h1 className="p-6 text-xl font-semibold">Integration</h1>;
+      return (
+        <div className="p-6">
+          <Suspense fallback={<LoadingComponent />}>
+            <Integration />
+          </Suspense>
+        </div>
+      );
     } else if (location === "/dashboard/settings") {
-      return <h1 className="p-6 text-xl font-semibold">Settings</h1>;
+      return (
+        <div className="p-6">
+          <Suspense fallback={<LoadingComponent />}>
+            <Settings />
+          </Suspense>
+        </div>
+      );
     }
     
     // Overview page (main dashboard)
