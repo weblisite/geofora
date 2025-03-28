@@ -1,392 +1,452 @@
-import { eq, and, sql, desc, asc, like, or, gte, lte } from 'drizzle-orm';
-import { db, connection } from './db';
-import { supabase } from './supabase';
-import { 
-  roles, permissions, rolePermissions, users, userForumRoles,
-  categories, questions, answers, votes, aiPersonas,
-  mainSitePages, contentInterlinks, forums, domainVerifications,
-  leadCaptureForms, leadSubmissions, gatedContents, crmIntegrations,
-  leadFormViews, contentSchedules, seoKeywords, seoPositions,
-  seoPageMetrics, seoContentGaps, seoWeeklyReports,
-  funnelDefinitions, funnelAnalytics, userEngagementMetrics,
-  contentPerformanceMetrics, analyticsEvents
-} from '@shared/schema';
-import type {
-  Role, InsertRole, Permission, InsertPermission,
-  RolePermission, InsertRolePermission, User, InsertUser,
-  UserForumRole, InsertUserForumRole, Category, InsertCategory,
-  Question, InsertQuestion, QuestionWithDetails, Answer, InsertAnswer,
-  AnswerWithDetails, Vote, InsertVote, AiPersona, InsertAiPersona,
-  MainSitePage, InsertMainSitePage, MainSitePageWithLinks,
-  ContentInterlink, InsertContentInterlink, Forum, InsertForum,
-  ForumWithStats, DomainVerification, InsertDomainVerification,
-  LeadCaptureForm, InsertLeadCaptureForm, LeadCaptureFormWithStats,
-  LeadSubmission, InsertLeadSubmission, GatedContent, InsertGatedContent,
-  CrmIntegration, InsertCrmIntegration, LeadFormView, InsertLeadFormView,
-  ContentSchedule, InsertContentSchedule, ContentScheduleWithDetails,
-  SeoKeyword, InsertSeoKeyword, SeoKeywordWithPositionHistory,
-  SeoPosition, InsertSeoPosition, SeoPageMetric, InsertSeoPageMetric,
-  SeoContentGap, InsertSeoContentGap, SeoWeeklyReport, InsertSeoWeeklyReport,
-  SeoWeeklyReportWithDetails, FunnelDefinition, InsertFunnelDefinition,
-  FunnelDefinitionWithStats, FunnelAnalytic, InsertFunnelAnalytic,
-  InsertUserEngagementMetric, UserEngagementMetric,
-  InsertContentPerformanceMetric, ContentPerformanceMetric,
-  InsertAnalyticsEvent, AnalyticsEvent
-} from '@shared/schema';
+/**
+ * Supabase Storage Implementation
+ * 
+ * This file implements the IStorage interface using Supabase as the backend.
+ * It provides methods for CRUD operations on all application entities.
+ */
+
 import { IStorage } from './storage';
-import connectPgSimple from 'connect-pg-simple';
-import session from 'express-session';
-import { log } from './vite';
+import { supabase } from './supabase';
+import * as schema from '../shared/schema';
+import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import * as dbSchema from '../shared/schema';
 
+/**
+ * Supabase Storage Implementation
+ * Implements the IStorage interface using Supabase as the backend
+ */
 export class SupabaseStorage implements IStorage {
-  sessionStore: session.Store;
-
   constructor() {
-    const PgSessionStore = connectPgSimple(session);
-    
-    // Create a connection string from Supabase URL
-    const connectionString = process.env.SUPABASE_URL && process.env.SUPABASE_KEY ? 
-      `${process.env.SUPABASE_URL.replace('https://', 'postgres://postgres:')}${process.env.SUPABASE_KEY}@db.${process.env.SUPABASE_URL.replace('https://', '')}.supabase.co:5432/postgres` : 
-      '';
+    // Initialize any resources or connections needed
+    console.log('Initializing Supabase Storage adapter');
+  }
+
+  /**
+   * ===============================
+   * HELPER METHODS
+   * ===============================
+   */
+
+  /**
+   * Convert a date string to a Date object
+   * @param dateStr Date string to convert
+   * @returns Date object or null if the input is null or invalid
+   */
+  private parseDate(dateStr: string | null): Date | null {
+    if (!dateStr) return null;
+    try {
+      return new Date(dateStr);
+    } catch (error) {
+      console.error('Error parsing date:', dateStr, error);
+      return null;
+    }
+  }
+
+  /**
+   * Handle errors from Supabase operations
+   * @param error Error object from Supabase
+   * @param operation Name of the operation that failed
+   * @param entity Name of the entity being operated on
+   */
+  private handleError(error: any, operation: string, entity: string): void {
+    if (error) {
+      console.error(`Error ${operation} ${entity}:`, error.message || error);
+    }
+  }
+
+  /**
+   * ===============================
+   * USER RELATED METHODS
+   * ===============================
+   */
+
+  /**
+   * Get a user by ID
+   * @param userId User ID to retrieve
+   * @returns The user object or null if not found
+   */
+  async getUser(userId: number): Promise<schema.User | null> {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
       
-    this.sessionStore = new PgSessionStore({
-      conObject: {
-        connectionString: connectionString,
-        ssl: { rejectUnauthorized: false },
-      },
-      createTableIfMissing: true,
-    });
-    
-    log('Supabase storage initialized with session store');
-  }
-
-  // =========================================
-  // Role and Permission methods
-  // =========================================
-  
-  async getRole(id: number): Promise<Role | undefined> {
-    const results = await db.select().from(roles).where(eq(roles.id, id));
-    return results.length ? results[0] : undefined;
-  }
-
-  async getRoleByName(name: string): Promise<Role | undefined> {
-    const results = await db.select().from(roles).where(eq(roles.name, name));
-    return results.length ? results[0] : undefined;
-  }
-
-  async getAllRoles(): Promise<Role[]> {
-    return db.select().from(roles);
-  }
-
-  async createRole(role: InsertRole): Promise<Role> {
-    const results = await db.insert(roles).values(role).returning();
-    return results[0];
-  }
-
-  async updateRole(id: number, data: Partial<InsertRole>): Promise<Role> {
-    const results = await db.update(roles).set(data).where(eq(roles.id, id)).returning();
-    return results[0];
-  }
-
-  async deleteRole(id: number): Promise<void> {
-    await db.delete(roles).where(eq(roles.id, id));
-  }
-
-  async getPermission(id: number): Promise<Permission | undefined> {
-    const results = await db.select().from(permissions).where(eq(permissions.id, id));
-    return results.length ? results[0] : undefined;
-  }
-
-  async getPermissionByName(name: string): Promise<Permission | undefined> {
-    const results = await db.select().from(permissions).where(eq(permissions.name, name));
-    return results.length ? results[0] : undefined;
-  }
-
-  async getPermissionsByScope(scope: string): Promise<Permission[]> {
-    return db.select().from(permissions).where(eq(permissions.scope, scope));
-  }
-
-  async getAllPermissions(): Promise<Permission[]> {
-    return db.select().from(permissions);
-  }
-
-  async createPermission(permission: InsertPermission): Promise<Permission> {
-    const results = await db.insert(permissions).values(permission).returning();
-    return results[0];
-  }
-
-  async updatePermission(id: number, data: Partial<InsertPermission>): Promise<Permission> {
-    const results = await db.update(permissions).set(data).where(eq(permissions.id, id)).returning();
-    return results[0];
-  }
-
-  async deletePermission(id: number): Promise<void> {
-    await db.delete(permissions).where(eq(permissions.id, id));
-  }
-
-  async assignPermissionToRole(rolePermission: InsertRolePermission): Promise<RolePermission> {
-    const results = await db.insert(rolePermissions).values(rolePermission).returning();
-    return results[0];
-  }
-
-  async removePermissionFromRole(roleId: number, permissionId: number): Promise<void> {
-    await db.delete(rolePermissions)
-      .where(and(
-        eq(rolePermissions.roleId, roleId),
-        eq(rolePermissions.permissionId, permissionId)
-      ));
-  }
-
-  async getRolePermissions(roleId: number): Promise<Permission[]> {
-    const query = db
-      .select({
-        id: permissions.id,
-        name: permissions.name,
-        description: permissions.description,
-        scope: permissions.scope,
-        action: permissions.action,
-        createdAt: permissions.createdAt
-      })
-      .from(rolePermissions)
-      .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
-      .where(eq(rolePermissions.roleId, roleId));
-
-    return query;
-  }
-
-  // =========================================
-  // User Forum Role methods
-  // =========================================
-  
-  async assignUserForumRole(userForumRole: InsertUserForumRole): Promise<UserForumRole> {
-    const results = await db.insert(userForumRoles).values(userForumRole).returning();
-    return results[0];
-  }
-
-  async removeUserForumRole(userId: number, forumId: number): Promise<void> {
-    await db.delete(userForumRoles)
-      .where(and(
-        eq(userForumRoles.userId, userId),
-        eq(userForumRoles.forumId, forumId)
-      ));
-  }
-
-  async getUserForumRoles(userId: number): Promise<UserForumRole[]> {
-    return db.select().from(userForumRoles).where(eq(userForumRoles.userId, userId));
-  }
-
-  async getUserForumRolesByForum(forumId: number): Promise<UserForumRole[]> {
-    return db.select().from(userForumRoles).where(eq(userForumRoles.forumId, forumId));
-  }
-
-  // =========================================
-  // User methods 
-  // =========================================
-  
-  async getUser(id: number): Promise<User | undefined> {
-    const results = await db.select().from(users).where(eq(users.id, id));
-    return results.length ? results[0] : undefined;
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const results = await db.select().from(users).where(eq(users.username, username));
-    return results.length ? results[0] : undefined;
-  }
-
-  async createUser(user: InsertUser): Promise<User> {
-    // First create a Supabase auth user if using email auth
-    try {
-      if (user.email && user.password) {
-        const { data, error } = await supabase.auth.signUp({
-          email: user.email,
-          password: user.password, // We still pass the hashed password to supabase
-        });
-
-        if (error) {
-          log(`Error creating Supabase user: ${error.message}`);
-          throw error;
-        }
-
-        // If Supabase user creation successful, continue with DB user creation
-        const results = await db.insert(users).values({
-          ...user,
-          // Optional: store Supabase UID for reference
-          // This would require adding a supabaseUserId field to the User schema
-        }).returning();
-
-        return results[0];
-      } else {
-        // For cases where user creation doesn't use email/password (like AI users)
-        const results = await db.insert(users).values(user).returning();
-        return results[0];
+      if (error) {
+        this.handleError(error, 'fetching', 'user');
+        return null;
       }
-    } catch (error) {
-      log(`Error in createUser: ${error.message}`);
-      throw error;
+      
+      return data as schema.User;
+    } catch (error: any) {
+      this.handleError(error, 'fetching', 'user');
+      return null;
     }
   }
 
-  async updateUserRole(userId: number, roleId: number): Promise<User> {
-    const results = await db.update(users)
-      .set({ roleId })
-      .where(eq(users.id, userId))
-      .returning();
-    return results[0];
+  /**
+   * Get a user by email address
+   * @param email Email address to search for
+   * @returns The user object or null if not found
+   */
+  async getUserByEmail(email: string): Promise<schema.User | null> {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .single();
+      
+      if (error) {
+        this.handleError(error, 'fetching', 'user by email');
+        return null;
+      }
+      
+      return data as schema.User;
+    } catch (error: any) {
+      this.handleError(error, 'fetching', 'user by email');
+      return null;
+    }
   }
 
-  async hasPermission(userId: number, permissionName: string, forumId?: number): Promise<boolean> {
+  /**
+   * Create a new user
+   * @param userData User data for the new user
+   * @returns The created user object or null if creation failed
+   */
+  async createUser(userData: schema.InsertUser): Promise<schema.User | null> {
     try {
-      const user = await this.getUser(userId);
-      if (!user) return false;
-
-      // If user is admin, they have all permissions
-      if (user.isAdmin) return true;
-
-      // Check user's global role permissions
-      if (user.roleId) {
-        const rolePermissions = await this.getRolePermissions(user.roleId);
-        if (rolePermissions.some(p => p.name === permissionName)) {
-          return true;
-        }
+      const { data, error } = await supabase
+        .from('users')
+        .insert(userData)
+        .select('*')
+        .single();
+      
+      if (error) {
+        this.handleError(error, 'creating', 'user');
+        return null;
       }
+      
+      return data as schema.User;
+    } catch (error: any) {
+      this.handleError(error, 'creating', 'user');
+      return null;
+    }
+  }
 
-      // If forumId provided, check forum-specific permissions
-      if (forumId) {
-        const userForumRoles = await db.select()
-          .from(userForumRoles)
-          .where(and(
-            eq(userForumRoles.userId, userId),
-            eq(userForumRoles.forumId, forumId)
-          ));
-
-        if (userForumRoles.length > 0) {
-          for (const userForumRole of userForumRoles) {
-            const rolePermissions = await this.getRolePermissions(userForumRole.roleId);
-            if (rolePermissions.some(p => p.name === permissionName)) {
-              return true;
-            }
-          }
-        }
+  /**
+   * Update a user's information
+   * @param userId User ID to update
+   * @param userData Updated user data
+   * @returns The updated user object or null if update failed
+   */
+  async updateUser(userId: number, userData: Partial<schema.InsertUser>): Promise<schema.User | null> {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .update(userData)
+        .eq('id', userId)
+        .select('*')
+        .single();
+      
+      if (error) {
+        this.handleError(error, 'updating', 'user');
+        return null;
       }
+      
+      return data as schema.User;
+    } catch (error: any) {
+      this.handleError(error, 'updating', 'user');
+      return null;
+    }
+  }
 
-      return false;
-    } catch (error) {
-      log(`Error checking permissions: ${error}`);
+  /**
+   * Delete a user
+   * @param userId User ID to delete
+   * @returns true if deletion succeeded, false otherwise
+   */
+  async deleteUser(userId: number): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', userId);
+      
+      if (error) {
+        this.handleError(error, 'deleting', 'user');
+        return false;
+      }
+      
+      return true;
+    } catch (error: any) {
+      this.handleError(error, 'deleting', 'user');
       return false;
     }
   }
 
-  async getOrCreateAPIUser(forumId: number): Promise<User> {
+  /**
+   * ===============================
+   * FORUM RELATED METHODS
+   * ===============================
+   */
+  
+  /**
+   * Get a forum by ID
+   * @param forumId Forum ID to retrieve
+   * @returns The forum object or null if not found
+   */
+  async getForum(forumId: number): Promise<schema.Forum | null> {
     try {
-      // Look for existing AI user for this forum
-      const results = await db.select().from(users)
-        .where(and(
-          eq(users.isAI, true),
-          sql`exists (
-            select 1 from ${userForumRoles}
-            where ${userForumRoles.userId} = ${users.id}
-            and ${userForumRoles.forumId} = ${forumId}
-          )`
-        ));
-
-      if (results.length > 0) {
-        return results[0];
+      const { data, error } = await supabase
+        .from('forums')
+        .select('*')
+        .eq('id', forumId)
+        .single();
+      
+      if (error) {
+        this.handleError(error, 'fetching', 'forum');
+        return null;
       }
-
-      // Create new AI user
-      const forum = await this.getForum(forumId);
-      if (!forum) {
-        throw new Error(`Forum with ID ${forumId} not found`);
-      }
-
-      const aiUser: InsertUser = {
-        username: `ai_${forum.slug}_${Date.now()}`,
-        password: crypto.randomUUID(), // Random password
-        email: `ai_${forum.slug}_${Date.now()}@example.com`,
-        displayName: `AI Assistant (${forum.name})`,
-        isAI: true,
-      };
-
-      const newUser = await this.createUser(aiUser);
-
-      // Assign AI user to forum with appropriate role
-      // First, find or create an AI role
-      let aiRole = await this.getRoleByName('ai_assistant');
-      if (!aiRole) {
-        aiRole = await this.createRole({
-          name: 'ai_assistant',
-          description: 'AI Assistant with limited permissions',
-        });
-
-        // Create and assign basic permissions for AI
-        const answerPermission = await this.getPermissionByName('answer_questions') || 
-          await this.createPermission({
-            name: 'answer_questions',
-            description: 'Can post answers to questions',
-            scope: 'forum',
-            action: 'create',
-          });
-
-        await this.assignPermissionToRole({
-          roleId: aiRole.id,
-          permissionId: answerPermission.id,
-        });
-      }
-
-      // Assign AI user to forum
-      await this.assignUserForumRole({
-        userId: newUser.id,
-        forumId: forumId,
-        roleId: aiRole.id,
-      });
-
-      return newUser;
-    } catch (error) {
-      log(`Error creating API user: ${error}`);
-      throw error;
+      
+      return data as schema.Forum;
+    } catch (error: any) {
+      this.handleError(error, 'fetching', 'forum');
+      return null;
     }
   }
 
-  // Implement the rest of the methods required by IStorage interface...
-  // This will include the Category, Question, Answer, Vote, etc. methods
-  // Using the db object with Drizzle ORM as in the PostgresStorage implementation
+  /**
+   * Get all forums
+   * @returns Array of forum objects
+   */
+  async getAllForums(): Promise<schema.Forum[]> {
+    try {
+      const { data, error } = await supabase
+        .from('forums')
+        .select('*');
+      
+      if (error) {
+        this.handleError(error, 'fetching', 'all forums');
+        return [];
+      }
+      
+      return data as schema.Forum[];
+    } catch (error: any) {
+      this.handleError(error, 'fetching', 'all forums');
+      return [];
+    }
+  }
 
-  // In the interest of brevity, we're showing a partial implementation here.
-  // You would continue implementing all the methods from IStorage
-  // using the Supabase SDK where appropriate (especially for auth and storage)
-  // and the Drizzle ORM for database operations.
+  /**
+   * Create a new forum
+   * @param forumData Forum data for the new forum
+   * @returns The created forum object or null if creation failed
+   */
+  async createForum(forumData: schema.InsertForum): Promise<schema.Forum | null> {
+    try {
+      const { data, error } = await supabase
+        .from('forums')
+        .insert(forumData)
+        .select('*')
+        .single();
+      
+      if (error) {
+        this.handleError(error, 'creating', 'forum');
+        return null;
+      }
+      
+      return data as schema.Forum;
+    } catch (error: any) {
+      this.handleError(error, 'creating', 'forum');
+      return null;
+    }
+  }
 
-  // =========================================
-  // Category methods
-  // =========================================
+  /**
+   * Update a forum's information
+   * @param forumId Forum ID to update
+   * @param forumData Updated forum data
+   * @returns The updated forum object or null if update failed
+   */
+  async updateForum(forumId: number, forumData: Partial<schema.InsertForum>): Promise<schema.Forum | null> {
+    try {
+      const { data, error } = await supabase
+        .from('forums')
+        .update(forumData)
+        .eq('id', forumId)
+        .select('*')
+        .single();
+      
+      if (error) {
+        this.handleError(error, 'updating', 'forum');
+        return null;
+      }
+      
+      return data as schema.Forum;
+    } catch (error: any) {
+      this.handleError(error, 'updating', 'forum');
+      return null;
+    }
+  }
+
+  /**
+   * Delete a forum
+   * @param forumId Forum ID to delete
+   * @returns true if deletion succeeded, false otherwise
+   */
+  async deleteForum(forumId: number): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('forums')
+        .delete()
+        .eq('id', forumId);
+      
+      if (error) {
+        this.handleError(error, 'deleting', 'forum');
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      this.handleError(error, 'deleting', 'forum');
+      return false;
+    }
+  }
+
+  /**
+   * ===============================
+   * CATEGORY RELATED METHODS
+   * ===============================
+   */
   
-  async getCategory(id: number): Promise<Category | undefined> {
-    const results = await db.select().from(categories).where(eq(categories.id, id));
-    return results.length ? results[0] : undefined;
+  /**
+   * Get a category by ID
+   * @param categoryId Category ID to retrieve
+   * @returns The category object or null if not found
+   */
+  async getCategory(categoryId: number): Promise<schema.Category | null> {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('id', categoryId)
+        .single();
+      
+      if (error) {
+        this.handleError(error, 'fetching', 'category');
+        return null;
+      }
+      
+      return data as schema.Category;
+    } catch (error: any) {
+      this.handleError(error, 'fetching', 'category');
+      return null;
+    }
   }
 
-  async getCategoryBySlug(slug: string): Promise<Category | undefined> {
-    const results = await db.select().from(categories).where(eq(categories.slug, slug));
-    return results.length ? results[0] : undefined;
+  /**
+   * Get all categories for a forum
+   * @param forumId Forum ID to retrieve categories for
+   * @returns Array of category objects
+   */
+  async getCategoriesByForum(forumId: number): Promise<schema.Category[]> {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('forumId', forumId);
+      
+      if (error) {
+        this.handleError(error, 'fetching', 'categories');
+        return [];
+      }
+      
+      return data as schema.Category[];
+    } catch (error: any) {
+      this.handleError(error, 'fetching', 'categories');
+      return [];
+    }
   }
 
-  async getAllCategories(): Promise<Category[]> {
-    return db.select().from(categories);
+  /**
+   * Create a new category
+   * @param categoryData Category data for the new category
+   * @returns The created category object or null if creation failed
+   */
+  async createCategory(categoryData: schema.InsertCategory): Promise<schema.Category | null> {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .insert(categoryData)
+        .select('*')
+        .single();
+      
+      if (error) {
+        this.handleError(error, 'creating', 'category');
+        return null;
+      }
+      
+      return data as schema.Category;
+    } catch (error: any) {
+      this.handleError(error, 'creating', 'category');
+      return null;
+    }
   }
 
-  async getCategories(): Promise<Category[]> {
-    return db.select().from(categories);
+  /**
+   * Update a category's information
+   * @param categoryId Category ID to update
+   * @param categoryData Updated category data
+   * @returns The updated category object or null if update failed
+   */
+  async updateCategory(categoryId: number, categoryData: Partial<schema.InsertCategory>): Promise<schema.Category | null> {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .update(categoryData)
+        .eq('id', categoryId)
+        .select('*')
+        .single();
+      
+      if (error) {
+        this.handleError(error, 'updating', 'category');
+        return null;
+      }
+      
+      return data as schema.Category;
+    } catch (error: any) {
+      this.handleError(error, 'updating', 'category');
+      return null;
+    }
   }
 
-  async createCategory(category: InsertCategory): Promise<Category> {
-    const results = await db.insert(categories).values(category).returning();
-    return results[0];
+  /**
+   * Delete a category
+   * @param categoryId Category ID to delete
+   * @returns true if deletion succeeded, false otherwise
+   */
+  async deleteCategory(categoryId: number): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', categoryId);
+      
+      if (error) {
+        this.handleError(error, 'deleting', 'category');
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      this.handleError(error, 'deleting', 'category');
+      return false;
+    }
   }
-
-  async getCategoriesByForum(forumId: number): Promise<Category[]> {
-    // Assuming categories are associated with forums through a forumId field
-    return db.select().from(categories).where(eq(categories.forumId as any, forumId));
-  }
-
-  // Continue implementing remaining methods...
+  
+  // Add other methods for the IStorage interface as needed
+  // This implementation focuses on the core entities, but you'll need to implement
+  // all methods from the IStorage interface for a complete implementation.
 }
