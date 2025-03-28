@@ -1,10 +1,10 @@
 /**
- * Polar.sh API configurations
+ * Polar.sh API configurations with actual product IDs
  */
 export const POLAR_PLAN_IDS = {
-  starter: 'starter-plan',
-  professional: 'professional-plan',
-  enterprise: 'enterprise-plan'
+  starter: '9dbc8276-eb2a-4b8a-81ec-e3c7962ed314',
+  professional: 'cec301e0-e05e-4515-9bc3-297e6833496a',
+  enterprise: '5cea5e8b-dd39-4c28-bcb0-0912b17bfcba'
 };
 
 /**
@@ -12,9 +12,9 @@ export const POLAR_PLAN_IDS = {
  */
 export const polarApi = {
   /**
-   * Get subscription information
+   * Get subscription information for a user
    */
-  getSubscription: async (userId: string, accessToken: string) => {
+  getSubscription: async (accessToken: string) => {
     const response = await fetch('https://api.polar.sh/v1/subscriptions', {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -24,6 +24,42 @@ export const polarApi = {
     
     if (!response.ok) {
       throw new Error('Failed to fetch subscription information');
+    }
+    
+    return response.json();
+  },
+  
+  /**
+   * Get details of a specific subscription by ID
+   */
+  getSubscriptionById: async (subscriptionId: string, accessToken: string) => {
+    const response = await fetch(`https://api.polar.sh/v1/subscriptions/${subscriptionId}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch subscription details');
+    }
+    
+    return response.json();
+  },
+  
+  /**
+   * Get billing history (invoices) for a user
+   */
+  getBillingHistory: async (accessToken: string) => {
+    const response = await fetch('https://api.polar.sh/v1/invoices', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch billing history');
     }
     
     return response.json();

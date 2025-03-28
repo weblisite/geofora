@@ -1,0 +1,13 @@
+{
+  "event": "subscription.created",
+  "data": {
+    "user_id": "user_2XgBkVHLMSsQZdOiB9QxMxT2MzS",
+    "subscription_id": "sub_test123",
+    "plan_id": "cec301e0-e05e-4515-9bc3-297e6833496a",
+    "subscription": {
+      "id": "sub_test123",
+      "current_period_end": "2025-04-28T00:00:00.000Z",
+      "status": "active"
+    }
+  }
+}

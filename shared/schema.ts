@@ -1,8 +1,8 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, real, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, real, primaryKey, json } from "drizzle-orm/pg-core";
 import { relations, type SQL } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import type { Json } from "drizzle-orm/pg-core";
+import type { JSON as Json } from "drizzle-orm/pg-core";
 
 // =============================================
 // TABLE DEFINITIONS - ALL TABLES DEFINED FIRST

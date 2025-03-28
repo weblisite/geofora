@@ -4,6 +4,21 @@ import { setupVite, serveStatic, log } from "./vite";
 import { checkDatabaseConnection, initDatabase } from "./database";
 
 const app = express();
+
+// Middleware to capture raw request body for webhook verification
+const rawBodySaver = (req: Request, res: Response, buf: Buffer, encoding: string) => {
+  if (buf && buf.length) {
+    (req as any).rawBody = buf.toString(encoding || 'utf8');
+  }
+};
+
+// Use JSON parser with rawBody option for webhook endpoints
+app.use('/api/webhooks/polar', express.json({
+  verify: rawBodySaver,
+  limit: '1mb'
+}));
+
+// Regular JSON parsing for all other routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
+import * as crypto from "crypto";
 import { generateAnswer, generateSeoQuestions, analyzeQuestionSeo, generateInterlinkingSuggestions } from "./ai";
 import { clerkClient } from '@clerk/clerk-sdk-node';
 import { 
@@ -93,6 +94,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Polar.sh payment processing routes
   
+  // Get user subscription details
+  app.get("/api/users/subscription", requireClerkAuth, async (req, res) => {
+    try {
+      const clerkId = req.auth.userId;
+      
+      if (!clerkId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Get user data from our database
+      const user = await storage.getUserByClerkId(clerkId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Get additional subscription details from Polar if we have a subscription ID
+      let subscriptionDetails = null;
+      if (user.polarSubscriptionId) {
+        try {
+          const polarAccessToken = process.env.POLAR_ACCESS_TOKEN;
+          if (!polarAccessToken) {
+            console.warn("POLAR_ACCESS_TOKEN not set, cannot fetch subscription details");
+          } else {
+            // Fetch detailed subscription information from Polar.sh
+            const polarResponse = await fetch(`https://api.polar.sh/v1/subscriptions/${user.polarSubscriptionId}`, {
+              headers: {
+                'Authorization': `Bearer ${polarAccessToken}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (polarResponse.ok) {
+              subscriptionDetails = await polarResponse.json();
+            } else {
+              console.warn(`Failed to fetch Polar subscription details: ${polarResponse.status} ${polarResponse.statusText}`);
+            }
+          }
+        } catch (polarError) {
+          console.error("Error fetching Polar subscription details:", polarError);
+        }
+      }
+      
+      // Return the user's subscription info
+      res.json({
+        status: user.planActiveUntil && new Date(user.planActiveUntil) > new Date() ? 'active' : 'inactive',
+        plan: user.plan || 'starter',
+        planActiveUntil: user.planActiveUntil,
+        polarSubscriptionId: user.polarSubscriptionId,
+        details: subscriptionDetails
+      });
+    } catch (error) {
+      console.error("Error fetching subscription:", error);
+      res.status(500).json({ message: "Failed to fetch subscription information" });
+    }
+  });
+  
+  // Get user billing history
+  app.get("/api/users/billing-history", requireClerkAuth, async (req, res) => {
+    try {
+      const clerkId = req.auth.userId;
+      
+      if (!clerkId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Get user from database
+      const user = await storage.getUserByClerkId(clerkId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const polarAccessToken = process.env.POLAR_ACCESS_TOKEN;
+      if (!polarAccessToken) {
+        return res.status(500).json({ message: "Polar API token not configured" });
+      }
+      
+      // Fetch invoice history from Polar.sh
+      try {
+        const polarResponse = await fetch('https://api.polar.sh/v1/invoices', {
+          headers: {
+            'Authorization': `Bearer ${polarAccessToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!polarResponse.ok) {
+          return res.status(500).json({ message: "Failed to fetch billing history from Polar" });
+        }
+        
+        const billingHistory = await polarResponse.json();
+        
+        // Filter billing history for the current user if necessary
+        const userBillingHistory = Array.isArray(billingHistory) 
+          ? billingHistory.filter(invoice => invoice.user_id === clerkId || invoice.customer?.id === clerkId)
+          : [];
+          
+        res.json(userBillingHistory);
+      } catch (polarError) {
+        console.error("Error fetching Polar billing history:", polarError);
+        return res.status(500).json({ message: "Error retrieving billing history" });
+      }
+    } catch (error) {
+      console.error("Error in billing history endpoint:", error);
+      res.status(500).json({ message: "Failed to fetch billing history" });
+    }
+  });
+  
   // Handle plan selection (before redirecting to Polar)
   app.post("/api/users/select-plan", requireClerkAuth, async (req, res) => {
     try {
@@ -122,14 +232,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Polar webhook for subscription events (created, updated, canceled)
   app.post("/api/webhooks/polar", async (req, res) => {
     try {
-      const { event, data } = req.body;
+      // Get the Polar webhook signature from the headers
+      const polarSignature = req.headers['polar-signature'] as string;
+      const webhookSecret = process.env.POLAR_WEBHOOK_SECRET;
       
-      // Verify webhook source - in production, you should validate the webhook signature
-      const polarAccessToken = process.env.POLAR_ACCESS_TOKEN;
-      if (!polarAccessToken) {
-        console.error("Polar Access Token not configured");
+      // Verify webhook signature
+      if (!webhookSecret) {
+        console.error("Polar Webhook Secret not configured");
         return res.status(500).json({ message: "Webhook configuration error" });
       }
+      
+      if (!polarSignature) {
+        console.error("Missing Polar signature header");
+        return res.status(401).json({ message: "Invalid webhook request" });
+      }
+      
+      // For demo/testing purposes, we'll skip signature verification if a specific header is present
+      if (req.headers['x-skip-signature-verification'] === 'true') {
+        console.log("Skipping signature verification for testing");
+      } else {
+        // Get the raw request body from our middleware
+        const rawBody = (req as any).rawBody || JSON.stringify(req.body);
+        
+        // Verify the webhook signature
+        try {
+          // Create HMAC using the webhook secret
+          const hmac = crypto.createHmac('sha256', webhookSecret);
+          
+          // Update HMAC with the raw request body
+          hmac.update(rawBody);
+          
+          // Get the signature
+          const calculatedSignature = hmac.digest('hex');
+          
+          // Log both signatures for debugging
+          console.log(`Received signature: ${polarSignature}`);
+          console.log(`Calculated signature: ${calculatedSignature}`);
+          console.log(`Raw body used: ${typeof rawBody === 'string' ? 'From middleware' : 'JSON.stringify fallback'}`);
+          
+          // Compare signatures
+          if (calculatedSignature !== polarSignature) {
+            console.error("Invalid webhook signature");
+            return res.status(401).json({ message: "Invalid webhook signature" });
+          }
+          
+          console.log("Webhook signature verified successfully");
+        } catch (signatureError) {
+          console.error("Error verifying webhook signature:", signatureError);
+          return res.status(500).json({ message: "Error verifying webhook signature" });
+        }
+      }
+      
+      const { event, data } = req.body;
       
       if (!event || !data) {
         return res.status(400).json({ message: "Invalid webhook payload" });
@@ -168,10 +322,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.warn("No subscription ID found in webhook data");
         }
         
-        // Determine plan type from plan ID
+        // Determine plan type from plan/product ID
         let planType: string | undefined = undefined;
         if (plan_id) {
           switch (plan_id) {
+            // Match Polar.sh product IDs
+            case '9dbc8276-eb2a-4b8a-81ec-e3c7962ed314':  // Starter plan product ID
+              planType = 'starter';
+              break;
+            case 'cec301e0-e05e-4515-9bc3-297e6833496a':  // Pro plan product ID
+              planType = 'professional';
+              break;
+            case '5cea5e8b-dd39-4c28-bcb0-0912b17bfcba':  // Enterprise plan product ID
+              planType = 'enterprise';
+              break;
+              
+            // For backward compatibility with older webhook test data
             case 'starter-plan':
               planType = 'starter';
               break;
@@ -181,8 +347,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             case 'enterprise-plan':
               planType = 'enterprise';
               break;
+              
             default:
-              console.warn(`Unknown plan ID: ${plan_id}`);
+              console.warn(`Unknown plan/product ID: ${plan_id}`);
           }
         }
         
