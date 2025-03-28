@@ -30,7 +30,19 @@ export default function SignInPage() {
                   formButtonPrimary: 
                     "bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 text-white",
                   footerActionLink: "text-primary-500 hover:text-primary-400",
-                  card: "bg-transparent shadow-none"
+                  card: "bg-transparent shadow-none",
+                  formFieldInput: "bg-card border-muted text-card-foreground",
+                  formFieldLabel: "text-card-foreground",
+                  headerTitle: "text-card-foreground",
+                  headerSubtitle: "text-card-foreground/70",
+                  dividerLine: "bg-border",
+                  dividerText: "text-muted-foreground",
+                  identityPreviewText: "text-card-foreground",
+                  identityPreviewEditButtonIcon: "text-primary",
+                  formFieldAction: "text-primary",
+                  footerActionText: "text-muted-foreground",
+                  socialButtonsBlockButton: "border-muted hover:bg-secondary hover:text-secondary-foreground",
+                  socialButtonsBlockButtonText: "text-card-foreground"
                 }
               }}
               routing="path" 
