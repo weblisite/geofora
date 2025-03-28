@@ -30,7 +30,7 @@ export function ProtectedRoute({
     if (!isAuthenticated) {
       return (
         <Route path={path}>
-          <Redirect to="/auth" />
+          <Redirect to="/sign-in" />
         </Route>
       );
     }
@@ -41,7 +41,7 @@ export function ProtectedRoute({
     console.error("Auth error:", error);
     return (
       <Route path={path}>
-        <Redirect to="/auth" />
+        <Redirect to="/sign-in" />
       </Route>
     );
   }

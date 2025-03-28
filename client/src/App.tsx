@@ -13,9 +13,8 @@ import GatedContentPage from "@/pages/dashboard/gated-content";
 import CrmIntegrationsPage from "@/pages/dashboard/crm";
 import AnalyticsPage from "@/pages/dashboard/analytics";
 import ContentSchedulingPage from "@/pages/dashboard/content-scheduling";
-import LoginPage from "@/pages/auth/login";
-import RegisterPage from "@/pages/auth/register";
-import AuthPage from "@/pages/auth-page";
+import SignInPage from "@/pages/sign-in";
+import SignUpPage from "@/pages/sign-up";
 import UIShowcasePage from "@/pages/ui-showcase";
 import DocumentationPage from "@/pages/documentation-page";
 import NotFound from "@/pages/not-found";
@@ -87,9 +86,18 @@ function App() {
         <ProtectedRoute path="/dashboard/content-scheduling" component={ContentSchedulingPage} />
         <ProtectedRoute path="/dashboard/integration" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/settings" component={DashboardPage} />
-        <Route path="/login" component={LoginPage} />
-        <Route path="/register" component={RegisterPage} />
-        <Route path="/auth" component={AuthPage} />
+        <Route path="/sign-in" component={SignInPage} />
+        <Route path="/sign-up" component={SignUpPage} />
+        {/* Legacy route redirects */}
+        <Route path="/login">
+          <SignInPage />
+        </Route>
+        <Route path="/register">
+          <SignUpPage />
+        </Route>
+        <Route path="/auth">
+          <SignInPage />
+        </Route>
         <Route path="/ui-showcase" component={UIShowcasePage} />
         <Route path="/documentation" component={DocumentationPage} />
         <Route component={NotFound} />

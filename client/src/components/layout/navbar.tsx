@@ -2,11 +2,14 @@ import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { GradientText } from "@/components/ui/gradient-text";
+import { useClerkAuth } from "@/hooks/use-clerk-auth";
+import { UserButton } from "@clerk/clerk-react";
 
 export default function Navbar() {
   const [location] = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, isLoading } = useClerkAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -64,19 +67,36 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center space-x-4">
-          <Link
-            href="/login"
-            className="hidden md:inline-block px-4 py-2 text-sm font-medium text-white transition-all border border-primary-500 rounded-lg hover:bg-primary-500/20"
-          >
-            Log In
-          </Link>
-          <Link
-            href="/register"
-            className="inline-flex items-center px-6 py-2 text-sm font-medium text-white transition-all rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 shadow-glow"
-          >
-            <span>Launch Now</span>
-            <span className="ml-2 material-icons text-sm">arrow_forward</span>
-          </Link>
+          {isLoading ? (
+            <div className="h-8 w-8 animate-pulse rounded-full bg-gray-700"></div>
+          ) : user ? (
+            <div className="flex items-center space-x-3">
+              <Link
+                href="/dashboard"
+                className="hidden md:inline-flex items-center px-4 py-2 text-sm font-medium text-white transition-all border border-primary-500 rounded-lg hover:bg-primary-500/20"
+              >
+                <span className="material-icons mr-1 text-sm">dashboard</span>
+                Dashboard
+              </Link>
+              <UserButton afterSignOutUrl="/" />
+            </div>
+          ) : (
+            <>
+              <Link
+                href="/sign-in"
+                className="hidden md:inline-block px-4 py-2 text-sm font-medium text-white transition-all border border-primary-500 rounded-lg hover:bg-primary-500/20"
+              >
+                Log In
+              </Link>
+              <Link
+                href="/sign-up"
+                className="inline-flex items-center px-6 py-2 text-sm font-medium text-white transition-all rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 shadow-glow"
+              >
+                <span>Launch Now</span>
+                <span className="ml-2 material-icons text-sm">arrow_forward</span>
+              </Link>
+            </>
+          )}
         </div>
 
         <button
@@ -133,16 +153,30 @@ export default function Navbar() {
                 Pricing
               </span>
             </Link>
-            <Link
-              href="/login"
-              className="text-gray-300 hover:text-white transition-colors py-3 px-2 rounded-lg hover:bg-dark-200"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <span className="flex items-center">
-                <span className="material-icons mr-2 text-primary-400">login</span>
-                Log In
-              </span>
-            </Link>
+            {!user && (
+              <Link
+                href="/sign-in"
+                className="text-gray-300 hover:text-white transition-colors py-3 px-2 rounded-lg hover:bg-dark-200"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <span className="flex items-center">
+                  <span className="material-icons mr-2 text-primary-400">login</span>
+                  Log In
+                </span>
+              </Link>
+            )}
+            {user && (
+              <Link
+                href="/dashboard"
+                className="text-gray-300 hover:text-white transition-colors py-3 px-2 rounded-lg hover:bg-dark-200"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <span className="flex items-center">
+                  <span className="material-icons mr-2 text-primary-400">dashboard</span>
+                  Dashboard
+                </span>
+              </Link>
+            )}
           </div>
         </div>
       )}
