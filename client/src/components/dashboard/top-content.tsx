@@ -20,48 +20,8 @@ export default function TopContent() {
     queryKey: [`/api/analytics/top-content`],
   });
 
-  // Generate fallback data when API data isn't available
-  const getFallbackTopContent = (): TopContentItem[] => [
-    {
-      id: 1,
-      title: "What's the most effective way to implement AI-driven content strategies?",
-      views: 12456,
-      answers: 32,
-      conversions: 147,
-      ranking: "Position #3",
-      position: 3,
-    },
-    {
-      id: 2,
-      title: "How do you measure the ROI of your SEO investments?",
-      views: 9871,
-      answers: 24,
-      conversions: 93,
-      ranking: "Position #1",
-      position: 1,
-    },
-    {
-      id: 3,
-      title: "Which keyword research tools are worth the investment in 2024?",
-      views: 8542,
-      answers: 19,
-      conversions: 78,
-      ranking: "Position #2",
-      position: 2,
-    },
-    {
-      id: 4,
-      title: "What are the best practices for E-E-A-T compliance?",
-      views: 7329,
-      answers: 15,
-      conversions: 64,
-      ranking: "Position #5",
-      position: 5,
-    },
-  ];
-
-  // Use fallback data if API data isn't available
-  const displayContent = topContent || getFallbackTopContent();
+  // Only use real data from the database
+  const displayContent = topContent;
 
   return (
     <Glassmorphism className="p-4 rounded-lg border border-dark-400">
@@ -75,6 +35,10 @@ export default function TopContent() {
       {isLoading ? (
         <div className="flex justify-center py-8">
           <div className="animate-spin w-8 h-8 border-t-2 border-b-2 border-primary-500 rounded-full"></div>
+        </div>
+      ) : !displayContent || displayContent.length === 0 ? (
+        <div className="py-8 text-center text-muted-foreground">
+          <p>No top content data available</p>
         </div>
       ) : (
         <div className="overflow-x-auto">

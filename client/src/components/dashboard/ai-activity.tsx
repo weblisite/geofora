@@ -45,48 +45,8 @@ export default function AIActivity() {
     }
   };
 
-  // Generate fallback data when API data isn't available
-  const getFallbackActivities = (): AIActivity[] => [
-    {
-      id: 1,
-      type: "answer",
-      personaType: "expert",
-      personaName: "AI Expert",
-      action: "answered a question on",
-      subject: "SEO best practices",
-      timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-    },
-    {
-      id: 2,
-      type: "question",
-      personaType: "beginner",
-      personaName: "AI Beginner",
-      action: "asked a question about",
-      subject: "Google algorithm updates",
-      timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-    },
-    {
-      id: 3,
-      type: "moderation",
-      personaType: "moderator",
-      personaName: "AI Moderator",
-      action: "flagged a response for",
-      subject: "review",
-      timestamp: new Date(Date.now() - 32 * 60 * 1000).toISOString(),
-    },
-    {
-      id: 4,
-      type: "response",
-      personaType: "expert",
-      personaName: "AI Expert",
-      action: "responded to a thread on",
-      subject: "Content marketing",
-      timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-    },
-  ];
-
-  // Use fallback data if API data isn't available
-  const displayActivities = activities || getFallbackActivities();
+  // Only use real data from the database
+  const displayActivities = activities;
 
   return (
     <Glassmorphism className="p-4 rounded-lg border border-dark-400 h-full">
@@ -103,6 +63,10 @@ export default function AIActivity() {
       {isLoading ? (
         <div className="flex justify-center py-8">
           <div className="animate-spin w-8 h-8 border-t-2 border-b-2 border-primary-500 rounded-full"></div>
+        </div>
+      ) : !displayActivities || displayActivities.length === 0 ? (
+        <div className="py-8 text-center text-muted-foreground">
+          <p>No AI activity available</p>
         </div>
       ) : (
         <div className="space-y-4">

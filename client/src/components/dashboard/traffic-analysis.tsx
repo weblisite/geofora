@@ -29,58 +29,25 @@ import {
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Sample data for graphs
-const trafficData = [
-  { name: "Jan", organic: 4000, direct: 2400, referral: 1200, social: 800 },
-  { name: "Feb", organic: 3000, direct: 1398, referral: 1500, social: 1000 },
-  { name: "Mar", organic: 2000, direct: 9800, referral: 2000, social: 1200 },
-  { name: "Apr", organic: 2780, direct: 3908, referral: 1800, social: 1500 },
-  { name: "May", organic: 1890, direct: 4800, referral: 2400, social: 1700 },
-  { name: "Jun", organic: 2390, direct: 3800, referral: 2800, social: 2000 },
-  { name: "Jul", organic: 3490, direct: 4300, referral: 3000, social: 2200 },
-];
+// Define interfaces for API data
+interface TrafficDataPoint {
+  name: string;
+  organic: number;
+  direct: number;
+  referral: number;
+  social: number;
+}
 
-const dailyTrafficData = [
-  { name: "Mon", pageviews: 1200, visitors: 800 },
-  { name: "Tue", pageviews: 1400, visitors: 950 },
-  { name: "Wed", pageviews: 1800, visitors: 1100 },
-  { name: "Thu", pageviews: 1600, visitors: 980 },
-  { name: "Fri", pageviews: 1500, visitors: 920 },
-  { name: "Sat", pageviews: 1100, visitors: 700 },
-  { name: "Sun", pageviews: 900, visitors: 600 },
-];
+interface DailyTrafficDataPoint {
+  name: string;
+  pageviews: number;
+  visitors: number;
+}
 
-const deviceData = [
-  { name: "Mobile", value: 45 },
-  { name: "Desktop", value: 35 },
-  { name: "Tablet", value: 20 },
-];
-
-const geoData = [
-  { name: "United States", value: 42 },
-  { name: "United Kingdom", value: 15 },
-  { name: "Canada", value: 12 },
-  { name: "Australia", value: 8 },
-  { name: "Germany", value: 7 },
-  { name: "Others", value: 16 },
-];
-
-const sourceData = [
-  { name: "Google", value: 4200 },
-  { name: "Direct", value: 2800 },
-  { name: "Twitter", value: 1500 },
-  { name: "Facebook", value: 1200 },
-  { name: "Reddit", value: 900 },
-  { name: "Others", value: 1300 },
-];
-
-const sessionData = [
-  { name: "0-30s", value: 25 },
-  { name: "30s-2m", value: 35 },
-  { name: "2m-5m", value: 20 },
-  { name: "5m-15m", value: 15 },
-  { name: "15m+", value: 5 },
-];
+interface DeviceDataPoint {
+  name: string;
+  value: number;
+}
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
@@ -88,31 +55,41 @@ export default function TrafficAnalysis() {
   const [activeTab, setActiveTab] = useState("overview");
   const [dateRange, setDateRange] = useState("30");
 
-  // Fetch traffic data
-  const { data: trafficStats, isLoading: isLoadingTraffic } = useQuery({
-    queryKey: [`/api/analytics/traffic-data/${dateRange}`],
+  // Fetch traffic sources data for the source breakdown chart
+  const { data: trafficData, isLoading: isTrafficDataLoading } = useQuery<TrafficDataPoint[]>({
+    queryKey: [`/api/analytics/traffic-sources/${dateRange}`],
   });
 
   // Fetch daily traffic data
-  const { data: dailyStats, isLoading: isLoadingDaily } = useQuery({
+  const { data: dailyTrafficData, isLoading: isDailyTrafficLoading } = useQuery<DailyTrafficDataPoint[]>({
     queryKey: [`/api/analytics/daily-traffic/${dateRange}`],
   });
 
-  // Fetch device distribution
-  const { data: deviceStats, isLoading: isLoadingDevices } = useQuery({
+  // Fetch device distribution data
+  const { data: deviceData, isLoading: isDeviceDataLoading } = useQuery<DeviceDataPoint[]>({
     queryKey: [`/api/analytics/device-distribution/${dateRange}`],
   });
 
   // Fetch geographic data 
-  const { data: geoStats, isLoading: isLoadingGeo } = useQuery({
+  const { data: geoData, isLoading: isGeoDataLoading } = useQuery<DeviceDataPoint[]>({
     queryKey: [`/api/analytics/geographic-data/${dateRange}`],
   });
 
-  // Fetch session duration data
-  const { data: sessionStats, isLoading: isLoadingSession } = useQuery({
-    queryKey: [`/api/analytics/average-session-duration/${dateRange}`],
+  // Fetch source data
+  const { data: sourceData, isLoading: isSourceDataLoading } = useQuery<DeviceDataPoint[]>({
+    queryKey: [`/api/analytics/source-data/${dateRange}`],
   });
-  
+
+  // Fetch session duration data
+  const { data: sessionData, isLoading: isSessionDataLoading } = useQuery<DeviceDataPoint[]>({
+    queryKey: [`/api/analytics/session-duration/${dateRange}`],
+  });
+
+  // Fetch traffic summary data
+  const { data: trafficStats, isLoading: isLoadingTraffic } = useQuery({
+    queryKey: [`/api/analytics/traffic-data/${dateRange}`],
+  });
+
   // Fetch referral traffic
   const { data: referralStats, isLoading: isLoadingReferrals } = useQuery({
     queryKey: [`/api/analytics/referral-traffic/${dateRange}`],
@@ -231,21 +208,31 @@ export default function TrafficAnalysis() {
               </CardHeader>
               <CardContent className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={sourceData}
-                    layout="vertical"
-                    margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="name" type="category" width={80} />
-                    <Tooltip
-                      contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
-                      itemStyle={{ color: "#fff" }}
-                    />
-                    <Legend />
-                    <Bar dataKey="value" fill="#8884d8" background={{ fill: "#2d2d3d" }} />
-                  </BarChart>
+                  {isSourceDataLoading ? (
+                    <div className="flex h-full items-center justify-center">
+                      <div className="animate-spin w-8 h-8 border-t-2 border-b-2 border-primary-500 rounded-full"></div>
+                    </div>
+                  ) : !sourceData || sourceData.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-muted-foreground">
+                      <p>No traffic source data available</p>
+                    </div>
+                  ) : (
+                    <BarChart
+                      data={sourceData}
+                      layout="vertical"
+                      margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="name" type="category" width={80} />
+                      <Tooltip
+                        contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
+                        itemStyle={{ color: "#fff" }}
+                      />
+                      <Legend />
+                      <Bar dataKey="value" fill="#8884d8" background={{ fill: "#2d2d3d" }} />
+                    </BarChart>
+                  )}
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -257,26 +244,36 @@ export default function TrafficAnalysis() {
               </CardHeader>
               <CardContent className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={dailyTrafficData}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip 
-                      contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
-                      itemStyle={{ color: "#fff" }}
-                    />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="pageviews"
-                      stroke="#8884d8"
-                      activeDot={{ r: 8 }}
-                    />
-                    <Line type="monotone" dataKey="visitors" stroke="#82ca9d" />
-                  </LineChart>
+                  {isDailyTrafficLoading ? (
+                    <div className="flex h-full items-center justify-center">
+                      <div className="animate-spin w-8 h-8 border-t-2 border-b-2 border-primary-500 rounded-full"></div>
+                    </div>
+                  ) : !dailyTrafficData || dailyTrafficData.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-muted-foreground">
+                      <p>No daily traffic data available</p>
+                    </div>
+                  ) : (
+                    <LineChart
+                      data={dailyTrafficData}
+                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip 
+                        contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
+                        itemStyle={{ color: "#fff" }}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="pageviews"
+                        stroke="#8884d8"
+                        activeDot={{ r: 8 }}
+                      />
+                      <Line type="monotone" dataKey="visitors" stroke="#82ca9d" />
+                    </LineChart>
+                  )}
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -290,27 +287,37 @@ export default function TrafficAnalysis() {
               </CardHeader>
               <CardContent className="h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={deviceData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      paddingAngle={5}
-                      dataKey="value"
-                      label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {deviceData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
-                      itemStyle={{ color: "#fff" }}
-                    />
-                  </PieChart>
+                  {isDeviceDataLoading ? (
+                    <div className="flex h-full items-center justify-center">
+                      <div className="animate-spin w-8 h-8 border-t-2 border-b-2 border-primary-500 rounded-full"></div>
+                    </div>
+                  ) : !deviceData || deviceData.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-muted-foreground">
+                      <p>No device data available</p>
+                    </div>
+                  ) : (
+                    <PieChart>
+                      <Pie
+                        data={deviceData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        paddingAngle={5}
+                        dataKey="value"
+                        label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {deviceData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
+                        itemStyle={{ color: "#fff" }}
+                      />
+                    </PieChart>
+                  )}
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -322,25 +329,35 @@ export default function TrafficAnalysis() {
               </CardHeader>
               <CardContent className="h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={geoData}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                      label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {geoData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
-                      itemStyle={{ color: "#fff" }}
-                    />
-                  </PieChart>
+                  {isGeoDataLoading ? (
+                    <div className="flex h-full items-center justify-center">
+                      <div className="animate-spin w-8 h-8 border-t-2 border-b-2 border-primary-500 rounded-full"></div>
+                    </div>
+                  ) : !geoData || geoData.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-muted-foreground">
+                      <p>No geographic data available</p>
+                    </div>
+                  ) : (
+                    <PieChart>
+                      <Pie
+                        data={geoData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                        label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {geoData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
+                        itemStyle={{ color: "#fff" }}
+                      />
+                    </PieChart>
+                  )}
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -352,27 +369,37 @@ export default function TrafficAnalysis() {
               </CardHeader>
               <CardContent className="h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={sessionData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      paddingAngle={5}
-                      dataKey="value"
-                      label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {sessionData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
-                      itemStyle={{ color: "#fff" }}
-                    />
-                  </PieChart>
+                  {isSessionDataLoading ? (
+                    <div className="flex h-full items-center justify-center">
+                      <div className="animate-spin w-8 h-8 border-t-2 border-b-2 border-primary-500 rounded-full"></div>
+                    </div>
+                  ) : !sessionData || sessionData.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-muted-foreground">
+                      <p>No session duration data available</p>
+                    </div>
+                  ) : (
+                    <PieChart>
+                      <Pie
+                        data={sessionData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        paddingAngle={5}
+                        dataKey="value"
+                        label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {sessionData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
+                        itemStyle={{ color: "#fff" }}
+                      />
+                    </PieChart>
+                  )}
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -387,23 +414,33 @@ export default function TrafficAnalysis() {
             </CardHeader>
             <CardContent className="h-[400px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={trafficData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip
-                    contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
-                    itemStyle={{ color: "#fff" }}
-                  />
-                  <Legend />
-                  <Line type="monotone" dataKey="organic" stroke="#8884d8" />
-                  <Line type="monotone" dataKey="direct" stroke="#82ca9d" />
-                  <Line type="monotone" dataKey="referral" stroke="#ffc658" />
-                  <Line type="monotone" dataKey="social" stroke="#ff7300" />
-                </LineChart>
+                {isTrafficDataLoading ? (
+                  <div className="flex h-full items-center justify-center">
+                    <div className="animate-spin w-8 h-8 border-t-2 border-b-2 border-primary-500 rounded-full"></div>
+                  </div>
+                ) : !trafficData || trafficData.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-muted-foreground">
+                    <p>No traffic source data available</p>
+                  </div>
+                ) : (
+                  <LineChart
+                    data={trafficData}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip
+                      contentStyle={{ background: "#1e1e2d", borderColor: "#2d2d3d" }}
+                      itemStyle={{ color: "#fff" }}
+                    />
+                    <Legend />
+                    <Line type="monotone" dataKey="organic" stroke="#8884d8" />
+                    <Line type="monotone" dataKey="direct" stroke="#82ca9d" />
+                    <Line type="monotone" dataKey="referral" stroke="#ffc658" />
+                    <Line type="monotone" dataKey="social" stroke="#ff7300" />
+                  </LineChart>
+                )}
               </ResponsiveContainer>
             </CardContent>
           </Card>

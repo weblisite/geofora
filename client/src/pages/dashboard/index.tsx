@@ -61,32 +61,8 @@ export default function DashboardPage() {
     queryKey: [`/api/analytics/dashboard-stats/${dateRange}`],
   });
 
-  // Generate fallback stats when API data isn't available
-  const getFallbackStats = (): DashboardStats => ({
-    questions: {
-      total: 1247,
-      trend: "+14.2% vs last month",
-      trendPositive: true,
-    },
-    answers: {
-      total: 5893,
-      trend: "+23.5% vs last month",
-      trendPositive: true,
-    },
-    traffic: {
-      total: 78400,
-      trend: "+35.7% vs last month",
-      trendPositive: true,
-    },
-    conversions: {
-      total: 1892,
-      trend: "+18.9% vs last month",
-      trendPositive: true,
-    },
-  });
-
-  // Use fallback stats if API data isn't available
-  const displayStats = stats || getFallbackStats();
+  // Only use actual data from the database
+  const displayStats = stats;
 
   // Loading component for all lazy-loaded sections
   const LoadingComponent = () => (
@@ -278,49 +254,68 @@ export default function DashboardPage() {
           <>
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <StatsCard
-                title="Total Questions"
-                value={displayStats.questions.total.toLocaleString()}
-                trend={{
-                  value: displayStats.questions.trend,
-                  positive: displayStats.questions.trendPositive,
-                }}
-                icon="help"
-                color="primary"
-              />
-              
-              <StatsCard
-                title="Total Answers"
-                value={displayStats.answers.total.toLocaleString()}
-                trend={{
-                  value: displayStats.answers.trend,
-                  positive: displayStats.answers.trendPositive,
-                }}
-                icon="question_answer"
-                color="secondary"
-              />
-              
-              <StatsCard
-                title="Forum Traffic"
-                value={displayStats.traffic.total.toLocaleString()}
-                trend={{
-                  value: displayStats.traffic.trend,
-                  positive: displayStats.traffic.trendPositive,
-                }}
-                icon="visibility"
-                color="accent"
-              />
-              
-              <StatsCard
-                title="Lead Conversions"
-                value={displayStats.conversions.total.toLocaleString()}
-                trend={{
-                  value: displayStats.conversions.trend,
-                  positive: displayStats.conversions.trendPositive,
-                }}
-                icon="person_add"
-                color="primary"
-              />
+              {isLoading ? (
+                <>
+                  <div className="p-4 rounded-lg border border-dark-400 animate-pulse h-32"></div>
+                  <div className="p-4 rounded-lg border border-dark-400 animate-pulse h-32"></div>
+                  <div className="p-4 rounded-lg border border-dark-400 animate-pulse h-32"></div>
+                  <div className="p-4 rounded-lg border border-dark-400 animate-pulse h-32"></div>
+                </>
+              ) : displayStats && 
+                 displayStats.questions && 
+                 displayStats.answers &&
+                 displayStats.traffic &&
+                 displayStats.conversions ? (
+                <>
+                  <StatsCard
+                    title="Total Questions"
+                    value={displayStats.questions.total.toLocaleString()}
+                    trend={{
+                      value: displayStats.questions.trend,
+                      positive: displayStats.questions.trendPositive,
+                    }}
+                    icon="help"
+                    color="primary"
+                  />
+                  
+                  <StatsCard
+                    title="Total Answers"
+                    value={displayStats.answers.total.toLocaleString()}
+                    trend={{
+                      value: displayStats.answers.trend,
+                      positive: displayStats.answers.trendPositive,
+                    }}
+                    icon="question_answer"
+                    color="secondary"
+                  />
+                  
+                  <StatsCard
+                    title="Forum Traffic"
+                    value={displayStats.traffic.total.toLocaleString()}
+                    trend={{
+                      value: displayStats.traffic.trend,
+                      positive: displayStats.traffic.trendPositive,
+                    }}
+                    icon="visibility"
+                    color="accent"
+                  />
+                  
+                  <StatsCard
+                    title="Lead Conversions"
+                    value={displayStats.conversions.total.toLocaleString()}
+                    trend={{
+                      value: displayStats.conversions.trend,
+                      positive: displayStats.conversions.trendPositive,
+                    }}
+                    icon="person_add"
+                    color="primary"
+                  />
+                </>
+              ) : (
+                <div className="col-span-full text-center p-4">
+                  <p className="text-muted-foreground">No dashboard statistics available. Please check your database connection.</p>
+                </div>
+              )}
             </div>
             
             {/* Chart and AI Activity */}

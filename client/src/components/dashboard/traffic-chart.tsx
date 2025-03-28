@@ -135,27 +135,8 @@ export default function TrafficChart() {
     };
   }, [trafficData]);
 
-  // Generate fallback data for demo when API data isn't available
-  const getFallbackData = (): TrafficData => {
-    let labels: string[] = [];
-    let data: number[] = [];
-
-    if (timeRange === "daily") {
-      labels = ["9AM", "11AM", "1PM", "3PM", "5PM", "7PM", "9PM"];
-      data = [205, 450, 850, 1200, 950, 1100, 1350];
-    } else if (timeRange === "weekly") {
-      labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-      data = [5200, 4800, 6100, 8500, 9200, 7800, 6500];
-    } else {
-      labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-      data = [18000, 22000, 26500, 32000, 36000, 42000];
-    }
-
-    return { labels, data };
-  };
-
-  // If API data isn't available, use fallback data
-  const displayData = trafficData || getFallbackData();
+  // Only use real data from the database
+  const displayData = trafficData;
 
   return (
     <Glassmorphism className="p-4 rounded-lg border border-dark-400 h-full">
