@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, LayoutDashboard, Lightbulb, LineChart, MousePointerClick, Zap } from "lucide-react";
+import { UserButton } from "@clerk/clerk-react";
 import ForumManagementPage from "./forum";
 
 // Define the stats type
@@ -120,14 +121,12 @@ export default function DashboardPage() {
             </Button>
             
             <div className="relative">
-              <button className="flex items-center space-x-1 text-white">
-                <img
-                  src="https://i.pravatar.cc/100?img=4"
-                  alt="Admin avatar"
-                  className="w-8 h-8 rounded-full"
-                />
-                <span className="material-icons text-sm">expand_more</span>
-              </button>
+              <UserButton appearance={{
+                elements: {
+                  userButtonAvatarBox: "w-8 h-8",
+                  userButtonTrigger: "flex items-center space-x-1 text-white"
+                }
+              }} />
             </div>
           </div>
         </header>
