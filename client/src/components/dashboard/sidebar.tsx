@@ -36,35 +36,37 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="hidden md:block w-64 border-r border-dark-300 p-4 h-full">
-      <div className="flex items-center space-x-2 mb-8">
-        <div className="text-primary-500 flex items-center justify-center w-8 h-8 rounded-full bg-dark-100">
-          <span className="material-icons text-sm">forum</span>
+    <aside className="hidden md:flex flex-col w-64 border-r border-dark-300 h-screen sticky top-0 left-0">
+      <div className="p-4">
+        <div className="flex items-center space-x-2 mb-8">
+          <div className="text-primary-500 flex items-center justify-center w-8 h-8 rounded-full bg-dark-100">
+            <span className="material-icons text-sm">forum</span>
+          </div>
+          <span className="text-lg font-bold">
+            <GradientText>ForumAI</GradientText>
+          </span>
         </div>
-        <span className="text-lg font-bold">
-          <GradientText>ForumAI</GradientText>
-        </span>
+
+        <nav className="space-y-1 overflow-y-auto flex-1">
+          {sidebarItems.slice(0, 11).map((item) => (
+            <a
+              key={item.path}
+              href={item.path}
+              onClick={(e) => handleNavigation(item, e)}
+              className={`flex items-center py-2 px-3 rounded-lg cursor-pointer ${
+                location === item.path
+                  ? "bg-primary-500/10 text-primary-400"
+                  : "text-gray-400 hover:bg-dark-300"
+              }`}
+            >
+              <span className="material-icons text-sm mr-3">{item.icon}</span>
+              <span className="truncate">{item.name}</span>
+            </a>
+          ))}
+        </nav>
       </div>
 
-      <nav className="space-y-1 overflow-y-auto max-h-[calc(100vh-180px)]">
-        {sidebarItems.slice(0, 11).map((item) => (
-          <a
-            key={item.path}
-            href={item.path}
-            onClick={(e) => handleNavigation(item, e)}
-            className={`flex items-center py-2 px-3 rounded-lg cursor-pointer ${
-              location === item.path
-                ? "bg-primary-500/10 text-primary-400"
-                : "text-gray-400 hover:bg-dark-300"
-            }`}
-          >
-            <span className="material-icons text-sm mr-3">{item.icon}</span>
-            <span className="truncate">{item.name}</span>
-          </a>
-        ))}
-      </nav>
-
-      <div className="absolute bottom-4 left-0 right-0 px-4">
+      <div className="mt-auto p-4 border-t border-dark-300">
         <Link href="/forum">
           <a className="flex items-center py-2 px-3 rounded-lg text-gray-400 hover:bg-dark-300 mb-2">
             <span className="material-icons text-sm mr-3">public</span>
@@ -78,6 +80,6 @@ export default function Sidebar() {
           </a>
         </Link>
       </div>
-    </div>
+    </aside>
   );
 }

@@ -332,7 +332,7 @@ export default function DashboardPage() {
       <Sidebar />
       <MobileNav />
       
-      <div className="flex-1 flex flex-col overflow-hidden md:pt-0 pt-14">
+      <div className="flex-1 flex flex-col overflow-y-auto md:pt-0 pt-14">
         {renderDashboardContent()}
       </div>
     </div>
