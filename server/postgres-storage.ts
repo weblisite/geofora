@@ -174,6 +174,23 @@ export class PostgresStorage implements IStorage {
     const result = await db.update(users).set(data).where(eq(users.id, id)).returning();
     return result[0];
   }
+  
+  async updateUserPlan(userId: number, data: { plan?: string, planActiveUntil?: Date | null, polarSubscriptionId?: string | null }): Promise<User> {
+    const result = await db.update(users)
+      .set({
+        plan: data.plan !== undefined ? data.plan : undefined,
+        planActiveUntil: data.planActiveUntil !== undefined ? data.planActiveUntil : undefined,
+        polarSubscriptionId: data.polarSubscriptionId !== undefined ? data.polarSubscriptionId : undefined,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return result[0];
+  }
+  
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
 
   async deleteUser(id: number): Promise<void> {
     await db.delete(users).where(eq(users.id, id));

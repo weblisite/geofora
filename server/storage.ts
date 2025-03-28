@@ -72,8 +72,10 @@ export interface IStorage {
   getUserByClerkId(clerkUserId: string): Promise<User | undefined>;
   createUser(user: InsertUser & { clerkUserId?: string, name?: string }): Promise<User>;
   updateUserRole(userId: number, roleId: number): Promise<User>;
+  updateUserPlan(userId: number, data: { plan?: string, planActiveUntil?: Date | null, polarSubscriptionId?: string | null }): Promise<User>;
   hasPermission(userId: number, permissionName: string, forumId?: number): Promise<boolean>;
   getOrCreateAPIUser(forumId: number): Promise<User>;
+  getAllUsers(): Promise<User[]>;
 
   // Category methods
   getCategory(id: number): Promise<Category | undefined>;
@@ -1385,6 +1387,34 @@ export class MemStorage implements IStorage {
     user.roleId = roleId;
     user.updatedAt = new Date();
     return user;
+  }
+
+  async updateUserPlan(userId: number, data: { plan?: string, planActiveUntil?: Date | null, polarSubscriptionId?: string | null }): Promise<User> {
+    const user = this.usersStore.get(userId);
+    if (!user) {
+      throw new Error(`User with id ${userId} not found`);
+    }
+    
+    if (data.plan) {
+      user.plan = data.plan;
+    }
+    
+    if (data.planActiveUntil !== undefined) {
+      user.planActiveUntil = data.planActiveUntil;
+    }
+    
+    if (data.polarSubscriptionId !== undefined) {
+      user.polarSubscriptionId = data.polarSubscriptionId;
+    }
+    
+    user.updatedAt = new Date();
+    this.usersStore.set(userId, user);
+    
+    return user;
+  }
+  
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.usersStore.values());
   }
 
   async hasPermission(userId: number, permissionName: string, forumId?: number): Promise<boolean> {

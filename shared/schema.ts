@@ -47,6 +47,9 @@ export const users = pgTable("users", {
   isAI: boolean("is_ai").default(false),
   roleId: integer("role_id").references(() => roles.id), // Reference to the roles table
   clerkUserId: text("clerk_user_id").unique(), // Clerk user ID for authentication
+  plan: text("plan").default("starter"), // User's subscription plan: 'starter', 'professional', 'enterprise'
+  planActiveUntil: timestamp("plan_active_until"), // When the subscription expires
+  polarSubscriptionId: text("polar_subscription_id"), // Polar.sh subscription ID
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   lastLoginAt: timestamp("last_login_at"),
@@ -486,6 +489,10 @@ export const insertUserSchema = createInsertSchema(users).pick({
   isAI: true,
   roleId: true,
   status: true,
+  plan: true,
+  planActiveUntil: true,
+  polarSubscriptionId: true,
+  clerkUserId: true,
 });
 
 export const insertUserForumRoleSchema = createInsertSchema(userForumRoles).pick({

@@ -90,6 +90,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerClerkAuthRoutes(app, storage);
   
   // Authentication routes are handled in auth.ts
+  
+  // Polar.sh payment processing routes
+  
+  // Handle plan selection (before redirecting to Polar)
+  app.post("/api/users/select-plan", requireClerkAuth, async (req, res) => {
+    try {
+      const { userId, planType } = req.body;
+      
+      if (!userId || !planType) {
+        return res.status(400).json({ message: "Missing userId or planType" });
+      }
+      
+      // Get the user from our database using Clerk ID
+      const user = await storage.getUserByClerkId(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Update the user with the selected plan
+      await storage.updateUserPlan(user.id, { plan: planType });
+      
+      res.json({ message: "Plan selection saved" });
+    } catch (error) {
+      console.error("Error saving plan selection:", error);
+      res.status(500).json({ message: "Failed to save plan selection" });
+    }
+  });
+  
+  // Polar webhook for subscription events (created, updated, canceled)
+  app.post("/api/webhooks/polar", async (req, res) => {
+    try {
+      const { event, data } = req.body;
+      
+      // Verify webhook source - in production, you should validate the webhook signature
+      const polarAccessToken = process.env.POLAR_ACCESS_TOKEN;
+      if (!polarAccessToken) {
+        console.error("Polar Access Token not configured");
+        return res.status(500).json({ message: "Webhook configuration error" });
+      }
+      
+      if (!event || !data) {
+        return res.status(400).json({ message: "Invalid webhook payload" });
+      }
+      
+      // Handle different payload structures based on event type
+      if (event === 'subscription.created' || event === 'subscription.updated') {
+        const { user_id, subscription_id, plan_id, subscription } = data;
+        
+        // Ensure we have all required data
+        if (!user_id) {
+          return res.status(400).json({ message: "Missing user_id in webhook data" });
+        }
+        
+        // Get our user by Clerk ID
+        const user = await storage.getUserByClerkId(user_id);
+        
+        if (!user) {
+          console.error(`User not found for Clerk ID: ${user_id}`);
+          return res.status(404).json({ message: "User not found" });
+        }
+        
+        // Determine expiration date
+        let expirationDate = null;
+        if (subscription?.current_period_end) {
+          expirationDate = new Date(subscription.current_period_end);
+        } else {
+          // Fallback: set expiration date to 1 month from now
+          expirationDate = new Date();
+          expirationDate.setMonth(expirationDate.getMonth() + 1);
+        }
+        
+        // Determine subscription ID
+        const subId = subscription?.id || subscription_id;
+        if (!subId) {
+          console.warn("No subscription ID found in webhook data");
+        }
+        
+        // Determine plan type from plan ID
+        let planType: string | undefined = undefined;
+        if (plan_id) {
+          switch (plan_id) {
+            case 'starter-plan':
+              planType = 'starter';
+              break;
+            case 'professional-plan':
+              planType = 'professional';
+              break;
+            case 'enterprise-plan':
+              planType = 'enterprise';
+              break;
+            default:
+              console.warn(`Unknown plan ID: ${plan_id}`);
+          }
+        }
+        
+        // Update the user's plan with all available information
+        await storage.updateUserPlan(user.id, {
+          plan: planType,
+          planActiveUntil: expirationDate,
+          polarSubscriptionId: subId
+        });
+      } 
+      else if (event === 'subscription.deleted' || event === 'subscription.canceled' || event === 'subscription.cancelled' || event === 'subscription.failed') {
+        const { user_id, subscription_id } = data;
+        
+        // Try to find the user directly if we have the user_id
+        if (user_id) {
+          const user = await storage.getUserByClerkId(user_id);
+          if (user) {
+            await storage.updateUserPlan(user.id, {
+              planActiveUntil: null,
+              polarSubscriptionId: null
+            });
+          } else {
+            console.warn(`User not found for cancellation with Clerk ID: ${user_id}`);
+          }
+        } 
+        // Otherwise find by subscription ID
+        else if (subscription_id) {
+          const users = await storage.getAllUsers();
+          const user = users.find(u => u.polarSubscriptionId === subscription_id);
+          
+          if (user) {
+            await storage.updateUserPlan(user.id, {
+              plan: 'starter', // Downgrade to starter plan
+              planActiveUntil: null,
+              polarSubscriptionId: null
+            });
+          } else {
+            console.warn(`User not found for cancellation with subscription ID: ${subscription_id}`);
+          }
+        } else {
+          return res.status(400).json({ message: "Missing user_id or subscription_id in cancellation data" });
+        }
+      } else {
+        console.warn(`Unhandled Polar webhook event: ${event}`);
+      }
+      
+      res.json({ message: "Webhook processed successfully" });
+    } catch (error) {
+      console.error("Error processing Polar webhook:", error);
+      res.status(500).json({ message: "Failed to process webhook" });
+    }
+  });
 
   // Categories routes
   app.get("/api/categories", async (req, res) => {
@@ -3468,6 +3613,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register the embed routes for JavaScript integration
   registerEmbedRoutes(app);
+
+  // User subscription plans
+  app.post("/api/users/select-plan", requireClerkAuth, async (req, res) => {
+    try {
+      const { userId, planType } = req.body;
+      
+      if (!userId || !planType) {
+        return res.status(400).json({ message: "User ID and plan type are required" });
+      }
+      
+      // Validate plan type
+      if (!['starter', 'professional', 'enterprise'].includes(planType)) {
+        return res.status(400).json({ message: "Invalid plan type" });
+      }
+      
+      // Get the user by Clerk ID
+      const user = await storage.getUserByClerkId(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Update the user's plan
+      await storage.updateUserPlan(user.id, {
+        plan: planType,
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error selecting plan:", error);
+      res.status(500).json({ message: "Failed to select plan" });
+    }
+  });
+
+  // This endpoint has been moved and consolidated earlier in the file
 
   const httpServer = createServer(app);
 

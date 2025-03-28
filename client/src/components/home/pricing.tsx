@@ -2,8 +2,49 @@ import { PRICING_PLANS } from "@/lib/constants";
 import { GradientText } from "@/components/ui/gradient-text";
 import { Glassmorphism } from "@/components/ui/glassmorphism";
 import { cn } from "@/lib/utils";
+import { useClerk } from "@clerk/clerk-react";
+import { planStore, PlanType } from "@/lib/planStore";
+import { useLocation } from "wouter";
+import { toast } from "@/hooks/use-toast";
 
 export default function Pricing() {
+  const { openSignUp } = useClerk();
+  const [, setLocation] = useLocation();
+
+  // Handle plan selection and redirect to signup
+  const handleSelectPlan = (planName: string) => {
+    let planType: PlanType;
+    
+    // Convert plan name to plan type
+    switch(planName.toLowerCase()) {
+      case "starter": 
+        planType = "starter"; 
+        break;
+      case "professional": 
+        planType = "professional"; 
+        break;
+      case "enterprise": 
+        planType = "enterprise"; 
+        break;
+      default:
+        toast({
+          title: "Error",
+          description: "Invalid plan selected",
+          variant: "destructive"
+        });
+        return;
+    }
+    
+    // Store the selected plan
+    planStore.setSelectedPlan(planType);
+    
+    // Redirect to sign up
+    openSignUp({
+      redirectUrl: `/payment?plan=${planType}`,
+      afterSignUpUrl: `/payment?plan=${planType}`
+    });
+  };
+
   return (
     <section id="pricing" className="py-20 bg-dark-200">
       <div className="container px-4 mx-auto">
@@ -59,6 +100,7 @@ export default function Pricing() {
                 </ul>
 
                 <button
+                  onClick={() => handleSelectPlan(plan.name)}
                   className={cn(
                     "w-full mt-8 inline-flex items-center justify-center px-6 py-3 text-sm font-medium text-white transition-all rounded-lg",
                     plan.highlighted
