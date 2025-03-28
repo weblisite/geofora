@@ -177,14 +177,14 @@ export default function Integration() {
   ];
 
   return (
-    <div className="container mx-auto pb-10">
-      <div className="flex flex-col gap-6">
+    <div className="w-full">
+      <div className="flex flex-col gap-6 pb-10">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Integration</h1>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-4 sticky top-0 z-10 bg-[#0c0f1a]">
             <TabsTrigger value="embed">Embed Code</TabsTrigger>
             <TabsTrigger value="api">API</TabsTrigger>
             <TabsTrigger value="webhooks">Webhooks</TabsTrigger>

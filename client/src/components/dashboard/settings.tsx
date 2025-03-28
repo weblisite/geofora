@@ -204,14 +204,14 @@ export default function Settings() {
   ];
 
   return (
-    <div className="container mx-auto pb-10">
-      <div className="flex flex-col gap-6">
+    <div className="w-full">
+      <div className="flex flex-col gap-6 pb-10">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Settings</h1>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 sticky top-0 z-10 bg-[#0c0f1a]">
             <TabsTrigger value="account" className="flex items-center">
               <User className="h-4 w-4 mr-2 md:mr-1" />
               <span className="hidden md:inline">Account</span>

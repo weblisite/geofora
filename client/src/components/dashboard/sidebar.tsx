@@ -36,49 +36,53 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="hidden md:flex flex-col w-64 border-r border-dark-300 h-screen sticky top-0 left-0">
-      <div className="p-4">
-        <div className="flex items-center space-x-2 mb-8">
-          <div className="text-primary-500 flex items-center justify-center w-8 h-8 rounded-full bg-dark-100">
-            <span className="material-icons text-sm">forum</span>
+    <aside className="hidden md:flex flex-col w-64 border-r border-dark-300 h-screen overflow-hidden">
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="p-4">
+          <div className="flex items-center space-x-2 mb-8">
+            <div className="text-primary-500 flex items-center justify-center w-8 h-8 rounded-full bg-dark-100">
+              <span className="material-icons text-sm">forum</span>
+            </div>
+            <span className="text-lg font-bold">
+              <GradientText>ForumAI</GradientText>
+            </span>
           </div>
-          <span className="text-lg font-bold">
-            <GradientText>ForumAI</GradientText>
-          </span>
+
+          <div className="overflow-y-auto flex-1" style={{ maxHeight: "calc(100vh - 180px)" }}>
+            <nav className="space-y-1">
+              {sidebarItems.slice(0, 11).map((item) => (
+                <a
+                  key={item.path}
+                  href={item.path}
+                  onClick={(e) => handleNavigation(item, e)}
+                  className={`flex items-center py-2 px-3 rounded-lg cursor-pointer ${
+                    location === item.path
+                      ? "bg-primary-500/10 text-primary-400"
+                      : "text-gray-400 hover:bg-dark-300"
+                  }`}
+                >
+                  <span className="material-icons text-sm mr-3">{item.icon}</span>
+                  <span className="truncate">{item.name}</span>
+                </a>
+              ))}
+            </nav>
+          </div>
         </div>
 
-        <nav className="space-y-1 overflow-y-auto flex-1">
-          {sidebarItems.slice(0, 11).map((item) => (
-            <a
-              key={item.path}
-              href={item.path}
-              onClick={(e) => handleNavigation(item, e)}
-              className={`flex items-center py-2 px-3 rounded-lg cursor-pointer ${
-                location === item.path
-                  ? "bg-primary-500/10 text-primary-400"
-                  : "text-gray-400 hover:bg-dark-300"
-              }`}
-            >
-              <span className="material-icons text-sm mr-3">{item.icon}</span>
-              <span className="truncate">{item.name}</span>
+        <div className="mt-auto p-4 border-t border-dark-300">
+          <Link href="/forum">
+            <a className="flex items-center py-2 px-3 rounded-lg text-gray-400 hover:bg-dark-300 mb-2">
+              <span className="material-icons text-sm mr-3">public</span>
+              <span className="truncate">View Forum</span>
             </a>
-          ))}
-        </nav>
-      </div>
-
-      <div className="mt-auto p-4 border-t border-dark-300">
-        <Link href="/forum">
-          <a className="flex items-center py-2 px-3 rounded-lg text-gray-400 hover:bg-dark-300 mb-2">
-            <span className="material-icons text-sm mr-3">public</span>
-            <span className="truncate">View Forum</span>
-          </a>
-        </Link>
-        <Link href="/">
-          <a className="flex items-center py-2 px-3 rounded-lg text-gray-400 hover:bg-dark-300">
-            <span className="material-icons text-sm mr-3">home</span>
-            <span className="truncate">Main Site</span>
-          </a>
-        </Link>
+          </Link>
+          <Link href="/">
+            <a className="flex items-center py-2 px-3 rounded-lg text-gray-400 hover:bg-dark-300">
+              <span className="material-icons text-sm mr-3">home</span>
+              <span className="truncate">Main Site</span>
+            </a>
+          </Link>
+        </div>
       </div>
     </aside>
   );
