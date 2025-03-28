@@ -11,11 +11,12 @@ import TrafficAnalysis from "@/components/dashboard/traffic-analysis";
 import Conversions from "@/components/dashboard/conversions";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, LayoutDashboard, Lightbulb, LineChart, MousePointerClick, Zap, Loader2 } from "lucide-react";
-import { UserButton } from "@clerk/clerk-react";
+import { UserButton, useUser } from "@clerk/clerk-react";
 import ForumManagementPage from "./forum";
+import { toast } from "@/hooks/use-toast";
 
 // Lazy load components to improve initial load time
 const KeywordAnalysis = lazy(() => import("@/components/dashboard/keyword-analysis"));
@@ -56,7 +57,65 @@ export default function DashboardPage() {
   const [dateRange, setDateRange] = useState("30d");
   const [activeTab, setActiveTab] = useState("overview");
   const [prevLocation, setPrevLocation] = useState(location);
+  const [processingCheckout, setProcessingCheckout] = useState(false);
+  const { user } = useUser();
   
+  // Process checkout_id if present in URL
+  useEffect(() => {
+    const checkoutComplete = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const checkoutId = urlParams.get('checkout_id');
+      
+      if (checkoutId && !processingCheckout && user) {
+        setProcessingCheckout(true);
+        try {
+          // Call API to verify the checkout and link subscription to user
+          const response = await apiRequest('/api/subscription/verify-checkout', {
+            method: 'POST',
+            body: JSON.stringify({
+              checkoutId,
+              userId: user.id
+            })
+          });
+          
+          const responseData = await response.json();
+          
+          if (responseData.success) {
+            toast({
+              title: "Subscription activated",
+              description: "Your plan has been successfully activated. Enjoy your trial period!",
+              variant: "default",
+            });
+            
+            // Remove checkout_id from URL without page reload
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, newUrl);
+            
+            // Invalidate user subscription data
+            queryClient.invalidateQueries({ queryKey: ['/api/user/subscription'] });
+          } else {
+            toast({
+              title: "Verification failed",
+              description: responseData.message || "There was an issue verifying your subscription. Please contact support.",
+              variant: "destructive",
+            });
+          }
+        } catch (error) {
+          console.error("Error verifying checkout:", error);
+          toast({
+            title: "Verification error",
+            description: "There was an error processing your subscription. Please contact support.",
+            variant: "destructive",
+          });
+        } finally {
+          setProcessingCheckout(false);
+        }
+      }
+    };
+    
+    checkoutComplete();
+  }, [user, processingCheckout]);
+
   // Effect to track location changes and invalidate queries when navigating back to a tab
   useEffect(() => {
     // If location has changed, we're navigating to a different tab

@@ -229,6 +229,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Verify checkout and link subscription to user
+  app.post("/api/subscription/verify-checkout", requireClerkAuth, async (req, res) => {
+    try {
+      const { checkoutId, userId } = req.body;
+      
+      if (!checkoutId || !userId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Missing checkout ID or user ID"
+        });
+      }
+      
+      // Get user data
+      const user = await clerkClient.users.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "User not found"
+        });
+      }
+      
+      // Get the Polar access token from env
+      const polarAccessToken = process.env.POLAR_ACCESS_TOKEN;
+      if (!polarAccessToken) {
+        console.warn("POLAR_ACCESS_TOKEN not set, cannot verify checkout");
+        return res.status(500).json({ 
+          success: false, 
+          message: "Server configuration error"
+        });
+      }
+      
+      // Verify the checkout with Polar API
+      try {
+        const polarResponse = await fetch(`https://api.polar.sh/v1/checkouts/${checkoutId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${polarAccessToken}`,
+          }
+        });
+        
+        if (!polarResponse.ok) {
+          console.warn(`Failed to verify checkout with Polar: ${polarResponse.status} ${polarResponse.statusText}`);
+          return res.status(400).json({ 
+            success: false, 
+            message: "Invalid checkout ID or checkout not completed"
+          });
+        }
+        
+        const checkoutData = await polarResponse.json();
+        
+        // Determine subscription_id and plan_id from the checkout
+        const subscriptionId = checkoutData.subscription_id;
+        const planId = checkoutData.plan_id;
+        
+        if (!subscriptionId || !planId) {
+          return res.status(400).json({ 
+            success: false, 
+            message: "Checkout data does not contain subscription information"
+          });
+        }
+        
+        // Get trial dates from the checkout
+        const now = new Date();
+        const trialEndDate = new Date();
+        trialEndDate.setDate(now.getDate() + 7); // 7-day trial
+        
+        // Update user data with trial and subscription info
+        await clerkClient.users.updateUser(userId, {
+          publicMetadata: {
+            ...user.publicMetadata,
+            plan: planId,
+            polarSubscriptionId: subscriptionId,
+            isInTrial: true,
+            trialStartedAt: now.toISOString(),
+            trialEndsAt: trialEndDate.toISOString(),
+          }
+        });
+        
+        return res.status(200).json({ 
+          success: true, 
+          message: "Subscription activated successfully",
+          data: {
+            subscriptionId,
+            planId,
+            trialEndsAt: trialEndDate.toISOString() 
+          }
+        });
+      } catch (polarError) {
+        console.error("Error verifying checkout with Polar:", polarError);
+        return res.status(500).json({ 
+          success: false, 
+          message: "Error communicating with payment provider"
+        });
+      }
+    } catch (error) {
+      console.error("Error in checkout verification:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Server error during checkout verification"
+      });
+    }
+  });
+
   // Polar webhook for subscription events (created, updated, canceled)
   app.post("/api/webhooks/polar", async (req, res) => {
     try {
