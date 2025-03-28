@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Link, useLocation } from "wouter";
 import StatsCard from "@/components/dashboard/stats-card";
 import TrafficChart from "@/components/dashboard/traffic-chart";
@@ -10,9 +10,14 @@ import MobileNav from "@/components/dashboard/mobile-nav";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, LayoutDashboard, Lightbulb, LineChart, MousePointerClick, Zap } from "lucide-react";
+import { Calendar, LayoutDashboard, Lightbulb, LineChart, MousePointerClick, Zap, Loader2 } from "lucide-react";
 import { UserButton } from "@clerk/clerk-react";
 import ForumManagementPage from "./forum";
+
+// Lazy load components to improve initial load time
+const KeywordAnalysis = lazy(() => import("@/components/dashboard/keyword-analysis"));
+const Interlinking = lazy(() => import("@/components/dashboard/interlinking"));
+const Analytics = lazy(() => import("@/components/dashboard/analytics"));
 
 // Define the stats type
 interface DashboardStats {
@@ -77,22 +82,31 @@ export default function DashboardPage() {
 
   // Determine which content to render based on the URL path
   const renderDashboardContent = () => {
+    // Define a loading component
+    const LoadingComponent = () => (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <span className="ml-2 text-lg">Loading content...</span>
+      </div>
+    );
+
     // Different pages based on the URL path
     if (location === "/dashboard/forum") {
       return <ForumManagementPage />;
     } else if (location === "/dashboard/interlinking") {
-      // Import the component directly to avoid having to add to imports
-      const Interlinking = require("@/components/dashboard/interlinking").default;
       return (
         <div className="p-6">
-          <Interlinking />
+          <Suspense fallback={<LoadingComponent />}>
+            <Interlinking />
+          </Suspense>
         </div>
       );
     } else if (location === "/dashboard/keyword-analysis") {
-      const KeywordAnalysis = require("@/components/dashboard/keyword-analysis").default;
       return (
         <div className="p-6">
-          <KeywordAnalysis />
+          <Suspense fallback={<LoadingComponent />}>
+            <KeywordAnalysis />
+          </Suspense>
         </div>
       );
     } else if (location === "/dashboard/lead-capture") {
@@ -104,10 +118,11 @@ export default function DashboardPage() {
     } else if (location === "/dashboard/personas") {
       return <h1 className="p-6 text-xl font-semibold">AI Personas</h1>;
     } else if (location === "/dashboard/analytics") {
-      const Analytics = require("@/components/dashboard/analytics").default;
       return (
         <div className="p-6">
-          <Analytics />
+          <Suspense fallback={<LoadingComponent />}>
+            <Analytics />
+          </Suspense>
         </div>
       );
     } else if (location === "/dashboard/integration") {
