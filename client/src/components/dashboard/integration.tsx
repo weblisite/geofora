@@ -71,20 +71,58 @@ export default function Integration() {
     window.scrollTo(0, 0);
   }, []);
   
+  // Define types for API responses
+  interface IntegrationStats {
+    embeddedViews: number;
+    engagementRate: number;
+    avgTimeOnForum: string;
+    questionsViaEmbed: number;
+    apiCalls: {
+      daily: number;
+      monthly: number;
+    };
+    apiLimits: {
+      daily: number;
+      monthly: number;
+    };
+  }
+
+  interface WebhookEvent {
+    id: string;
+    type: string;
+    timestamp: string;
+    data: Record<string, any>;
+  }
+
+  interface WebhookEventType {
+    id: string;
+    name: string;
+    description: string;
+  }
+
+  interface ApiResource {
+    forumId: number;
+    forumName: string;
+    apiKey: string;
+    webhookSecret: string;
+    sampleResponse: Record<string, any>;
+    webhookSamplePayload: string;
+  }
+
   // Fetch integration statistics
-  const { data: integrationStats, isLoading: isLoadingStats } = useQuery({
+  const { data: integrationStats, isLoading: isLoadingStats } = useQuery<IntegrationStats>({
     queryKey: ["/api/integration/stats"],
     enabled: !!user,
   });
 
   // Fetch webhook events
-  const { data: webhookEvents, isLoading: isLoadingWebhooks } = useQuery({
+  const { data: webhookEvents, isLoading: isLoadingWebhooks } = useQuery<WebhookEvent[]>({
     queryKey: ["/api/integration/webhooks"],
     enabled: !!user,
   });
   
   // Fetch webhook event types
-  const { data: webhookEventTypes = [], isLoading: isLoadingEventTypes } = useQuery({
+  const { data: webhookEventTypes = [], isLoading: isLoadingEventTypes } = useQuery<WebhookEventType[]>({
     queryKey: ["/api/integration/event-types"],
     enabled: !!user,
   });
@@ -116,66 +154,80 @@ export default function Integration() {
     }, 2000);
   };
 
-  // Sample embed code
-  const sampleEmbedCode = `<script type="text/javascript">
+  // Fetch real API resources including embed code, API calls and example response
+  const { data: apiResources, isLoading: isLoadingResources } = useQuery<ApiResource>({
+    queryKey: ["/api/integration/resources"],
+    enabled: !!user,
+  });
+
+  // Generate embed code using forum ID or a default if not available
+  const getEmbedCode = () => {
+    const forumId = apiResources?.forumId || "YOUR_FORUM_ID";
+    return `<script type="text/javascript">
   (function() {
     var fm = document.createElement('script');
     fm.type = 'text/javascript';
     fm.async = true;
-    fm.src = 'https://forumAI.com/embed.js?id=12345';
+    fm.src = '${window.location.origin}/embed.js?id=${forumId}';
     var s = document.getElementsByTagName('script')[0];
     s.parentNode.insertBefore(fm, s);
   })();
 </script>`;
+  };
 
-  // Sample API code
-  const sampleApiCode = `fetch('https://forumAI.com/api/v1/questions', {
+  // Generate API sample code using real API key or placeholder
+  const getApiSampleCode = () => {
+    const apiKey = apiResources?.apiKey || "YOUR_API_KEY";
+    return `fetch('${window.location.origin}/api/v1/questions', {
   method: 'GET',
   headers: {
-    'Authorization': 'Bearer YOUR_API_KEY',
+    'Authorization': 'Bearer ${apiKey}',
     'Content-Type': 'application/json'
   }
 })
 .then(response => response.json())
 .then(data => console.log(data))
 .catch(error => console.error('Error:', error));`;
+  };
 
-  // Sample JSON response
-  const sampleJsonResponse = `{
-  "questions": [
-    {
-      "id": 1,
-      "title": "How to optimize content for SEO?",
-      "content": "I'm trying to improve my website's search ranking...",
-      "user": {
-        "id": 123,
-        "username": "seo_expert"
-      },
-      "createdAt": "2023-07-15T14:23:45Z",
-      "answers": 5,
-      "views": 238
-    },
-    {
-      "id": 2,
-      "title": "Best practices for internal linking?",
-      "content": "I'm wondering what the current best practices are...",
-      "user": {
-        "id": 456,
-        "username": "content_creator"
-      },
-      "createdAt": "2023-07-14T09:12:33Z",
-      "answers": 3,
-      "views": 142
+  // Get JSON sample response from API resources or use a default
+  const getJsonSampleResponse = () => {
+    if (apiResources?.sampleResponse) {
+      return JSON.stringify(apiResources.sampleResponse, null, 2);
     }
-  ],
-  "pagination": {
-    "total": 245,
-    "page": 1,
-    "perPage": 10
-  }
-}`;
-
-  // Webhook event types are fetched from the API
+    return JSON.stringify({
+      data: {
+        questions: [
+          {
+            id: 123,
+            title: "How to implement API integration?",
+            content: "I'm trying to understand how to integrate with your API...",
+            created_at: new Date().toISOString(),
+            user_id: 456,
+            vote_count: 5,
+            answer_count: 2,
+            is_answered: true
+          },
+          {
+            id: 124,
+            title: "Authentication with the API",
+            content: "What's the proper way to authenticate API requests?",
+            created_at: new Date().toISOString(),
+            user_id: 789,
+            vote_count: 3,
+            answer_count: 1,
+            is_answered: false
+          }
+        ],
+        pagination: {
+          total: 45,
+          page: 1,
+          per_page: 10,
+          total_pages: 5
+        }
+      }
+    }, null, 2);
+  };
 
   return (
     <div className="w-full">
@@ -205,13 +257,13 @@ export default function Integration() {
                   <CardContent className="space-y-4">
                     <div className="relative">
                       <div className="bg-dark-200 p-4 rounded-md font-mono text-sm overflow-x-auto">
-                        <pre>{sampleEmbedCode}</pre>
+                        <pre>{getEmbedCode()}</pre>
                       </div>
                       <Button 
                         size="sm" 
                         variant="secondary" 
                         className="absolute top-3 right-3" 
-                        onClick={() => copyToClipboard(sampleEmbedCode, 'embed')}
+                        onClick={() => copyToClipboard(getEmbedCode(), 'embed')}
                       >
                         {copiedState['embed'] ? (
                           <Check className="h-4 w-4" />
@@ -497,13 +549,13 @@ export default function Integration() {
                       <h3 className="text-lg font-medium mb-2">Example Request</h3>
                       <div className="relative">
                         <div className="bg-dark-200 p-4 rounded-md font-mono text-sm overflow-x-auto">
-                          <pre>{sampleApiCode}</pre>
+                          <pre>{getApiSampleCode()}</pre>
                         </div>
                         <Button 
                           size="sm" 
                           variant="secondary" 
                           className="absolute top-3 right-3" 
-                          onClick={() => copyToClipboard(sampleApiCode, 'apiCode')}
+                          onClick={() => copyToClipboard(getApiSampleCode(), 'apiCode')}
                         >
                           {copiedState['apiCode'] ? (
                             <Check className="h-4 w-4" />
@@ -518,13 +570,13 @@ export default function Integration() {
                       <h3 className="text-lg font-medium mb-2">Example Response</h3>
                       <div className="relative">
                         <div className="bg-dark-200 p-4 rounded-md font-mono text-sm overflow-x-auto">
-                          <pre>{sampleJsonResponse}</pre>
+                          <pre>{getJsonSampleResponse()}</pre>
                         </div>
                         <Button 
                           size="sm" 
                           variant="secondary" 
                           className="absolute top-3 right-3" 
-                          onClick={() => copyToClipboard(sampleJsonResponse, 'jsonResponse')}
+                          onClick={() => copyToClipboard(getJsonSampleResponse(), 'jsonResponse')}
                         >
                           {copiedState['jsonResponse'] ? (
                             <Check className="h-4 w-4" />
@@ -578,7 +630,7 @@ export default function Integration() {
                         <Button 
                           size="sm" 
                           variant="outline" 
-                          onClick={() => copyToClipboard("YOUR_ACTUAL_API_KEY_WOULD_BE_HERE", 'apiKey')}
+                          onClick={() => copyToClipboard(apiResources?.apiKey || "API key not available", 'apiKey')}
                         >
                           {copiedState['apiKey'] ? (
                             <Check className="h-4 w-4" />
@@ -731,7 +783,7 @@ export default function Integration() {
                           <Button 
                             variant="outline" 
                             className="rounded-l-none"
-                            onClick={() => copyToClipboard("YOUR_WEBHOOK_SECRET_KEY_WOULD_BE_HERE", 'webhookSecret')}
+                            onClick={() => copyToClipboard(apiResources?.webhookSecret || "Webhook secret not available", 'webhookSecret')}
                           >
                             {copiedState['webhookSecret'] ? (
                               <Check className="h-4 w-4" />
@@ -798,22 +850,26 @@ export default function Integration() {
                             <tr>
                               <td colSpan={4} className="p-3 text-center">Loading webhook events...</td>
                             </tr>
+                          ) : !webhookEvents || webhookEvents.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="p-3 text-center">No webhook events found</td>
+                            </tr>
                           ) : (
-                            Array.from({ length: 5 }).map((_, i) => (
-                              <tr key={i} className="border-b border-dark-300">
+                            webhookEvents.slice(0, 10).map((event: any, i: number) => (
+                              <tr key={event.id} className="border-b border-dark-300">
                                 <td className="p-3 text-sm">
-                                  {new Date(Date.now() - i * 1800000).toLocaleTimeString()}
+                                  {new Date(event.timestamp).toLocaleString()}
                                 </td>
                                 <td className="p-3">
-                                  {webhookEventTypes[i % webhookEventTypes.length].name}
+                                  {event.eventType}
                                 </td>
                                 <td className="p-3">
-                                  <Badge variant={i % 4 !== 0 ? "default" : "destructive"}>
-                                    {i % 4 !== 0 ? "Success" : "Failed"}
+                                  <Badge variant={event.status === "success" ? "default" : "destructive"}>
+                                    {event.status === "success" ? "Success" : "Failed"}
                                   </Badge>
                                 </td>
                                 <td className="p-3 text-sm">
-                                  {i % 4 !== 0 ? "200 OK" : "Timeout"}
+                                  {event.response || "No response"}
                                 </td>
                               </tr>
                             ))
@@ -841,21 +897,24 @@ export default function Integration() {
                   </CardHeader>
                   <CardContent>
                     <div className="bg-dark-200 p-4 rounded-md font-mono text-sm overflow-x-auto h-[400px] overflow-y-auto">
-                      <pre>{JSON.stringify({
-                        id: "evt_123456789",
-                        type: "question.created",
-                        created: new Date().toISOString(),
-                        data: {
-                          question: {
-                            id: 123,
-                            title: "How to implement webhooks?",
-                            content: "I'm trying to set up webhook integration...",
-                            userId: 456,
-                            createdAt: new Date().toISOString(),
-                            tags: ["integration", "webhook", "api"]
+                      <pre>{apiResources?.webhookSamplePayload ? 
+                        apiResources.webhookSamplePayload : 
+                        JSON.stringify({
+                          id: "evt_" + Math.floor(Math.random() * 1000000000),
+                          type: "question.created",
+                          created: new Date().toISOString(),
+                          data: {
+                            question: {
+                              id: Math.floor(Math.random() * 1000),
+                              title: "How to implement webhooks?",
+                              content: "I'm trying to set up webhook integration...",
+                              userId: Math.floor(Math.random() * 1000),
+                              createdAt: new Date().toISOString(),
+                              tags: ["integration", "webhook", "api"]
+                            }
                           }
-                        }
-                      }, null, 2)}</pre>
+                        }, null, 2)
+                      }</pre>
                     </div>
                   </CardContent>
                 </Card>

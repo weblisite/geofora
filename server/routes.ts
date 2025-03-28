@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import { generateAnswer, generateSeoQuestions, analyzeQuestionSeo, generateInterlinkingSuggestions } from "./ai";
+import { clerkClient } from '@clerk/clerk-sdk-node';
 import { 
   insertUserSchema, 
   insertQuestionSchema, 
@@ -3254,7 +3255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get integration stats from database
-      const forums = await storage.getForumsByUserId(user.id);
+      const forums = await storage.getForumsByUser(user.id);
       
       // Calculate integration statistics
       const stats = {
@@ -3318,7 +3319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get webhook events from database for all user forums
-      const forums = await storage.getForumsByUserId(user.id);
+      const forums = await storage.getForumsByUser(user.id);
       let webhookEvents: any[] = [];
       
       if (forums && forums.length > 0) {
@@ -3340,6 +3341,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching webhook events:", error);
       res.status(500).json({ message: "Failed to fetch webhook events" });
+    }
+  });
+
+  app.get("/api/integration/resources", requireClerkAuth, async (req, res) => {
+    try {
+      const userId = req.auth?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const clerkUser = await clerkClient.users.getUser(userId);
+      if (!clerkUser) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const user = await storage.getUserByClerkId(userId);
+      if (!user) {
+        return res.status(403).json({ message: "User not found in database" });
+      }
+
+      // Get primary forum ID for the user
+      const forums = await storage.getForumsByUser(user.id);
+      if (!forums || forums.length === 0) {
+        return res.status(404).json({ message: "No forums found for user" });
+      }
+
+      // For simplicity, use the first forum
+      const primaryForum = forums[0];
+      
+      // Get API key for the forum
+      const apiKey = await storage.getApiKeyByForumId(primaryForum.id);
+      
+      // Get webhook secret for the forum
+      const webhookSecret = await storage.getWebhookSecretByForumId(primaryForum.id);
+      
+      // Generate a realistic example response with forum question data
+      let sampleResponse = null;
+      const recentQuestions = await storage.getRecentQuestionsByForumId(primaryForum.id, 5);
+      
+      if (recentQuestions && recentQuestions.length > 0) {
+        sampleResponse = {
+          data: {
+            questions: recentQuestions.map(q => ({
+              id: q.id,
+              title: q.title,
+              content: q.content?.substring(0, 100) + "...",
+              created_at: q.createdAt,
+              user_id: q.userId,
+              vote_count: Math.floor(Math.random() * 10),
+              answer_count: Math.floor(Math.random() * 5),
+              is_answered: Math.random() > 0.5
+            })),
+            pagination: {
+              total: Math.floor(Math.random() * 50) + 20,
+              page: 1,
+              per_page: 10,
+              total_pages: Math.floor(Math.random() * 5) + 2
+            }
+          }
+        };
+      }
+      
+      // Generate webhook example payload
+      let webhookSamplePayload = null;
+      if (recentQuestions && recentQuestions.length > 0) {
+        const sampleQuestion = recentQuestions[0];
+        webhookSamplePayload = JSON.stringify({
+          id: "evt_" + Math.floor(Math.random() * 1000000000),
+          type: "question.created",
+          created: new Date().toISOString(),
+          data: {
+            question: {
+              id: sampleQuestion.id,
+              title: sampleQuestion.title,
+              content: sampleQuestion.content?.substring(0, 100) + "...",
+              userId: sampleQuestion.userId,
+              createdAt: sampleQuestion.createdAt,
+              tags: ["forum", "question"]
+            }
+          }
+        }, null, 2);
+      }
+
+      // Return all the resources needed by the integration page
+      res.json({
+        forumId: primaryForum.id,
+        forumName: primaryForum.name,
+        apiKey: apiKey || "api_" + Math.random().toString(36).substring(2, 15),
+        webhookSecret: webhookSecret || "whsec_" + Math.random().toString(36).substring(2, 15),
+        sampleResponse,
+        webhookSamplePayload
+      });
+    } catch (error) {
+      console.error("Error fetching integration resources:", error);
+      res.status(500).json({ message: "Failed to fetch integration resources" });
     }
   });
 

@@ -1125,4 +1125,72 @@ async getForumBySlug(slug: string): Promise<Forum | undefined> {
       return [];
     }
   }
+  
+  /**
+   * Get API key for a forum
+   */
+  async getApiKeyByForumId(forumId: number): Promise<string | null> {
+    try {
+      // Get API key from the apiKeys table
+      const result = await this.db.select({
+        apiKey: apiKeys.apiKey,
+      }).from(apiKeys)
+        .where(and(
+          eq(apiKeys.forumId, forumId),
+          eq(apiKeys.isActive, true)
+        ))
+        .limit(1);
+      
+      return result[0]?.apiKey || null;
+    } catch (error) {
+      console.error('Error getting API key:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Get webhook secret for a forum
+   */
+  async getWebhookSecretByForumId(forumId: number): Promise<string | null> {
+    try {
+      // Get webhook secret from the webhookSecrets table
+      const result = await this.db.select({
+        secretKey: webhookSecrets.secretKey,
+      }).from(webhookSecrets)
+        .where(eq(webhookSecrets.forumId, forumId))
+        .limit(1);
+      
+      return result[0]?.secretKey || null;
+    } catch (error) {
+      console.error('Error getting webhook secret:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Get recent questions for a forum
+   */
+  async getRecentQuestionsByForumId(forumId: number, limit: number = 5): Promise<any[]> {
+    try {
+      // Get question records for a specific forum
+      const results = await this.db.select({
+        id: questions.id,
+        title: questions.title,
+        content: questions.content,
+        userId: questions.userId,
+        createdAt: questions.createdAt,
+        categoryId: questions.categoryId
+      })
+      .from(questions)
+      .innerJoin(categories, eq(questions.categoryId, categories.id))
+      .where(eq(categories.forumId, forumId))
+      .orderBy(desc(questions.createdAt))
+      .limit(limit);
+      
+      return results;
+    } catch (error) {
+      console.error('Error getting recent questions:', error);
+      return [];
+    }
+  }
 }
