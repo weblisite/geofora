@@ -87,6 +87,8 @@ function App() {
         <ProtectedRoute path="/dashboard/content-scheduling" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/integration" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/settings" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/traffic-analysis" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/conversions" component={DashboardPage} />
         <Route path="/sign-in" component={SignInPage} />
         <Route path="/sign-up" component={SignUpPage} />
         <Route path="/sign-up/verify-email-address" component={VerifyEmailPage} />

@@ -89,28 +89,33 @@ export default function TrafficAnalysis() {
   const [dateRange, setDateRange] = useState("30");
 
   // Fetch traffic data
-  const { data: trafficStats } = useQuery({
+  const { data: trafficStats, isLoading: isLoadingTraffic } = useQuery({
     queryKey: [`/api/analytics/traffic-data/${dateRange}`],
   });
 
   // Fetch daily traffic data
-  const { data: dailyStats } = useQuery({
+  const { data: dailyStats, isLoading: isLoadingDaily } = useQuery({
     queryKey: [`/api/analytics/daily-traffic/${dateRange}`],
   });
 
   // Fetch device distribution
-  const { data: deviceStats } = useQuery({
+  const { data: deviceStats, isLoading: isLoadingDevices } = useQuery({
     queryKey: [`/api/analytics/device-distribution/${dateRange}`],
   });
 
   // Fetch geographic data 
-  const { data: geoStats } = useQuery({
+  const { data: geoStats, isLoading: isLoadingGeo } = useQuery({
     queryKey: [`/api/analytics/geographic-data/${dateRange}`],
   });
 
   // Fetch session duration data
-  const { data: sessionStats } = useQuery({
-    queryKey: [`/api/analytics/session-duration/${dateRange}`],
+  const { data: sessionStats, isLoading: isLoadingSession } = useQuery({
+    queryKey: [`/api/analytics/average-session-duration/${dateRange}`],
+  });
+  
+  // Fetch referral traffic
+  const { data: referralStats, isLoading: isLoadingReferrals } = useQuery({
+    queryKey: [`/api/analytics/referral-traffic/${dateRange}`],
   });
 
   return (

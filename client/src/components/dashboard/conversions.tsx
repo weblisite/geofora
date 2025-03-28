@@ -78,13 +78,40 @@ export default function Conversions() {
   const [dateRange, setDateRange] = useState("30");
 
   // Fetch conversion stats
-  const { data: conversionStats } = useQuery({
+  const { data: conversionStats, isLoading: isLoadingConversions } = useQuery({
     queryKey: [`/api/analytics/conversion-funnel/${dateRange}`],
   });
 
   // Fetch lead capture stats
-  const { data: leadCaptureStats } = useQuery({
+  const { data: leadCaptureStats, isLoading: isLoadingLeadCapture } = useQuery({
     queryKey: [`/api/analytics/lead-capture-stats/${dateRange}`],
+  });
+  
+  // Define interface for conversion rate data
+  interface ConversionRateData {
+    name: string;
+    rate: number;
+  }
+
+  // Fetch conversion rate data
+  const { data: conversionRateData, isLoading: isLoadingConversionRate } = useQuery<ConversionRateData[]>({
+    queryKey: [`/api/analytics/content-performance-metrics/${dateRange}`],
+  });
+  
+  // Define types for the lead source data
+  interface LeadSource {
+    name: string;
+    value: number;
+  }
+
+  // Fetch lead sources data
+  const { data: leadSourceData, isLoading: isLoadingLeadSources } = useQuery<LeadSource[]>({
+    queryKey: [`/api/analytics/lead-capture-sources/${dateRange}`],
+  });
+  
+  // Fetch top converting content
+  const { data: topConvertingContent, isLoading: isLoadingTopContent } = useQuery({
+    queryKey: [`/api/analytics/top-performing-content/${dateRange}`],
   });
 
   return (
@@ -266,7 +293,7 @@ export default function Conversions() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={leadSourceData}
+                      data={leadSourceData || []}
                       cx="50%"
                       cy="50%"
                       innerRadius={60}
@@ -276,7 +303,7 @@ export default function Conversions() {
                       dataKey="value"
                       label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
                     >
-                      {leadSourceData.map((entry, index) => (
+                      {(leadSourceData || []).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
@@ -297,7 +324,7 @@ export default function Conversions() {
               <CardContent className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={conversionRateData}
+                    data={conversionRateData || []}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />

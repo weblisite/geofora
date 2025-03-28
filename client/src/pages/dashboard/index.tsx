@@ -173,6 +173,22 @@ export default function DashboardPage() {
           </Suspense>
         </div>
       );
+    } else if (location === "/dashboard/traffic-analysis") {
+      return (
+        <div className="p-6">
+          <Suspense fallback={<LoadingComponent />}>
+            <TrafficAnalysis />
+          </Suspense>
+        </div>
+      );
+    } else if (location === "/dashboard/conversions") {
+      return (
+        <div className="p-6">
+          <Suspense fallback={<LoadingComponent />}>
+            <Conversions />
+          </Suspense>
+        </div>
+      );
     }
     
     // Overview page (main dashboard)
