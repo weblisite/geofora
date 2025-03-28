@@ -19,15 +19,16 @@ import AuthPage from "@/pages/auth-page";
 import UIShowcasePage from "@/pages/ui-showcase";
 import DocumentationPage from "@/pages/documentation-page";
 import NotFound from "@/pages/not-found";
-import { useClerkAuth } from "@/hooks/use-clerk-auth";
 import { Loader2 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { initAnalytics, trackPageView } from "@/lib/analytics-tracker";
 import React from "react";
 
 function App() {
   const [location] = useLocation();
   const analyticsInitialized = React.useRef(false);
+  // Use a basic loading state instead of useClerkAuth at the top level
+  const [initializing, setInitializing] = useState(true);
 
   // Initialize analytics only once after component mounts
   useEffect(() => {
@@ -40,6 +41,11 @@ function App() {
         console.error("Failed to initialize analytics:", error);
       }
     }
+    // Set initializing to false after a short delay to allow auth to load
+    const timer = setTimeout(() => {
+      setInitializing(false);
+    }, 500);
+    return () => clearTimeout(timer);
   }, []);
   
   // Track page views when location changes
@@ -54,10 +60,7 @@ function App() {
     }
   }, [location]);
 
-  // Get auth state safely - the useClerkAuth hook for Clerk authentication
-  const { isLoading } = useClerkAuth();
-
-  if (isLoading) {
+  if (initializing) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-border" />

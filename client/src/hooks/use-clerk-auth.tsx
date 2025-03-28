@@ -150,6 +150,7 @@ export function useClerkAuth() {
 
 // AppClerkProvider component to wrap the entire app
 export function AppClerkProvider({ children }: { children: ReactNode }) {
+  // Use environment variable for publishable key
   const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
   
   if (!publishableKey) {

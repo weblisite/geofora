@@ -22,9 +22,9 @@ export default function AuthPage() {
     }
   }, [location]);
 
-  // Redirect to home if already logged in with Clerk
+  // Redirect to dashboard if already logged in with Clerk
   if (!clerkLoading && clerkUser) {
-    return <Redirect to="/" />;
+    return <Redirect to="/dashboard" />;
   }
 
   return (
@@ -43,9 +43,9 @@ export default function AuthPage() {
         </CardHeader>
         <CardContent>
           {page === "login" ? (
-            <SignIn routing="path" path="/login" redirectUrl="/" />
+            <SignIn routing="path" path="/login" redirectUrl="/dashboard" />
           ) : (
-            <SignUp routing="path" path="/register" redirectUrl="/" />
+            <SignUp routing="path" path="/register" redirectUrl="/dashboard" />
           )}
         </CardContent>
       </Card>

@@ -6,9 +6,9 @@ import { SITE_NAME } from "@/lib/constants";
 export default function RegisterPage() {
   const { user, isLoading } = useClerkAuth();
   
-  // Redirect to home if already logged in
+  // Redirect to dashboard if already logged in
   if (!isLoading && user) {
-    return <Redirect to="/" />;
+    return <Redirect to="/dashboard" />;
   }
   
   // Redirect to the auth page where Clerk handles registration
