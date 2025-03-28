@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { GradientText } from "@/components/ui/gradient-text";
+import forumExampleImage from "@/assets/forum-example.png";
 
 export default function HeroSection() {
   return (
@@ -23,7 +24,7 @@ export default function HeroSection() {
 
             <div className="flex flex-col sm:flex-row gap-4">
               <Link 
-                href="/register" 
+                href="/sign-up" 
                 className="inline-flex items-center justify-center px-6 sm:px-8 py-3 text-base font-medium text-white transition-all rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 shadow-glow"
               >
                 <span>Launch Now</span>
@@ -73,7 +74,7 @@ export default function HeroSection() {
               <div className="relative glass gradient-border p-1 rounded-2xl shadow-xl overflow-hidden">
                 <div className="rounded-xl overflow-hidden">
                   <img
-                    src="https://images.unsplash.com/photo-1581092583548-2cbfbe1e9375?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&h=400&q=80"
+                    src={forumExampleImage}
                     alt="AI-powered forum visualization"
                     className="w-full h-auto rounded-xl"
                   />
