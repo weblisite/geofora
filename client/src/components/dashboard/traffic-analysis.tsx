@@ -85,14 +85,47 @@ export default function TrafficAnalysis() {
     queryKey: [`/api/analytics/session-duration/${dateRange}`],
   });
 
-  // Fetch traffic summary data
-  const { data: trafficStats, isLoading: isLoadingTraffic } = useQuery({
+  // Fetch traffic summary data with proper typing
+  const { data: trafficStats, isLoading: isLoadingTraffic } = useQuery<{
+    totalVisits: number;
+    pageViews: number;
+    uniqueVisitors: number;
+    avgSessionDuration: string;
+    visitsChange: number;
+    pageViewsChange: number;
+    visitorsChange: number;
+    durationChange: string;
+  }>({
     queryKey: [`/api/analytics/traffic-data/${dateRange}`],
   });
 
-  // Fetch referral traffic
-  const { data: referralStats, isLoading: isLoadingReferrals } = useQuery({
+  // Fetch referral traffic with proper typing
+  const { data: referralStats, isLoading: isLoadingReferrals } = useQuery<Array<{
+    name: string;
+    value: string;
+    change: string;
+  }>>({
     queryKey: [`/api/analytics/referral-traffic/${dateRange}`],
+  });
+
+  // Fetch search keywords with proper typing
+  const { data: searchKeywords, isLoading: isLoadingKeywords } = useQuery<Array<{
+    keyword: string;
+    volume: string;
+    position: string;
+  }>>({
+    queryKey: [`/api/analytics/search-keywords/${dateRange}`],
+  });
+  
+  // Fetch top performing pages
+  const { data: topPages, isLoading: isLoadingTopPages } = useQuery<Array<{
+    page: string;
+    views: string;
+    time: string;
+    bounce: string;
+    conversion: string;
+  }>>({
+    queryKey: [`/api/analytics/top-pages/${dateRange}`],
   });
 
   return (
@@ -147,10 +180,25 @@ export default function TrafficAnalysis() {
                 <Globe className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">78,432</div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-emerald-500">+16.2%</span> vs previous period
-                </p>
+                {isLoadingTraffic ? (
+                  <div className="flex items-center justify-center py-2">
+                    <div className="animate-spin w-5 h-5 border-t-2 border-b-2 border-primary-500 rounded-full"></div>
+                  </div>
+                ) : !trafficStats ? (
+                  <div>
+                    <div className="text-2xl font-bold">-</div>
+                    <p className="text-xs text-muted-foreground">No data available</p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="text-2xl font-bold">{trafficStats.totalVisits.toLocaleString()}</div>
+                    <p className="text-xs text-muted-foreground">
+                      <span className={`${trafficStats.visitsChange >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                        {trafficStats.visitsChange >= 0 ? '+' : ''}{trafficStats.visitsChange.toFixed(1)}%
+                      </span> vs previous period
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
             
@@ -162,10 +210,25 @@ export default function TrafficAnalysis() {
                 <MousePointerClick className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">234,568</div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-emerald-500">+24.5%</span> vs previous period
-                </p>
+                {isLoadingTraffic ? (
+                  <div className="flex items-center justify-center py-2">
+                    <div className="animate-spin w-5 h-5 border-t-2 border-b-2 border-primary-500 rounded-full"></div>
+                  </div>
+                ) : !trafficStats ? (
+                  <div>
+                    <div className="text-2xl font-bold">-</div>
+                    <p className="text-xs text-muted-foreground">No data available</p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="text-2xl font-bold">{trafficStats.pageViews.toLocaleString()}</div>
+                    <p className="text-xs text-muted-foreground">
+                      <span className={`${trafficStats.pageViewsChange >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                        {trafficStats.pageViewsChange >= 0 ? '+' : ''}{trafficStats.pageViewsChange.toFixed(1)}%
+                      </span> vs previous period
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
             
@@ -177,10 +240,25 @@ export default function TrafficAnalysis() {
                 <Smartphone className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">42,897</div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-emerald-500">+12.8%</span> vs previous period
-                </p>
+                {isLoadingTraffic ? (
+                  <div className="flex items-center justify-center py-2">
+                    <div className="animate-spin w-5 h-5 border-t-2 border-b-2 border-primary-500 rounded-full"></div>
+                  </div>
+                ) : !trafficStats ? (
+                  <div>
+                    <div className="text-2xl font-bold">-</div>
+                    <p className="text-xs text-muted-foreground">No data available</p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="text-2xl font-bold">{trafficStats.uniqueVisitors.toLocaleString()}</div>
+                    <p className="text-xs text-muted-foreground">
+                      <span className={`${trafficStats.visitorsChange >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                        {trafficStats.visitorsChange >= 0 ? '+' : ''}{trafficStats.visitorsChange.toFixed(1)}%
+                      </span> vs previous period
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
             
@@ -192,10 +270,25 @@ export default function TrafficAnalysis() {
                 <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">3:24</div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-emerald-500">+0:42</span> vs previous period
-                </p>
+                {isLoadingTraffic ? (
+                  <div className="flex items-center justify-center py-2">
+                    <div className="animate-spin w-5 h-5 border-t-2 border-b-2 border-primary-500 rounded-full"></div>
+                  </div>
+                ) : !trafficStats ? (
+                  <div>
+                    <div className="text-2xl font-bold">-</div>
+                    <p className="text-xs text-muted-foreground">No data available</p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="text-2xl font-bold">{trafficStats.avgSessionDuration}</div>
+                    <p className="text-xs text-muted-foreground">
+                      <span className="text-emerald-500">
+                        {trafficStats.durationChange.startsWith('-') ? '' : '+'}{trafficStats.durationChange}
+                      </span> vs previous period
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -452,14 +545,17 @@ export default function TrafficAnalysis() {
                 <CardDescription>Sites sending the most traffic</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {[
-                    { name: "google.com", value: "42.3%", change: "+12.4%" },
-                    { name: "reddit.com", value: "15.7%", change: "+8.2%" },
-                    { name: "twitter.com", value: "12.5%", change: "+5.7%" },
-                    { name: "facebook.com", value: "9.2%", change: "-3.1%" },
-                    { name: "linkedin.com", value: "8.4%", change: "+15.2%" }
-                  ].map((item, i) => (
+                {isLoadingReferrals ? (
+                  <div className="flex items-center justify-center py-6">
+                    <div className="animate-spin w-6 h-6 border-t-2 border-b-2 border-primary-500 rounded-full"></div>
+                  </div>
+                ) : !referralStats || referralStats.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <p>No referral data available</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                  {referralStats.map((item, i) => (
                     <div key={i} className="flex items-center justify-between">
                       <div className="flex items-center">
                         <ExternalLink className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -473,7 +569,8 @@ export default function TrafficAnalysis() {
                       </div>
                     </div>
                   ))}
-                </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
             
@@ -483,14 +580,17 @@ export default function TrafficAnalysis() {
                 <CardDescription>Top organic search terms</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {[
-                    { keyword: "seo optimized forum questions", volume: "5,240", position: "3" },
-                    { keyword: "ai forum platform", volume: "3,780", position: "2" },
-                    { keyword: "best lead capture forum", volume: "2,430", position: "1" },
-                    { keyword: "keyword optimized q&a", volume: "1,890", position: "5" },
-                    { keyword: "content interlinking strategy", volume: "1,650", position: "4" }
-                  ].map((item, i) => (
+                {isLoadingKeywords ? (
+                  <div className="flex items-center justify-center py-6">
+                    <div className="animate-spin w-6 h-6 border-t-2 border-b-2 border-primary-500 rounded-full"></div>
+                  </div>
+                ) : !searchKeywords || searchKeywords.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <p>No search keyword data available</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                  {searchKeywords.map((item, i) => (
                     <div key={i} className="flex items-center justify-between">
                       <div className="flex items-center">
                         <TrendingUp className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -504,7 +604,8 @@ export default function TrafficAnalysis() {
                       </div>
                     </div>
                   ))}
-                </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -650,72 +751,54 @@ export default function TrafficAnalysis() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-dark-300">
-                      {[
-                        { 
-                          page: "How to optimize forum questions for SEO?",
-                          views: "5,432",
-                          time: "4:25",
-                          bounce: "24%",
-                          conversion: "8.7%"
-                        },
-                        { 
-                          page: "Best practices for content interlinking",
-                          views: "4,782",
-                          time: "5:12",
-                          bounce: "18%",
-                          conversion: "12.3%"
-                        },
-                        { 
-                          page: "AI-powered forum platforms comparison",
-                          views: "3,954",
-                          time: "3:47",
-                          bounce: "27%",
-                          conversion: "7.8%"
-                        },
-                        { 
-                          page: "How to increase lead capture on forums?",
-                          views: "3,218",
-                          time: "6:03",
-                          bounce: "14%",
-                          conversion: "15.2%"
-                        },
-                        { 
-                          page: "Advanced keyword techniques for content",
-                          views: "2,871",
-                          time: "4:38",
-                          bounce: "22%",
-                          conversion: "9.1%"
-                        },
-                      ].map((item, i) => (
-                        <tr key={i}>
-                          <td className="py-2 px-4">
-                            <div className="flex items-center">
-                              <span className="ml-2 line-clamp-1">{item.page}</span>
+                      {isLoadingTopPages ? (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center">
+                            <div className="flex justify-center">
+                              <div className="animate-spin w-8 h-8 border-t-2 border-b-2 border-primary-500 rounded-full"></div>
                             </div>
                           </td>
-                          <td className="text-center py-2 px-4">{item.views}</td>
-                          <td className="text-center py-2 px-4">{item.time}</td>
-                          <td className="text-center py-2 px-4">{item.bounce}</td>
-                          <td className="text-center py-2 px-4">
-                            <span className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full text-xs">
-                              {item.conversion}
-                            </span>
+                        </tr>
+                      ) : !topPages || topPages.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-muted-foreground">
+                            No page data available
                           </td>
                         </tr>
-                      ))}
+                      ) : topPages ? (
+                        topPages.map((item, i) => (
+                          <tr key={i}>
+                            <td className="py-2 px-4">
+                              <div className="flex items-center">
+                                <span className="ml-2 line-clamp-1">{item.page}</span>
+                              </div>
+                            </td>
+                            <td className="text-center py-2 px-4">{item.views}</td>
+                            <td className="text-center py-2 px-4">{item.time}</td>
+                            <td className="text-center py-2 px-4">{item.bounce}</td>
+                            <td className="text-center py-2 px-4">
+                              <span className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full text-xs">
+                                {item.conversion}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      ) : null}
                     </tbody>
                   </table>
                 </div>
                 
-                <div className="flex justify-between items-center">
-                  <div className="text-sm text-muted-foreground">
-                    Showing 5 of 147 pages
+                {topPages && topPages.length > 0 && (
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm text-muted-foreground">
+                      Showing {topPages.length} {topPages.length === 1 ? 'page' : 'pages'}
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button variant="outline" size="sm">Previous</Button>
+                      <Button variant="outline" size="sm">Next</Button>
+                    </div>
                   </div>
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm">Previous</Button>
-                    <Button variant="outline" size="sm">Next</Button>
-                  </div>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>

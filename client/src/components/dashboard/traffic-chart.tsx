@@ -105,8 +105,10 @@ export default function TrafficChart() {
         scales: {
           x: {
             grid: {
-              display: false,
-              drawBorder: false,
+              display: false
+            },
+            border: {
+              display: false
             },
             ticks: {
               color: '#9ca3af'
@@ -114,8 +116,10 @@ export default function TrafficChart() {
           },
           y: {
             grid: {
-              color: 'rgba(75, 85, 99, 0.2)',
-              drawBorder: false,
+              color: 'rgba(75, 85, 99, 0.2)'
+            },
+            border: {
+              display: false
             },
             ticks: {
               color: '#9ca3af',
@@ -168,6 +172,10 @@ export default function TrafficChart() {
         {isLoading ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="animate-spin w-8 h-8 border-t-2 border-b-2 border-primary-500 rounded-full"></div>
+          </div>
+        ) : !trafficData || trafficData.labels.length === 0 ? (
+          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+            <p>No traffic data available</p>
           </div>
         ) : (
           <canvas ref={chartRef} />
