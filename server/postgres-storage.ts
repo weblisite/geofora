@@ -1010,4 +1010,119 @@ async getForumBySlug(slug: string): Promise<Forum | undefined> {
       return null;
     }
   }
+
+  /**
+   * Get embed count for a forum
+   */
+  async getEmbedCountByForumId(forumId: number): Promise<{ total: number; active: number }> {
+    try {
+      // Count all embeds
+      const totalResult = await this.db.select({
+        count: sql<number>`count(*)`,
+      }).from(embedScripts)
+        .where(eq(embedScripts.forumId, forumId));
+      
+      // Count active embeds
+      const activeResult = await this.db.select({
+        count: sql<number>`count(*)`,
+      }).from(embedScripts)
+        .where(and(
+          eq(embedScripts.forumId, forumId),
+          eq(embedScripts.isActive, true)
+        ));
+      
+      return {
+        total: totalResult[0]?.count || 0,
+        active: activeResult[0]?.count || 0
+      };
+    } catch (error) {
+      console.error('Error getting embed count:', error);
+      return { total: 0, active: 0 };
+    }
+  }
+
+  /**
+   * Get verified domains for a forum
+   */
+  async getVerifiedDomainsByForumId(forumId: number): Promise<{ domain: string }[]> {
+    try {
+      const results = await this.db.select({
+        domain: domains.domain,
+      }).from(domains)
+        .where(and(
+          eq(domains.forumId, forumId),
+          eq(domains.isVerified, true)
+        ));
+      
+      return results;
+    } catch (error) {
+      console.error('Error getting verified domains:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get API call count for a forum
+   */
+  async getApiCallCountByForumId(forumId: number): Promise<number> {
+    try {
+      // Get API usage count from the apiUsage table
+      const result = await this.db.select({
+        count: sql<number>`coalesce(sum(count), 0)`,
+      }).from(apiUsage)
+        .where(eq(apiUsage.forumId, forumId));
+      
+      return result[0]?.count || 0;
+    } catch (error) {
+      console.error('Error getting API call count:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Get webhook count for a forum
+   */
+  async getWebhookCountByForumId(forumId: number): Promise<number> {
+    try {
+      // Count the number of active webhooks for this forum
+      const result = await this.db.select({
+        count: sql<number>`count(*)`,
+      }).from(webhooks)
+        .where(and(
+          eq(webhooks.forumId, forumId),
+          eq(webhooks.isActive, true)
+        ));
+      
+      return result[0]?.count || 0;
+    } catch (error) {
+      console.error('Error getting webhook count:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Get webhook events for a forum
+   */
+  async getWebhookEventsByForumId(forumId: number): Promise<any[]> {
+    try {
+      // Get recent webhook events for this forum
+      const events = await this.db.select({
+        id: webhookEvents.id,
+        timestamp: webhookEvents.timestamp,
+        eventType: webhookEvents.eventType,
+        webhookId: webhookEvents.webhookId,
+        status: webhookEvents.status,
+        response: webhookEvents.response,
+      }).from(webhookEvents)
+        .innerJoin(webhooks, eq(webhookEvents.webhookId, webhooks.id))
+        .where(eq(webhooks.forumId, forumId))
+        .orderBy(desc(webhookEvents.timestamp))
+        .limit(50);
+      
+      return events;
+    } catch (error) {
+      console.error('Error getting webhook events:', error);
+      return [];
+    }
+  }
 }

@@ -1013,140 +1013,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Analytics routes (simulated for demo)
-  app.get("/api/analytics/dashboard-stats/:range", (req, res) => {
-    // Simulated data for dashboard stats
-    const stats = {
-      questions: {
-        total: 1247,
-        trend: "+14.2% vs last month",
-        trendPositive: true,
-      },
-      answers: {
-        total: 5893,
-        trend: "+23.5% vs last month",
-        trendPositive: true,
-      },
-      traffic: {
-        total: 78400,
-        trend: "+35.7% vs last month",
-        trendPositive: true,
-      },
-      conversions: {
-        total: 1892,
-        trend: "+18.9% vs last month",
-        trendPositive: true,
-      },
-    };
-    
-    res.json(stats);
-  });
+  // Old simulated routes removed in favor of real data routes defined later
 
-  app.get("/api/analytics/traffic/:timeRange", (req, res) => {
-    const { timeRange } = req.params;
-    let labels: string[] = [];
-    let data: number[] = [];
+  // Old simulated AI activity route removed in favor of real data route defined later
 
-    if (timeRange === "daily") {
-      labels = ["9AM", "11AM", "1PM", "3PM", "5PM", "7PM", "9PM"];
-      data = [205, 450, 850, 1200, 950, 1100, 1350];
-    } else if (timeRange === "weekly") {
-      labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-      data = [5200, 4800, 6100, 8500, 9200, 7800, 6500];
-    } else {
-      labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-      data = [18000, 22000, 26500, 32000, 36000, 42000];
-    }
-
-    res.json({ labels, data });
-  });
-
-  app.get("/api/analytics/ai-activity", (req, res) => {
-    // Simulated data for AI activity
-    const activities = [
-      {
-        id: 1,
-        type: "answer",
-        personaType: "expert",
-        personaName: "AI Expert",
-        action: "answered a question on",
-        subject: "SEO best practices",
-        timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 2,
-        type: "question",
-        personaType: "beginner",
-        personaName: "AI Beginner",
-        action: "asked a question about",
-        subject: "Google algorithm updates",
-        timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 3,
-        type: "moderation",
-        personaType: "moderator",
-        personaName: "AI Moderator",
-        action: "flagged a response for",
-        subject: "review",
-        timestamp: new Date(Date.now() - 32 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 4,
-        type: "response",
-        personaType: "expert",
-        personaName: "AI Expert",
-        action: "responded to a thread on",
-        subject: "Content marketing",
-        timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-      },
-    ];
-    
-    res.json(activities);
-  });
-
-  app.get("/api/analytics/top-content", (req, res) => {
-    // Simulated data for top performing content
-    const topContent = [
-      {
-        id: 1,
-        title: "What's the most effective way to implement AI-driven content strategies?",
-        views: 12456,
-        answers: 32,
-        conversions: 147,
-        ranking: "Position #3",
-        position: 3,
-      },
-      {
-        id: 2,
-        title: "How do you measure the ROI of your SEO investments?",
-        views: 9871,
-        answers: 24,
-        conversions: 93,
-        ranking: "Position #1",
-        position: 1,
-      },
-      {
-        id: 3,
-        title: "Which keyword research tools are worth the investment in 2024?",
-        views: 8542,
-        answers: 19,
-        conversions: 78,
-        ranking: "Position #2",
-        position: 2,
-      },
-      {
-        id: 4,
-        title: "What are the best practices for E-E-A-T compliance?",
-        views: 7329,
-        answers: 15,
-        conversions: 64,
-        ranking: "Position #5",
-        position: 5,
-      },
-    ];
-    
-    res.json(topContent);
-  });
+  // Old simulated top-content route removed in favor of real data route defined later
 
   // Forum Management routes
   app.get("/api/forums", async (req, res) => {
@@ -3361,6 +3232,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating section content:", error);
       res.status(500).json({ message: "Failed to generate section content" });
+    }
+  });
+
+  // Integration API endpoints
+  app.get("/api/integration/stats", requireClerkAuth, async (req, res) => {
+    try {
+      const userId = req.auth?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const clerkUser = await clerkClient.users.getUser(userId);
+      if (!clerkUser) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const user = await storage.getUserByClerkId(userId);
+      if (!user) {
+        return res.status(403).json({ message: "User not found in database" });
+      }
+
+      // Get integration stats from database
+      const forums = await storage.getForumsByUserId(user.id);
+      
+      // Calculate integration statistics
+      const stats = {
+        totalEmbeds: 0,
+        activeEmbeds: 0,
+        totalApiCalls: 0,
+        totalWebhooks: 0,
+        domains: new Set<string>(),
+      };
+
+      // If we have forum data, collect integration statistics
+      if (forums && forums.length > 0) {
+        // Get embeds for all user forums
+        for (const forum of forums) {
+          const embedCount = await storage.getEmbedCountByForumId(forum.id);
+          stats.totalEmbeds += embedCount.total || 0;
+          stats.activeEmbeds += embedCount.active || 0;
+          
+          // Get domain data
+          const domains = await storage.getVerifiedDomainsByForumId(forum.id);
+          domains.forEach(domain => stats.domains.add(domain.domain));
+          
+          // Get API usage stats
+          const apiCalls = await storage.getApiCallCountByForumId(forum.id);
+          stats.totalApiCalls += apiCalls || 0;
+          
+          // Get webhook count
+          const webhookCount = await storage.getWebhookCountByForumId(forum.id);
+          stats.totalWebhooks += webhookCount || 0;
+        }
+      }
+
+      res.json({
+        totalEmbeds: stats.totalEmbeds,
+        activeEmbeds: stats.activeEmbeds,
+        totalApiCalls: stats.totalApiCalls,
+        totalWebhooks: stats.totalWebhooks,
+        verifiedDomains: Array.from(stats.domains),
+      });
+    } catch (error) {
+      console.error("Error fetching integration stats:", error);
+      res.status(500).json({ message: "Failed to fetch integration statistics" });
+    }
+  });
+
+  app.get("/api/integration/webhooks", requireClerkAuth, async (req, res) => {
+    try {
+      const userId = req.auth?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const clerkUser = await clerkClient.users.getUser(userId);
+      if (!clerkUser) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const user = await storage.getUserByClerkId(userId);
+      if (!user) {
+        return res.status(403).json({ message: "User not found in database" });
+      }
+
+      // Get webhook events from database for all user forums
+      const forums = await storage.getForumsByUserId(user.id);
+      let webhookEvents: any[] = [];
+      
+      if (forums && forums.length > 0) {
+        for (const forum of forums) {
+          const events = await storage.getWebhookEventsByForumId(forum.id);
+          webhookEvents = [...webhookEvents, ...events];
+        }
+        
+        // Sort by timestamp, most recent first
+        webhookEvents.sort((a, b) => 
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+        
+        // Limit to most recent 50 events
+        webhookEvents = webhookEvents.slice(0, 50);
+      }
+
+      res.json(webhookEvents);
+    } catch (error) {
+      console.error("Error fetching webhook events:", error);
+      res.status(500).json({ message: "Failed to fetch webhook events" });
+    }
+  });
+
+  app.get("/api/integration/event-types", requireClerkAuth, async (req, res) => {
+    try {
+      const userId = req.auth?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // This endpoint returns the available webhook event types
+      const eventTypes = [
+        { id: "question.created", name: "Question Created", description: "Triggered when a new question is posted" },
+        { id: "answer.created", name: "Answer Created", description: "Triggered when a new answer is posted" },
+        { id: "user.registered", name: "User Registered", description: "Triggered when a new user signs up" },
+        { id: "lead.captured", name: "Lead Captured", description: "Triggered when a new lead is captured" },
+        { id: "content.viewed", name: "Content Viewed", description: "Triggered when gated content is viewed" },
+        { id: "question.updated", name: "Question Updated", description: "Triggered when a question is updated" },
+        { id: "answer.updated", name: "Answer Updated", description: "Triggered when an answer is updated" },
+        { id: "upvote", name: "Upvote", description: "Triggered when content receives an upvote" },
+        { id: "comment", name: "Comment", description: "Triggered when a comment is posted" },
+      ];
+
+      res.json(eventTypes);
+    } catch (error) {
+      console.error("Error fetching webhook event types:", error);
+      res.status(500).json({ message: "Failed to fetch webhook event types" });
     }
   });
 

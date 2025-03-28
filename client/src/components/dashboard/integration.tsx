@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tabs,
   TabsContent,
@@ -70,14 +71,21 @@ export default function Integration() {
     window.scrollTo(0, 0);
   }, []);
   
-  // Mock data
+  // Fetch integration statistics
   const { data: integrationStats, isLoading: isLoadingStats } = useQuery({
     queryKey: ["/api/integration/stats"],
     enabled: !!user,
   });
 
+  // Fetch webhook events
   const { data: webhookEvents, isLoading: isLoadingWebhooks } = useQuery({
     queryKey: ["/api/integration/webhooks"],
+    enabled: !!user,
+  });
+  
+  // Fetch webhook event types
+  const { data: webhookEventTypes = [], isLoading: isLoadingEventTypes } = useQuery({
+    queryKey: ["/api/integration/event-types"],
     enabled: !!user,
   });
 
@@ -167,14 +175,7 @@ export default function Integration() {
   }
 }`;
 
-  // Sample webhook event types
-  const webhookEventTypes = [
-    { id: "question.created", name: "Question Created", description: "Triggered when a new question is posted" },
-    { id: "answer.created", name: "Answer Created", description: "Triggered when a new answer is posted" },
-    { id: "user.registered", name: "User Registered", description: "Triggered when a new user signs up" },
-    { id: "lead.captured", name: "Lead Captured", description: "Triggered when a new lead is captured" },
-    { id: "content.viewed", name: "Content Viewed", description: "Triggered when gated content is viewed" },
-  ];
+  // Webhook event types are fetched from the API
 
   return (
     <div className="w-full">
@@ -411,24 +412,37 @@ export default function Integration() {
                     <CardTitle>Integration Stats</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Embedded Views</span>
-                        <span className="text-sm font-medium">2,467</span>
+                    {isLoadingStats ? (
+                      <div className="space-y-4">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-full" />
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Engagement Rate</span>
-                        <span className="text-sm font-medium">18.4%</span>
+                    ) : !integrationStats ? (
+                      <div className="text-center py-2 text-muted-foreground">
+                        <p className="text-sm">No integration data available</p>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Avg. Time on Forum</span>
-                        <span className="text-sm font-medium">5:42</span>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Embedded Views</span>
+                          <span className="text-sm font-medium">{integrationStats.embeddedViews?.toLocaleString() || 0}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Engagement Rate</span>
+                          <span className="text-sm font-medium">{integrationStats.engagementRate || '0'}%</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Avg. Time on Forum</span>
+                          <span className="text-sm font-medium">{integrationStats.avgTimeOnForum || '0:00'}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Questions via Embed</span>
+                          <span className="text-sm font-medium">{integrationStats.questionsViaEmbed?.toLocaleString() || 0}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Questions via Embed</span>
-                        <span className="text-sm font-medium">142</span>
-                      </div>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -589,16 +603,35 @@ export default function Integration() {
 
                     <div className="space-y-2">
                       <h3 className="text-sm font-medium">API Usage</h3>
-                      <div className="flex justify-between text-sm">
-                        <span>Today:</span>
-                        <span>142 / 1,000 requests</span>
-                      </div>
-                      <div className="w-full bg-dark-300 rounded-full h-2.5">
-                        <div className="bg-primary h-2.5 rounded-full" style={{ width: '14%' }}></div>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Resets daily at midnight UTC
-                      </p>
+                      {isLoadingStats ? (
+                        <>
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-2.5 w-full" />
+                          <Skeleton className="h-3 w-1/2" />
+                        </>
+                      ) : !integrationStats?.apiCalls ? (
+                        <div className="text-center py-2 text-muted-foreground">
+                          <p className="text-sm">No API usage data available</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between text-sm">
+                            <span>Today:</span>
+                            <span>{integrationStats.apiCalls.daily || 0} / {integrationStats.apiLimits?.daily || 1000} requests</span>
+                          </div>
+                          <div className="w-full bg-dark-300 rounded-full h-2.5">
+                            <div 
+                              className="bg-primary h-2.5 rounded-full" 
+                              style={{ 
+                                width: `${Math.min(((integrationStats.apiCalls.daily || 0) / (integrationStats.apiLimits?.daily || 1000)) * 100, 100)}%` 
+                              }}
+                            ></div>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Resets daily at midnight UTC
+                          </p>
+                        </>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

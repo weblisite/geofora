@@ -9,50 +9,125 @@ export async function getDashboardStats(req: Request, res: Response) {
   try {
     const period = req.params.period || "30d";
     const forumId = req.query.forumId ? parseInt(req.query.forumId as string) : undefined;
-
-    // In a real implementation, we would fetch this data from a database or analytics service
-    // For the demo, we'll return sample data
+    
+    if (!forumId) {
+      return res.status(400).json({ message: "Forum ID is required" });
+    }
+    
+    // Calculate date range based on period
+    const endDate = new Date();
+    const startDate = new Date();
+    
+    if (period === "7d") {
+      startDate.setDate(endDate.getDate() - 7);
+    } else if (period === "30d") {
+      startDate.setDate(endDate.getDate() - 30);
+    } else if (period === "90d") {
+      startDate.setDate(endDate.getDate() - 90);
+    } else if (period === "1y") {
+      startDate.setFullYear(endDate.getFullYear() - 1);
+    } else {
+      startDate.setDate(endDate.getDate() - 30); // Default to 30 days
+    }
+    
+    // Get previous period for trend calculation
+    const prevStartDate = new Date(startDate);
+    const prevEndDate = new Date(startDate);
+    
+    if (period === "7d") {
+      prevStartDate.setDate(prevStartDate.getDate() - 7);
+    } else if (period === "30d") {
+      prevStartDate.setDate(prevStartDate.getDate() - 30);
+    } else if (period === "90d") {
+      prevStartDate.setDate(prevStartDate.getDate() - 90);
+    } else if (period === "1y") {
+      prevStartDate.setFullYear(prevStartDate.getFullYear() - 1);
+    } else {
+      prevStartDate.setDate(prevStartDate.getDate() - 30);
+    }
+    
+    // Get question count
+    const questions = await storage.countQuestionsByForum(forumId, {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString()
+    });
+    
+    const prevQuestions = await storage.countQuestionsByForum(forumId, {
+      startDate: prevStartDate.toISOString(),
+      endDate: prevEndDate.toISOString()
+    });
+    
+    // Get answer count
+    const answers = await storage.countAnswersByForum(forumId, {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString()
+    });
+    
+    const prevAnswers = await storage.countAnswersByForum(forumId, {
+      startDate: prevStartDate.toISOString(),
+      endDate: prevEndDate.toISOString()
+    });
+    
+    // Get traffic data
+    const trafficMetrics = await storage.getUserEngagementMetricsByForum(forumId, startDate.toISOString(), endDate.toISOString());
+    const prevTrafficMetrics = await storage.getUserEngagementMetricsByForum(forumId, prevStartDate.toISOString(), prevEndDate.toISOString());
+    
+    const totalTraffic = trafficMetrics.reduce((sum, metric) => sum + (metric.pageViews || 0), 0);
+    const prevTotalTraffic = prevTrafficMetrics.reduce((sum, metric) => sum + (metric.pageViews || 0), 0);
+    
+    // Get conversion data (lead submissions)
+    const forms = await storage.getLeadCaptureFormsByForum(forumId);
+    const formIds = forms.map(form => form.id);
+    
+    let submissions = 0;
+    let prevSubmissions = 0;
+    
+    if (formIds.length > 0) {
+      const submissionData = await storage.getLeadSubmissionsByFormIds(formIds, startDate.toISOString(), endDate.toISOString());
+      submissions = submissionData.length;
+      
+      const prevSubmissionData = await storage.getLeadSubmissionsByFormIds(formIds, prevStartDate.toISOString(), prevEndDate.toISOString());
+      prevSubmissions = prevSubmissionData.length;
+    }
+    
+    // Calculate trends
+    const calculateTrend = (current: number, previous: number): { trend: string, trendPositive: boolean } => {
+      if (previous === 0) return { trend: "+100%", trendPositive: true };
+      
+      const percentChange = ((current - previous) / previous) * 100;
+      const trend = `${percentChange >= 0 ? '+' : ''}${percentChange.toFixed(1)}%`;
+      return {
+        trend,
+        trendPositive: percentChange >= 0
+      };
+    };
+    
+    const questionTrend = calculateTrend(questions, prevQuestions);
+    const answerTrend = calculateTrend(answers, prevAnswers);
+    const trafficTrend = calculateTrend(totalTraffic, prevTotalTraffic);
+    const conversionTrend = calculateTrend(submissions, prevSubmissions);
+    
     const stats = {
       questions: {
-        total: 1247,
-        trend: "+12.5%",
-        trendPositive: true,
+        total: questions,
+        trend: questionTrend.trend,
+        trendPositive: questionTrend.trendPositive,
       },
       answers: {
-        total: 5896,
-        trend: "+8.2%",
-        trendPositive: true,
+        total: answers,
+        trend: answerTrend.trend,
+        trendPositive: answerTrend.trendPositive,
       },
       traffic: {
-        total: 28453,
-        trend: "+15.7%",
-        trendPositive: true,
+        total: totalTraffic,
+        trend: trafficTrend.trend,
+        trendPositive: trafficTrend.trendPositive,
       },
       conversions: {
-        total: 342,
-        trend: "+5.3%",
-        trendPositive: true,
-      },
-      leads: {
-        total: 785,
-        trend: "+23.1%",
-        trendPositive: true,
-      },
-      formConversions: {
-        total: 8.7,
-        trend: "+2.3%",
-        trendPositive: true,
-      },
-      searchRankings: {
-        average: 14.8,
-        trend: "-3.2",
-        trendPositive: true,
-      },
-      clickThroughRate: {
-        percentage: 4.2,
-        trend: "+0.5%",
-        trendPositive: true,
-      },
+        total: submissions,
+        trend: conversionTrend.trend,
+        trendPositive: conversionTrend.trendPositive,
+      }
     };
 
     res.json(stats);
@@ -67,50 +142,127 @@ export async function getTrafficData(req: Request, res: Response) {
   try {
     const period = req.params.period || "30d";
     const forumId = req.query.forumId ? parseInt(req.query.forumId as string) : undefined;
-
-    // Sample data for the demo
+    
+    if (!forumId) {
+      return res.status(400).json({ message: "Forum ID is required" });
+    }
+    
+    // Calculate date range based on period
+    const endDate = new Date();
+    const startDate = new Date();
+    
+    if (period === "7d") {
+      startDate.setDate(endDate.getDate() - 7);
+    } else if (period === "30d") {
+      startDate.setDate(endDate.getDate() - 30);
+    } else if (period === "90d") {
+      startDate.setDate(endDate.getDate() - 90);
+    } else if (period === "1y") {
+      startDate.setFullYear(endDate.getFullYear() - 1);
+    } else {
+      startDate.setDate(endDate.getDate() - 30); // Default to 30 days
+    }
+    
+    // Get real traffic data from database 
+    const trafficStats = await storage.getTrafficStatsByForum(forumId, startDate.toISOString(), endDate.toISOString());
+    
+    // Get average session duration
+    const avgDuration = await storage.getDailyAverageSessionDuration(forumId, 
+      Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+    
+    // Get referral data
+    const referrals = await storage.getReferralsByForum(forumId, startDate.toISOString(), endDate.toISOString());
+    
+    // Get traffic by page
+    const pageTraffic = await storage.getPageTrafficByForum(forumId, startDate.toISOString(), endDate.toISOString());
+    
+    // Get cross-site traffic if available
+    const crossSiteStats = await storage.getCrossSiteTrafficByForum(forumId, startDate.toISOString(), endDate.toISOString());
+    
+    // Calculate totals
+    const totalVisits = trafficStats.reduce((sum, stat) => sum + (stat.visits || 0), 0);
+    const uniqueVisitors = trafficStats.reduce((sum, stat) => sum + (stat.uniqueVisitors || 0), 0);
+    const pageViews = trafficStats.reduce((sum, stat) => sum + (stat.pageViews || 0), 0);
+    
+    // Calculate bounce rate
+    const bounceSessions = trafficStats.reduce((sum, stat) => sum + (stat.bounceSessions || 0), 0);
+    const bounceRate = totalVisits > 0 ? (bounceSessions / totalVisits) * 100 : 0;
+    
+    // Group referrals by source
+    const referrerMap = new Map();
+    referrals.forEach(ref => {
+      const source = ref.source || "Unknown";
+      if (!referrerMap.has(source)) {
+        referrerMap.set(source, { visits: 0, conversions: 0 });
+      }
+      const current = referrerMap.get(source);
+      referrerMap.set(source, {
+        visits: current.visits + (ref.visits || 0),
+        conversions: current.conversions + (ref.conversions || 0)
+      });
+    });
+    
+    // Format referrer data for response
+    const referrerData = Array.from(referrerMap.entries()).map(([source, data]) => ({
+      source,
+      visits: data.visits,
+      conversion: data.visits > 0 ? (data.conversions / data.visits) * 100 : 0
+    })).sort((a, b) => b.visits - a.visits).slice(0, 5);
+    
+    // Group traffic by source
+    const sourceMap = new Map();
+    sourceMap.set("Search", 0);
+    sourceMap.set("Direct", 0);
+    sourceMap.set("Referral", 0);
+    sourceMap.set("Social", 0);
+    sourceMap.set("Email", 0);
+    sourceMap.set("Other", 0);
+    
+    trafficStats.forEach(stat => {
+      const source = stat.trafficSource || "Other";
+      if (sourceMap.has(source)) {
+        sourceMap.set(source, sourceMap.get(source) + (stat.visits || 0));
+      } else {
+        sourceMap.set("Other", sourceMap.get("Other") + (stat.visits || 0));
+      }
+    });
+    
+    // Format traffic sources for response
+    const trafficSources = Array.from(sourceMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .filter(item => item.value > 0)
+      .sort((a, b) => b.value - a.value);
+    
+    // Format traffic by page
+    const trafficByPage = pageTraffic
+      .sort((a, b) => (b.currentViews || 0) - (a.currentViews || 0))
+      .slice(0, 8)
+      .map(page => ({
+        page: page.path,
+        views: page.currentViews || 0,
+        change: page.previousViews ? ((page.currentViews || 0) - page.previousViews) : 0
+      }));
+    
+    // Format cross-site traffic
+    const crossSiteTraffic = crossSiteStats.map((stat, index) => ({
+      date: `Day ${index + 1}`,
+      forumToWebsite: stat.forumToWebsite || 0,
+      websiteToForum: stat.websiteToForum || 0
+    }));
+    
+    // Compile complete traffic data
     const trafficData = {
-      totalVisits: 28453,
-      uniqueVisitors: 18215,
-      pageViews: 74218,
-      avgTimeOnSite: "3m 24s",
-      bounceRate: 42.6,
-      trafficSources: [
-        { name: "Search", value: 12587 },
-        { name: "Direct", value: 5423 },
-        { name: "Referral", value: 4782 },
-        { name: "Social", value: 3421 },
-        { name: "Email", value: 1985 },
-        { name: "Other", value: 255 },
-      ],
-      trafficByPage: [
-        { page: "/forum/best-seo-practices-2024", views: 1432, change: 23 },
-        { page: "/forum/google-algorithm-update", views: 1203, change: 15 },
-        { page: "/forum/keyword-research-tools", views: 987, change: 5 },
-        { page: "/forum/backlink-strategies", views: 864, change: -2 },
-        { page: "/forum/content-optimization-tips", views: 752, change: 8 },
-        { page: "/forum/local-seo-guide", views: 643, change: 11 },
-        { page: "/forum/mobile-optimization", views: 531, change: 0 },
-        { page: "/forum/site-speed-optimization", views: 487, change: -5 },
-      ],
-      referrers: [
-        { source: "Google", visits: 11245, conversion: 3.2 },
-        { source: "example.com", visits: 1853, conversion: 6.7 },
-        { source: "Facebook", visits: 1542, conversion: 2.1 },
-        { source: "Twitter", visits: 982, conversion: 1.8 },
-        { source: "LinkedIn", visits: 754, conversion: 5.3 },
-      ],
-      crossSiteTraffic: [
-        { date: "Day 1", forumToWebsite: 245, websiteToForum: 187 },
-        { date: "Day 2", forumToWebsite: 267, websiteToForum: 198 },
-        { date: "Day 3", forumToWebsite: 289, websiteToForum: 210 },
-        { date: "Day 4", forumToWebsite: 312, websiteToForum: 223 },
-        { date: "Day 5", forumToWebsite: 336, websiteToForum: 236 },
-        { date: "Day 6", forumToWebsite: 356, websiteToForum: 248 },
-        { date: "Day 7", forumToWebsite: 378, websiteToForum: 256 },
-      ]
+      totalVisits,
+      uniqueVisitors,
+      pageViews,
+      avgTimeOnSite: formatDuration(avgDuration),
+      bounceRate: parseFloat(bounceRate.toFixed(1)),
+      trafficSources,
+      trafficByPage,
+      referrers: referrerData,
+      crossSiteTraffic: crossSiteTraffic.length > 0 ? crossSiteTraffic : []
     };
-
+    
     res.json(trafficData);
   } catch (error) {
     console.error("Error getting traffic data:", error);
@@ -123,32 +275,62 @@ export async function getDailyTrafficData(req: Request, res: Response) {
   try {
     const period = req.query.period || "30d";
     const forumId = req.query.forumId ? parseInt(req.query.forumId as string) : undefined;
-
-    // Generate sample daily traffic data
-    const dailyTrafficData = [];
+    
+    if (!forumId) {
+      return res.status(400).json({ message: "Forum ID is required" });
+    }
+    
+    // Calculate date range based on period
+    const endDate = new Date();
+    const startDate = new Date();
     const days = period === "7d" ? 7 : period === "30d" ? 30 : period === "90d" ? 90 : 30;
-    const baseVisits = 800;
-    const baseUniqueVisitors = 500;
-    const basePageViews = 2000;
-
+    startDate.setDate(endDate.getDate() - days);
+    
+    // Get real daily traffic data from the database
+    const trafficData = await storage.getDailyTrafficByForum(forumId, startDate.toISOString(), endDate.toISOString());
+    
+    // Group metrics by day and format for chart display
+    const dailyTrafficMap = new Map();
+    
+    // Pre-populate all days in the range with zero values
     for (let i = 0; i < days; i++) {
-      const dayNumber = days - i;
-      const date = new Date();
-      date.setDate(date.getDate() - dayNumber);
+      const date = new Date(endDate);
+      date.setDate(date.getDate() - i);
       const dateStr = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-
-      // Add some randomness and general upward trend
-      const trendFactor = 1 + (days - dayNumber) * 0.01;
-      const randomFactor = 0.8 + Math.random() * 0.4;
-
-      dailyTrafficData.push({
+      
+      dailyTrafficMap.set(dateStr, {
         name: dateStr,
-        visits: Math.round(baseVisits * trendFactor * randomFactor),
-        uniqueVisitors: Math.round(baseUniqueVisitors * trendFactor * randomFactor),
-        pageViews: Math.round(basePageViews * trendFactor * randomFactor),
+        visits: 0,
+        uniqueVisitors: 0,
+        pageViews: 0,
       });
     }
-
+    
+    // Populate with actual data where available
+    trafficData.forEach(entry => {
+      const date = new Date(entry.date);
+      const dateStr = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      
+      if (dailyTrafficMap.has(dateStr)) {
+        const current = dailyTrafficMap.get(dateStr);
+        dailyTrafficMap.set(dateStr, {
+          name: dateStr,
+          visits: current.visits + (entry.visits || 0),
+          uniqueVisitors: current.uniqueVisitors + (entry.uniqueVisitors || 0),
+          pageViews: current.pageViews + (entry.pageViews || 0),
+        });
+      }
+    });
+    
+    // Convert map to array and sort by date
+    const dailyTrafficData = Array.from(dailyTrafficMap.values())
+      .sort((a, b) => {
+        // Sort by date (month and day)
+        const dateA = new Date(`2024 ${a.name}`);
+        const dateB = new Date(`2024 ${b.name}`);
+        return dateA.getTime() - dateB.getTime();
+      });
+    
     res.json(dailyTrafficData);
   } catch (error) {
     console.error("Error getting daily traffic data:", error);
@@ -231,111 +413,151 @@ export async function getSeoRankings(req: Request, res: Response) {
   try {
     const period = req.query.period || "30d";
     const forumId = req.query.forumId ? parseInt(req.query.forumId as string) : undefined;
-
-    // Sample data for the demo
-    const seoRankingsData = {
-      topTenCount: 42,
-      movingKeywordsCount: 24,
-      rankings: [
-        {
-          id: 1,
-          keyword: "BERT optimization",
-          position: 3,
-          previousPosition: 5,
-          change: 2,
-          url: "forum/best-seo-practices-2024/what-is-the-most-effective-way-to-optimize-content-for-bert-algorithm",
-          searchVolume: 4200,
-          difficulty: 76,
-        },
-        {
-          id: 2,
-          keyword: "helpful content update",
-          position: 5,
-          previousPosition: 6,
-          change: 1,
-          url: "forum/google-algorithm-update/how-does-googles-helpful-content-update-affect-ranking-in-2024",
-          searchVolume: 3800,
-          difficulty: 68,
-        },
-        {
-          id: 3,
-          keyword: "e-commerce image SEO",
-          position: 7,
-          previousPosition: 6,
-          change: -1,
-          url: "forum/content-optimization-tips/best-practices-for-optimizing-image-seo-for-e-commerce",
-          searchVolume: 2900,
-          difficulty: 58,
-        },
-        {
-          id: 4,
-          keyword: "site speed ranking impact",
-          position: 2,
-          previousPosition: 5,
-          change: 3,
-          url: "forum/site-speed-optimization/does-site-speed-really-impact-search-rankings",
-          searchVolume: 3400,
-          difficulty: 61,
-        },
-        {
-          id: 5,
-          keyword: "topic cluster SEO",
-          position: 4,
-          previousPosition: 4,
-          change: 0,
-          url: "forum/content-optimization-tips/how-to-create-topic-clusters-that-rank-well",
-          searchVolume: 2500,
-          difficulty: 54,
-        },
-        {
-          id: 6,
-          keyword: "AI content detection SEO",
-          position: 1,
-          previousPosition: 6,
-          change: 5,
-          url: "forum/content-optimization-tips/ai-content-and-seo-is-it-detectable-by-google",
-          searchVolume: 5200,
-          difficulty: 82,
-        },
-        {
-          id: 7,
-          keyword: "voice search optimization",
-          position: 8,
-          previousPosition: 10,
-          change: 2,
-          url: "forum/mobile-optimization/how-to-optimize-for-voice-search-in-2024",
-          searchVolume: 2800,
-          difficulty: 60,
-        },
-        {
-          id: 8,
-          keyword: "effective local SEO tactics",
-          position: 5,
-          previousPosition: 3,
-          change: -2,
-          url: "forum/local-seo-guide/local-seo-tactics-that-actually-work",
-          searchVolume: 3100,
-          difficulty: 63,
-        },
-      ],
-      positionDistribution: [
-        { range: "Positions 1-3", count: 2 },
-        { range: "Positions 4-10", count: 6 },
-        { range: "Positions 11-20", count: 13 },
-        { range: "Positions 21-50", count: 21 },
-        { range: "Positions 50+", count: 12 },
-      ],
-      topKeywords: ["AI content detection SEO", "site speed ranking impact", "BERT optimization", "topic cluster SEO", "helpful content update"],
-      historicalRankings: [
-        { date: "Jan", "AI content detection SEO": 6, "site speed ranking impact": 9, "BERT optimization": 8, "topic cluster SEO": 7, "helpful content update": 11 },
-        { date: "Feb", "AI content detection SEO": 5, "site speed ranking impact": 7, "BERT optimization": 7, "topic cluster SEO": 6, "helpful content update": 9 },
-        { date: "Mar", "AI content detection SEO": 4, "site speed ranking impact": 5, "BERT optimization": 6, "topic cluster SEO": 5, "helpful content update": 8 },
-        { date: "Apr", "AI content detection SEO": 3, "site speed ranking impact": 4, "BERT optimization": 5, "topic cluster SEO": 5, "helpful content update": 7 },
-        { date: "May", "AI content detection SEO": 2, "site speed ranking impact": 3, "BERT optimization": 4, "topic cluster SEO": 4, "helpful content update": 6 },
-        { date: "Jun", "AI content detection SEO": 1, "site speed ranking impact": 2, "BERT optimization": 3, "topic cluster SEO": 4, "helpful content update": 5 },
-      ]
+    
+    if (!forumId) {
+      return res.status(400).json({ message: "Forum ID is required" });
+    }
+    
+    // Calculate date range based on period
+    const endDate = new Date();
+    const startDate = new Date();
+    
+    if (period === "7d") {
+      startDate.setDate(endDate.getDate() - 7);
+    } else if (period === "30d") {
+      startDate.setDate(endDate.getDate() - 30);
+    } else if (period === "90d") {
+      startDate.setDate(endDate.getDate() - 90);
+    } else if (period === "1y") {
+      startDate.setFullYear(endDate.getFullYear() - 1);
+    } else {
+      startDate.setDate(endDate.getDate() - 30); // Default to 30 days
+    }
+    
+    // Get all keywords and their positions for the forum
+    const allKeywords = await storage.getSeoKeywordsByForum(forumId);
+    const keywordIds = allKeywords.map(keyword => keyword.id);
+    
+    // Get historical positions for each keyword
+    const positionHistoryMap = new Map();
+    
+    for (const keywordId of keywordIds) {
+      const positions = await storage.getSeoPositionsByKeywordId(keywordId, startDate.toISOString(), endDate.toISOString());
+      if (positions && positions.length > 0) {
+        positionHistoryMap.set(keywordId, positions);
+      }
+    }
+    
+    // Process the keywords and their positions
+    const rankings = allKeywords.map(keyword => {
+      const positions = positionHistoryMap.get(keyword.id) || [];
+      // Sort positions by date, newest first
+      positions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      const currentPosition = positions.length > 0 ? positions[0].position : null;
+      const previousPosition = positions.length > 1 ? positions[1].position : null;
+      const change = (currentPosition && previousPosition) ? previousPosition - currentPosition : 0;
+      
+      return {
+        id: keyword.id,
+        keyword: keyword.keyword,
+        position: currentPosition || 0,
+        previousPosition: previousPosition || 0,
+        change,
+        url: keyword.url || "",
+        searchVolume: keyword.searchVolume || 0,
+        difficulty: keyword.difficulty || 0,
+      };
+    })
+    .filter(keyword => keyword.position > 0) // Only include keywords that have position data
+    .sort((a, b) => a.position - b.position); // Sort by position (best ranking first)
+    
+    // Count keywords in top 10
+    const topTenCount = rankings.filter(keyword => keyword.position <= 10).length;
+    
+    // Count keywords that have moved (changed position)
+    const movingKeywordsCount = rankings.filter(keyword => keyword.change !== 0).length;
+    
+    // Calculate position distribution
+    const getPositionRange = (position: number) => {
+      if (position <= 3) return "Positions 1-3";
+      if (position <= 10) return "Positions 4-10";
+      if (position <= 20) return "Positions 11-20";
+      if (position <= 50) return "Positions 21-50";
+      return "Positions 50+";
     };
-
+    
+    const positionCounts = new Map();
+    positionCounts.set("Positions 1-3", 0);
+    positionCounts.set("Positions 4-10", 0);
+    positionCounts.set("Positions 11-20", 0);
+    positionCounts.set("Positions 21-50", 0);
+    positionCounts.set("Positions 50+", 0);
+    
+    rankings.forEach(keyword => {
+      const range = getPositionRange(keyword.position);
+      positionCounts.set(range, positionCounts.get(range) + 1);
+    });
+    
+    const positionDistribution = Array.from(positionCounts.entries()).map(([range, count]) => ({
+      range,
+      count,
+    }));
+    
+    // Get top 5 keywords (by position)
+    const topKeywords = rankings.slice(0, 5).map(keyword => keyword.keyword);
+    
+    // Generate historical trend data
+    // Get months for the selected period
+    const months = [];
+    let currentMonth = new Date(startDate);
+    while (currentMonth <= endDate) {
+      months.push(currentMonth.toLocaleDateString('en-US', { month: 'short' }));
+      currentMonth.setMonth(currentMonth.getMonth() + 1);
+    }
+    
+    // Create historical data for top 5 keywords
+    const historicalRankings = [];
+    
+    // Create entry for each month
+    months.forEach(month => {
+      const entry: Record<string, any> = { date: month };
+      
+      // Add position for each top keyword in that month
+      topKeywords.forEach(keywordName => {
+        const keyword = rankings.find(k => k.keyword === keywordName);
+        if (keyword) {
+          const positions = positionHistoryMap.get(keyword.id) || [];
+          
+          // Find position from that month
+          const monthDate = new Date(`${month} 1, ${new Date().getFullYear()}`);
+          const monthPositions = positions.filter(p => {
+            const posDate = new Date(p.date);
+            return posDate.getMonth() === monthDate.getMonth();
+          });
+          
+          // Use the most recent position from that month, or fallback
+          entry[keywordName] = monthPositions.length > 0 
+            ? monthPositions[0].position 
+            : keyword.position;
+        } else {
+          entry[keywordName] = 0;
+        }
+      });
+      
+      historicalRankings.push(entry);
+    });
+    
+    // Compile SEO rankings data
+    const seoRankingsData = {
+      topTenCount,
+      movingKeywordsCount,
+      rankings: rankings.slice(0, 8), // Limit to top 8 keywords for UI display
+      positionDistribution,
+      topKeywords,
+      historicalRankings
+    };
+    
     res.json(seoRankingsData);
   } catch (error) {
     console.error("Error getting SEO rankings:", error);
@@ -348,16 +570,57 @@ export async function getConversionFunnel(req: Request, res: Response) {
   try {
     const period = req.query.period || "30d";
     const forumId = req.query.forumId ? parseInt(req.query.forumId as string) : undefined;
-
-    // Sample data for the demo
+    
+    if (!forumId) {
+      return res.status(400).json({ message: "Forum ID is required" });
+    }
+    
+    // Calculate date range based on period
+    const endDate = new Date();
+    const startDate = new Date();
+    
+    if (period === "7d") {
+      startDate.setDate(endDate.getDate() - 7);
+    } else if (period === "30d") {
+      startDate.setDate(endDate.getDate() - 30);
+    } else if (period === "90d") {
+      startDate.setDate(endDate.getDate() - 90);
+    } else if (period === "1y") {
+      startDate.setFullYear(endDate.getFullYear() - 1);
+    } else {
+      startDate.setDate(endDate.getDate() - 30); // Default to 30 days
+    }
+    
+    // Get real funnel metrics from database
+    const pageViewsData = await storage.getPageViewsByForum(forumId, startDate.toISOString(), endDate.toISOString());
+    const contentReadData = await storage.getContentReadByForum(forumId, startDate.toISOString(), endDate.toISOString());
+    const ctaClickData = await storage.getCtaClicksByForum(forumId, startDate.toISOString(), endDate.toISOString());
+    const formViewData = await storage.getFormViewsByForum(forumId, startDate.toISOString(), endDate.toISOString());
+    const formSubmitData = await storage.getFormSubmissionsByForum(forumId, startDate.toISOString(), endDate.toISOString());
+    
+    // Calculate totals
+    const pageViews = pageViewsData.reduce((sum, entry) => sum + entry.count, 0);
+    const contentRead = contentReadData.reduce((sum, entry) => sum + entry.count, 0);
+    const ctaClicks = ctaClickData.reduce((sum, entry) => sum + entry.count, 0);
+    const formViews = formViewData.reduce((sum, entry) => sum + entry.count, 0);
+    const formSubmissions = formSubmitData.reduce((sum, entry) => sum + entry.count, 0);
+    
+    // Calculate percentages
+    const pageViewsPercentage = 100;
+    const contentReadPercentage = pageViews > 0 ? (contentRead / pageViews) * 100 : 0;
+    const ctaClicksPercentage = pageViews > 0 ? (ctaClicks / pageViews) * 100 : 0;
+    const formViewsPercentage = pageViews > 0 ? (formViews / pageViews) * 100 : 0;
+    const formSubmissionsPercentage = pageViews > 0 ? (formSubmissions / pageViews) * 100 : 0;
+    
+    // Format data for response
     const conversionFunnelData = [
-      { name: "Page Views", value: 28453, percentage: 100 },
-      { name: "Read Content", value: 17843, percentage: 62.7 },
-      { name: "Click CTA", value: 5623, percentage: 19.8 },
-      { name: "Form Views", value: 3487, percentage: 12.3 },
-      { name: "Form Submissions", value: 785, percentage: 2.8 },
+      { name: "Page Views", value: pageViews, percentage: pageViewsPercentage },
+      { name: "Read Content", value: contentRead, percentage: parseFloat(contentReadPercentage.toFixed(1)) },
+      { name: "Click CTA", value: ctaClicks, percentage: parseFloat(ctaClicksPercentage.toFixed(1)) },
+      { name: "Form Views", value: formViews, percentage: parseFloat(formViewsPercentage.toFixed(1)) },
+      { name: "Form Submissions", value: formSubmissions, percentage: parseFloat(formSubmissionsPercentage.toFixed(1)) },
     ];
-
+    
     res.json(conversionFunnelData);
   } catch (error) {
     console.error("Error getting conversion funnel:", error);
@@ -370,20 +633,110 @@ export async function getReferralTraffic(req: Request, res: Response) {
   try {
     const period = req.query.period || "30d";
     const forumId = req.query.forumId ? parseInt(req.query.forumId as string) : undefined;
-
-    // Sample data for the demo
-    const referralTrafficData = [
-      { source: "Google", visits: 12587, conversions: 423, conversionRate: 0.034, change: 15 },
-      { source: "Main Website", visits: 4328, conversions: 218, conversionRate: 0.05, change: 24 },
-      { source: "Facebook", visits: 1853, conversions: 87, conversionRate: 0.047, change: 3 },
-      { source: "Twitter", visits: 982, conversions: 43, conversionRate: 0.044, change: -2 },
-      { source: "LinkedIn", visits: 754, conversions: 61, conversionRate: 0.081, change: 18 },
-      { source: "Reddit", visits: 542, conversions: 32, conversionRate: 0.059, change: 7 },
-      { source: "YouTube", visits: 328, conversions: 21, conversionRate: 0.064, change: 11 },
-      { source: "Email", visits: 245, conversions: 28, conversionRate: 0.114, change: 9 },
-    ];
-
-    res.json(referralTrafficData);
+    
+    if (!forumId) {
+      return res.status(400).json({ message: "Forum ID is required" });
+    }
+    
+    // Calculate date range based on period
+    const endDate = new Date();
+    const startDate = new Date();
+    
+    if (period === "7d") {
+      startDate.setDate(endDate.getDate() - 7);
+    } else if (period === "30d") {
+      startDate.setDate(endDate.getDate() - 30);
+    } else if (period === "90d") {
+      startDate.setDate(endDate.getDate() - 90);
+    } else if (period === "1y") {
+      startDate.setFullYear(endDate.getFullYear() - 1);
+    } else {
+      startDate.setDate(endDate.getDate() - 30); // Default to 30 days
+    }
+    
+    // Get referral traffic data from database
+    const referralData = await storage.getReferralTrafficByForum(forumId, startDate.toISOString(), endDate.toISOString());
+    
+    // Get conversion data
+    const conversionData = await storage.getReferralConversionsByForum(forumId, startDate.toISOString(), endDate.toISOString());
+    
+    // Get previous period data for calculating change percentage
+    const previousStartDate = new Date(startDate);
+    const previousEndDate = new Date(startDate);
+    const periodDays = Math.round((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
+    previousStartDate.setDate(previousStartDate.getDate() - periodDays);
+    
+    const previousReferralData = await storage.getReferralTrafficByForum(
+      forumId, 
+      previousStartDate.toISOString(), 
+      previousEndDate.toISOString()
+    );
+    
+    // Process and format the data
+    const processedData = [];
+    
+    // Group referral data by source
+    const sourceMap = new Map();
+    
+    referralData.forEach(data => {
+      const source = data.source || "Direct";
+      
+      if (!sourceMap.has(source)) {
+        sourceMap.set(source, {
+          source,
+          visits: 0,
+          conversions: 0,
+          conversionRate: 0,
+          change: 0,
+          previousVisits: 0
+        });
+      }
+      
+      const sourceData = sourceMap.get(source);
+      sourceData.visits += data.count;
+    });
+    
+    // Add conversion data
+    conversionData.forEach(data => {
+      const source = data.source || "Direct";
+      
+      if (sourceMap.has(source)) {
+        const sourceData = sourceMap.get(source);
+        sourceData.conversions += data.count;
+        sourceData.conversionRate = sourceData.visits > 0 ? sourceData.conversions / sourceData.visits : 0;
+      }
+    });
+    
+    // Calculate change compared to previous period
+    previousReferralData.forEach(data => {
+      const source = data.source || "Direct";
+      
+      if (sourceMap.has(source)) {
+        const sourceData = sourceMap.get(source);
+        sourceData.previousVisits += data.count;
+        
+        // Calculate percentage change
+        if (sourceData.previousVisits > 0) {
+          sourceData.change = ((sourceData.visits - sourceData.previousVisits) / sourceData.previousVisits) * 100;
+        }
+      }
+    });
+    
+    // Convert map to array and format data
+    sourceMap.forEach(sourceData => {
+      processedData.push({
+        source: sourceData.source,
+        visits: sourceData.visits,
+        conversions: sourceData.conversions,
+        conversionRate: parseFloat(sourceData.conversionRate.toFixed(3)),
+        change: Math.round(sourceData.change)
+      });
+    });
+    
+    // Sort by visits (highest first)
+    processedData.sort((a, b) => b.visits - a.visits);
+    
+    res.json(processedData);
   } catch (error) {
     console.error("Error getting referral traffic:", error);
     res.status(500).json({ message: "Failed to fetch referral traffic" });
@@ -395,14 +748,62 @@ export async function getDeviceDistribution(req: Request, res: Response) {
   try {
     const period = req.query.period || "30d";
     const forumId = req.query.forumId ? parseInt(req.query.forumId as string) : undefined;
-
-    // Sample data for the demo
-    const deviceDistributionData = [
-      { name: "Desktop", value: 11235 },
-      { name: "Mobile", value: 14675 },
-      { name: "Tablet", value: 2543 },
-    ];
-
+    
+    if (!forumId) {
+      return res.status(400).json({ message: "Forum ID is required" });
+    }
+    
+    // Calculate date range based on period
+    const endDate = new Date();
+    const startDate = new Date();
+    
+    if (period === "7d") {
+      startDate.setDate(endDate.getDate() - 7);
+    } else if (period === "30d") {
+      startDate.setDate(endDate.getDate() - 30);
+    } else if (period === "90d") {
+      startDate.setDate(endDate.getDate() - 90);
+    } else if (period === "1y") {
+      startDate.setFullYear(endDate.getFullYear() - 1);
+    } else {
+      startDate.setDate(endDate.getDate() - 30); // Default to 30 days
+    }
+    
+    // Get device usage data from database
+    const deviceData = await storage.getDeviceUsageByForum(forumId, startDate.toISOString(), endDate.toISOString());
+    
+    // Group data by device type
+    const deviceCounts = new Map();
+    deviceCounts.set("Desktop", 0);
+    deviceCounts.set("Mobile", 0);
+    deviceCounts.set("Tablet", 0);
+    
+    deviceData.forEach(data => {
+      const deviceType = data.deviceType || "Unknown";
+      let category;
+      
+      // Categorize devices
+      if (deviceType.toLowerCase().includes("mobile") || 
+          deviceType.toLowerCase().includes("phone") || 
+          deviceType.toLowerCase().includes("android") && !deviceType.toLowerCase().includes("tablet")) {
+        category = "Mobile";
+      } else if (deviceType.toLowerCase().includes("tablet") || 
+                deviceType.toLowerCase().includes("ipad")) {
+        category = "Tablet";
+      } else {
+        category = "Desktop";
+      }
+      
+      // Add to counts
+      deviceCounts.set(category, (deviceCounts.get(category) || 0) + data.count);
+    });
+    
+    // Format data for response
+    const deviceDistributionData = Array.from(deviceCounts.entries()).map(([name, value]) => ({
+      name,
+      value
+    }));
+    
     res.json(deviceDistributionData);
   } catch (error) {
     console.error("Error getting device distribution:", error);
@@ -415,22 +816,65 @@ export async function getGeographicData(req: Request, res: Response) {
   try {
     const period = req.query.period || "30d";
     const forumId = req.query.forumId ? parseInt(req.query.forumId as string) : undefined;
-
-    // Sample data for the demo
-    const geographicData = [
-      { country: "United States", visits: 12435, percentage: 0.437 },
-      { country: "United Kingdom", visits: 3542, percentage: 0.124 },
-      { country: "India", visits: 2843, percentage: 0.100 },
-      { country: "Germany", visits: 1875, percentage: 0.066 },
-      { country: "Canada", visits: 1543, percentage: 0.054 },
-      { country: "Australia", visits: 1245, percentage: 0.044 },
-      { country: "France", visits: 987, percentage: 0.035 },
-      { country: "Brazil", visits: 854, percentage: 0.030 },
-      { country: "Spain", visits: 643, percentage: 0.023 },
-      { country: "Other", visits: 2486, percentage: 0.087 },
-    ];
-
-    res.json(geographicData);
+    
+    if (!forumId) {
+      return res.status(400).json({ message: "Forum ID is required" });
+    }
+    
+    // Calculate date range based on period
+    const endDate = new Date();
+    const startDate = new Date();
+    
+    if (period === "7d") {
+      startDate.setDate(endDate.getDate() - 7);
+    } else if (period === "30d") {
+      startDate.setDate(endDate.getDate() - 30);
+    } else if (period === "90d") {
+      startDate.setDate(endDate.getDate() - 90);
+    } else if (period === "1y") {
+      startDate.setFullYear(endDate.getFullYear() - 1);
+    } else {
+      startDate.setDate(endDate.getDate() - 30); // Default to 30 days
+    }
+    
+    // Get geographic data from database
+    const geoData = await storage.getGeoLocationDataByForum(forumId, startDate.toISOString(), endDate.toISOString());
+    
+    // Group data by country
+    const countryData = new Map();
+    let totalVisits = 0;
+    
+    geoData.forEach(data => {
+      const country = data.country || "Unknown";
+      const existingCount = countryData.get(country) || 0;
+      countryData.set(country, existingCount + data.count);
+      totalVisits += data.count;
+    });
+    
+    // Process data and calculate percentages
+    let processedData = Array.from(countryData.entries())
+      .map(([country, visits]) => ({
+        country,
+        visits,
+        percentage: totalVisits > 0 ? Number((visits / totalVisits).toFixed(3)) : 0
+      }))
+      .sort((a, b) => b.visits - a.visits);
+    
+    // Limit to top 9 countries + "Other"
+    if (processedData.length > 10) {
+      const topCountries = processedData.slice(0, 9);
+      const otherCountries = processedData.slice(9);
+      
+      const otherVisits = otherCountries.reduce((sum, item) => sum + item.visits, 0);
+      const otherPercentage = totalVisits > 0 ? Number((otherVisits / totalVisits).toFixed(3)) : 0;
+      
+      processedData = [
+        ...topCountries,
+        { country: "Other", visits: otherVisits, percentage: otherPercentage }
+      ];
+    }
+    
+    res.json(processedData);
   } catch (error) {
     console.error("Error getting geographic data:", error);
     res.status(500).json({ message: "Failed to fetch geographic data" });
@@ -567,56 +1011,79 @@ export async function getAiActivity(req: Request, res: Response) {
   try {
     const period = req.query.period || "30d";
     const forumId = req.query.forumId ? parseInt(req.query.forumId as string) : undefined;
-
-    // Sample data for the demo
-    const aiActivityData = [
-      { 
-        id: 1, 
-        type: "answer", 
-        personaType: "expert", 
-        personaName: "Dr. SEO Expert", 
-        action: "Answered question about backlink strategies", 
-        subject: "How to build high-quality backlinks in 2024?", 
-        timestamp: "2024-03-27T10:23:45Z" 
-      },
-      { 
-        id: 2, 
-        type: "question", 
-        personaType: "intermediate", 
-        personaName: "SEO Practitioner", 
-        action: "Generated question about core web vitals", 
-        subject: "How do core web vitals affect e-commerce conversion rates?", 
-        timestamp: "2024-03-27T09:15:30Z" 
-      },
-      { 
-        id: 3, 
-        type: "moderation", 
-        personaType: "moderator", 
-        personaName: "Forum Moderator", 
-        action: "Flagged spam content", 
-        subject: "Removed promotional link in discussion thread", 
-        timestamp: "2024-03-27T08:45:12Z" 
-      },
-      { 
-        id: 4, 
-        type: "response", 
-        personaType: "beginner", 
-        personaName: "SEO Beginner", 
-        action: "Responded to thread about meta descriptions", 
-        subject: "How long should meta descriptions be in 2024?", 
-        timestamp: "2024-03-27T07:30:18Z" 
-      },
-      { 
-        id: 5, 
-        type: "answer", 
-        personaType: "expert", 
-        personaName: "Dr. SEO Expert", 
-        action: "Answered question about schema markup", 
-        subject: "Best practices for implementing schema markup", 
-        timestamp: "2024-03-26T22:10:45Z" 
-      },
-    ];
-
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+    
+    if (!forumId) {
+      return res.status(400).json({ message: "Forum ID is required" });
+    }
+    
+    // Calculate date range based on period
+    const endDate = new Date();
+    const startDate = new Date();
+    
+    if (period === "7d") {
+      startDate.setDate(endDate.getDate() - 7);
+    } else if (period === "30d") {
+      startDate.setDate(endDate.getDate() - 30);
+    } else if (period === "90d") {
+      startDate.setDate(endDate.getDate() - 90);
+    } else if (period === "1y") {
+      startDate.setFullYear(endDate.getFullYear() - 1);
+    } else {
+      startDate.setDate(endDate.getDate() - 30); // Default to 30 days
+    }
+    
+    // Get AI-generated questions and answers
+    const aiQuestions = await storage.getAiGeneratedQuestionsByForum(forumId, startDate.toISOString(), endDate.toISOString(), limit / 2);
+    const aiAnswers = await storage.getAiGeneratedAnswersByForum(forumId, startDate.toISOString(), endDate.toISOString(), limit / 2);
+    
+    // Get AI personas
+    const aiPersonas = await storage.getAllAiPersonas();
+    
+    // Map questions and answers to activity format
+    const questionsActivity = aiQuestions.map(q => {
+      const persona = aiPersonas.find(p => p.type === q.aiPersonaType) || { 
+        name: q.aiPersonaType?.charAt(0).toUpperCase() + q.aiPersonaType?.slice(1) || "AI",
+        type: q.aiPersonaType || "intermediate"
+      };
+      
+      return {
+        id: q.id,
+        type: "question",
+        personaType: q.aiPersonaType || "intermediate",
+        personaName: `AI ${persona.name}`,
+        action: "asked a question about",
+        subject: q.title,
+        timestamp: q.createdAt?.toISOString() || new Date().toISOString()
+      };
+    });
+    
+    const answersActivity = aiAnswers.map(a => {
+      const persona = aiPersonas.find(p => p.type === a.aiPersonaType) || {
+        name: a.aiPersonaType?.charAt(0).toUpperCase() + a.aiPersonaType?.slice(1) || "AI",
+        type: a.aiPersonaType || "intermediate"
+      };
+      
+      // Get the first 40 characters of the answer content as the subject
+      const subject = a.content.length > 40 ? a.content.substring(0, 40) + "..." : a.content;
+      
+      return {
+        id: a.id,
+        type: "answer",
+        personaType: a.aiPersonaType || "intermediate",
+        personaName: `AI ${persona.name}`,
+        action: "answered a question with",
+        subject: subject,
+        timestamp: a.createdAt?.toISOString() || new Date().toISOString()
+      };
+    });
+    
+    // Combine and sort by timestamp (most recent first)
+    const aiActivityData = [...questionsActivity, ...answersActivity]
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, limit);
+    
+    // If no real data is available, return an empty array instead of mock data
     res.json(aiActivityData);
   } catch (error) {
     console.error("Error getting AI activity:", error);

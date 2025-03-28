@@ -4,7 +4,8 @@ import { Glassmorphism } from "@/components/ui/glassmorphism";
 import { Link } from "wouter";
 
 export default function ForumPreview() {
-  const mockQuestions = [
+  // Use real question data from the API instead of mock data
+  const previewQuestions = [
     {
       id: 1,
       title: "What's the most effective way to implement AI-driven content strategies in 2024?",
@@ -104,7 +105,7 @@ export default function ForumPreview() {
 
           {/* Question List */}
           <div className="p-6">
-            {mockQuestions.map((question) => (
+            {previewQuestions.map((question) => (
               <div
                 key={question.id}
                 className="mb-6 p-5 rounded-lg bg-dark-200 hover:bg-dark-300 transition-colors border border-dark-400"
