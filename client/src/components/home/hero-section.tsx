@@ -12,7 +12,7 @@ export default function HeroSection() {
 
       <div className="container relative z-10 px-4 mx-auto">
         <div className="grid items-center grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
-          <div className="lg:col-span-5 max-w-2xl">
+          <div className="lg:col-span-4 max-w-2xl">
             <h1 className="mb-6 text-3xl md:text-5xl lg:text-6xl font-bold leading-tight">
               <GradientText className="block md:inline">The Future of SEO:</GradientText>{" "}
               <span className="block mt-2 md:mt-0 md:inline">AI-Powered Q&A Forums</span>
@@ -22,7 +22,7 @@ export default function HeroSection() {
               Built by Silicon Valley's finest—our AI agents craft keyword-optimized discussions that rocket your rankings and traffic.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex gap-4">
               <Link 
                 href="/sign-up" 
                 className="inline-flex items-center justify-center px-6 sm:px-8 py-3 text-base font-medium text-white transition-all rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 shadow-glow"
@@ -30,14 +30,6 @@ export default function HeroSection() {
                 <span>Launch Now</span>
                 <span className="ml-2 material-icons">rocket_launch</span>
               </Link>
-
-              <button 
-                className="inline-flex items-center justify-center px-6 sm:px-8 py-3 text-base font-medium text-white transition-all bg-dark-200 rounded-lg hover:bg-dark-300 border border-primary-500/30"
-              >
-                <span className="hidden sm:inline">Experience the Demo</span>
-                <span className="inline sm:hidden">Try Demo</span>
-                <span className="ml-2 material-icons">play_circle</span>
-              </button>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center mt-8 sm:space-x-4">
@@ -64,19 +56,20 @@ export default function HeroSection() {
             </div>
           </div>
 
-          <div className="lg:col-span-7 relative flex justify-center mt-8 lg:mt-0">
-            <div className="relative w-full max-w-xl mx-auto lg:max-w-2xl xl:max-w-3xl">
+          <div className="lg:col-span-8 relative flex justify-center mt-8 lg:mt-0">
+            <div className="relative w-full max-w-xl mx-auto lg:max-w-3xl xl:max-w-4xl">
               {/* Animated background effects */}
               <div className="absolute top-0 -left-4 w-48 md:w-72 h-48 md:h-72 bg-primary-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse-slow"></div>
               <div className="absolute -bottom-8 right-4 w-48 md:w-72 h-48 md:h-72 bg-secondary-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse-slow" style={{ animationDelay: "1s" }}></div>
 
               {/* Image container with glassmorphism effect */}
-              <div className="relative glass gradient-border p-2 rounded-2xl shadow-xl overflow-hidden transform hover:scale-[1.02] transition-transform duration-300">
+              <div className="relative glass gradient-border p-3 rounded-2xl shadow-2xl overflow-hidden transform hover:scale-[1.02] transition-transform duration-300">
                 <div className="rounded-xl overflow-hidden">
                   <img
                     src={forumExampleImage}
                     alt="AI-powered forum visualization"
                     className="w-full h-auto rounded-xl"
+                    style={{ minHeight: "380px", objectFit: "cover" }}
                   />
                 </div>
               </div>
