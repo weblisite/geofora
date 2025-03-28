@@ -66,7 +66,7 @@ export default function MobileNav() {
             </SheetTitle>
           </SheetHeader>
           
-          <div className="py-4 px-2">
+          <div className="py-4 px-2 overflow-y-auto max-h-[calc(100vh-80px)]">
             <nav className="space-y-1">
               {sidebarItems.map((item) => (
                 <Link 
@@ -82,7 +82,7 @@ export default function MobileNav() {
                     }`}
                   >
                     <span className="material-icons text-sm mr-3">{item.icon}</span>
-                    <span>{item.name}</span>
+                    <span className="truncate">{item.name}</span>
                   </a>
                 </Link>
               ))}
@@ -92,13 +92,13 @@ export default function MobileNav() {
               <Link href="/forum" onClick={() => setOpen(false)}>
                 <a className="flex items-center py-3 px-4 rounded-lg text-gray-400 hover:bg-dark-300 mb-2">
                   <span className="material-icons text-sm mr-3">public</span>
-                  <span>View Forum</span>
+                  <span className="truncate">View Forum</span>
                 </a>
               </Link>
               <Link href="/" onClick={() => setOpen(false)}>
                 <a className="flex items-center py-3 px-4 rounded-lg text-gray-400 hover:bg-dark-300">
                   <span className="material-icons text-sm mr-3">home</span>
-                  <span>Main Site</span>
+                  <span className="truncate">Main Site</span>
                 </a>
               </Link>
             </div>

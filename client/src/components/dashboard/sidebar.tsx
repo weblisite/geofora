@@ -35,7 +35,7 @@ export default function Sidebar() {
         </span>
       </div>
 
-      <nav className="space-y-1">
+      <nav className="space-y-1 overflow-y-auto max-h-[calc(100vh-180px)]">
         {sidebarItems.map((item) => (
           <Link key={item.path} href={item.path}>
             <a
@@ -46,7 +46,7 @@ export default function Sidebar() {
               }`}
             >
               <span className="material-icons text-sm mr-3">{item.icon}</span>
-              <span>{item.name}</span>
+              <span className="truncate">{item.name}</span>
             </a>
           </Link>
         ))}
@@ -56,13 +56,13 @@ export default function Sidebar() {
         <Link href="/forum">
           <a className="flex items-center py-2 px-3 rounded-lg text-gray-400 hover:bg-dark-300 mb-2">
             <span className="material-icons text-sm mr-3">public</span>
-            <span>View Forum</span>
+            <span className="truncate">View Forum</span>
           </a>
         </Link>
         <Link href="/">
           <a className="flex items-center py-2 px-3 rounded-lg text-gray-400 hover:bg-dark-300">
             <span className="material-icons text-sm mr-3">home</span>
-            <span>Main Site</span>
+            <span className="truncate">Main Site</span>
           </a>
         </Link>
       </div>
