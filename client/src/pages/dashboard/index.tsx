@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from "react";
+import { useState, lazy, Suspense, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import StatsCard from "@/components/dashboard/stats-card";
 import TrafficChart from "@/components/dashboard/traffic-chart";
@@ -11,6 +11,7 @@ import TrafficAnalysis from "@/components/dashboard/traffic-analysis";
 import Conversions from "@/components/dashboard/conversions";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, LayoutDashboard, Lightbulb, LineChart, MousePointerClick, Zap, Loader2 } from "lucide-react";
 import { UserButton } from "@clerk/clerk-react";
@@ -54,6 +55,61 @@ export default function DashboardPage() {
   const [location] = useLocation();
   const [dateRange, setDateRange] = useState("30d");
   const [activeTab, setActiveTab] = useState("overview");
+  const [prevLocation, setPrevLocation] = useState(location);
+  
+  // Effect to track location changes and invalidate queries when navigating back to a tab
+  useEffect(() => {
+    // If location has changed, we're navigating to a different tab
+    if (location !== prevLocation) {
+      // Store current location path pattern (for example: /dashboard/forum => forum)
+      const currentSection = location.split('/').pop();
+      
+      // Invalidate relevant queries based on the section we're navigating to
+      if (currentSection) {
+        // Invalidate specific queries related to this section
+        const queryKeys = getQueryKeysForSection(currentSection);
+        
+        // Invalidate each relevant query key
+        queryKeys.forEach(key => {
+          queryClient.invalidateQueries({ queryKey: [key] });
+        });
+        
+        // Also force refetch of dashboard stats when returning to main dashboard
+        if (location === '/dashboard') {
+          queryClient.invalidateQueries({ queryKey: [`/api/analytics/dashboard-stats/${dateRange}`] });
+        }
+      }
+      
+      // Update previous location
+      setPrevLocation(location);
+    }
+  }, [location, prevLocation, dateRange]);
+  
+  // Helper function to determine which query keys should be invalidated for each section
+  const getQueryKeysForSection = (section: string): string[] => {
+    switch (section) {
+      case 'forum':
+        return ['/api/forum/questions', '/api/forum/answers', '/api/forum/categories'];
+      case 'interlinking':
+        return ['/api/interlinking', '/api/interlinking/stats'];
+      case 'keyword-analysis':
+        return ['/api/keywords', '/api/keywords/analysis'];
+      case 'lead-capture':
+        return ['/api/leads', '/api/forms'];
+      case 'crm':
+        return ['/api/crm', '/api/crm/contacts', '/api/crm/activities'];
+      case 'analytics':
+        return ['/api/analytics/traffic', '/api/analytics/daily-traffic', '/api/analytics/sources', '/api/analytics/devices', '/api/analytics/geographic'];
+      case 'integration':
+        return ['/api/integration/stats', '/api/integration/webhooks', '/api/integration/event-types', '/api/integration/api-resources'];
+      case 'personas':
+        return ['/api/personas', '/api/personas/stats'];
+      case 'settings':
+        return ['/api/settings', '/api/user/profile'];
+      default:
+        return [];
+    }
+  };
   
   // Fetch dashboard stats
   const { data: stats, isLoading } = useQuery<DashboardStats>({
@@ -165,7 +221,29 @@ export default function DashboardPage() {
           <div className="flex items-center">
             <h1 className="text-xl font-semibold mr-6">Dashboard</h1>
             
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="hidden md:block">
+            <Tabs 
+              value={activeTab} 
+              onValueChange={(value) => {
+                // When changing tabs, invalidate relevant queries
+                if (value === "overview") {
+                  queryClient.invalidateQueries({ queryKey: [`/api/analytics/dashboard-stats/${dateRange}`] });
+                } else if (value === "ai") {
+                  queryClient.invalidateQueries({ queryKey: ['/api/ai/activity'] });
+                } else if (value === "traffic") {
+                  queryClient.invalidateQueries({ queryKey: [
+                    '/api/analytics/traffic',
+                    '/api/analytics/daily-traffic', 
+                    '/api/analytics/sources', 
+                    '/api/analytics/devices'
+                  ] });
+                } else if (value === "conversions") {
+                  queryClient.invalidateQueries({ queryKey: ['/api/analytics/conversions'] });
+                }
+                
+                setActiveTab(value);
+              }} 
+              className="hidden md:block"
+            >
               <TabsList>
                 <TabsTrigger value="overview" className="flex items-center">
                   <LayoutDashboard className="w-4 h-4 mr-1" />
@@ -209,7 +287,28 @@ export default function DashboardPage() {
         
         {/* Mobile Tabs */}
         <div className="md:hidden border-b border-dark-300 px-4 py-2">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <Tabs 
+            value={activeTab} 
+            onValueChange={(value) => {
+              // When changing tabs on mobile, invalidate relevant queries - same logic as desktop
+              if (value === "overview") {
+                queryClient.invalidateQueries({ queryKey: [`/api/analytics/dashboard-stats/${dateRange}`] });
+              } else if (value === "ai") {
+                queryClient.invalidateQueries({ queryKey: ['/api/ai/activity'] });
+              } else if (value === "traffic") {
+                queryClient.invalidateQueries({ queryKey: [
+                  '/api/analytics/traffic',
+                  '/api/analytics/daily-traffic', 
+                  '/api/analytics/sources', 
+                  '/api/analytics/devices'
+                ] });
+              } else if (value === "conversions") {
+                queryClient.invalidateQueries({ queryKey: ['/api/analytics/conversions'] });
+              }
+              
+              setActiveTab(value);
+            }}
+          >
             <TabsList className="grid grid-cols-4 w-full">
               <TabsTrigger value="overview" className="flex flex-col items-center py-2">
                 <LayoutDashboard className="w-4 h-4 mb-1" />
