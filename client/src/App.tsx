@@ -15,6 +15,7 @@ import AnalyticsPage from "@/pages/dashboard/analytics";
 import ContentSchedulingPage from "@/pages/dashboard/content-scheduling";
 import SignInPage from "@/pages/sign-in";
 import SignUpPage from "@/pages/sign-up";
+import VerifyEmailPage from "@/pages/verify-email-address";
 import UIShowcasePage from "@/pages/ui-showcase";
 import DocumentationPage from "@/pages/documentation-page";
 import NotFound from "@/pages/not-found";
@@ -88,6 +89,8 @@ function App() {
         <ProtectedRoute path="/dashboard/settings" component={DashboardPage} />
         <Route path="/sign-in" component={SignInPage} />
         <Route path="/sign-up" component={SignUpPage} />
+        <Route path="/sign-up/verify-email-address" component={VerifyEmailPage} />
+        <Route path="/verify-email-address" component={VerifyEmailPage} />
         {/* Legacy route redirects */}
         <Route path="/login">
           <SignInPage />
