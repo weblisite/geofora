@@ -19,7 +19,7 @@ import AuthPage from "@/pages/auth-page";
 import UIShowcasePage from "@/pages/ui-showcase";
 import DocumentationPage from "@/pages/documentation-page";
 import NotFound from "@/pages/not-found";
-import { useAuth } from "@/hooks/use-auth";
+import { useClerkAuth } from "@/hooks/use-clerk-auth";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { initAnalytics, trackPageView } from "@/lib/analytics-tracker";
@@ -54,8 +54,8 @@ function App() {
     }
   }, [location]);
 
-  // Get auth state safely - the useAuth hook has a fallback when used outside AuthProvider
-  const { isLoading } = useAuth();
+  // Get auth state safely - the useClerkAuth hook for Clerk authentication
+  const { isLoading } = useClerkAuth();
 
   if (isLoading) {
     return (

@@ -68,7 +68,9 @@ export interface IStorage {
   // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByClerkId(clerkUserId: string): Promise<User | undefined>;
+  createUser(user: InsertUser & { clerkUserId?: string, name?: string }): Promise<User>;
   updateUserRole(userId: number, roleId: number): Promise<User>;
   hasPermission(userId: number, permissionName: string, forumId?: number): Promise<boolean>;
   getOrCreateAPIUser(forumId: number): Promise<User>;
@@ -1428,6 +1430,24 @@ export class MemStorage implements IStorage {
     return undefined;
   }
   
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    for (const user of this.usersStore.values()) {
+      if (user.email === email) {
+        return user;
+      }
+    }
+    return undefined;
+  }
+  
+  async getUserByClerkId(clerkUserId: string): Promise<User | undefined> {
+    for (const user of this.usersStore.values()) {
+      if (user.clerkUserId === clerkUserId) {
+        return user;
+      }
+    }
+    return undefined;
+  }
+  
   async getOrCreateAPIUser(forumId: number): Promise<User> {
     // First, check if an API user for this forum already exists
     for (const user of this.usersStore.values()) {
@@ -1454,9 +1474,15 @@ export class MemStorage implements IStorage {
     return apiUser;
   }
 
-  async createUser(user: InsertUser): Promise<User> {
+  async createUser(user: InsertUser & { clerkUserId?: string, name?: string }): Promise<User> {
     const id = this.userId++;
     const now = new Date();
+    
+    // If name is provided but not displayName, use name as displayName
+    if (user.name && !user.displayName) {
+      user.displayName = user.name;
+    }
+    
     const newUser: User = { 
       ...user, 
       id,

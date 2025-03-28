@@ -58,6 +58,7 @@ import {
 // Analytics imports are already included above
 import { setupAuth } from "./auth";
 import { registerEmbedRoutes } from "./embed";
+import { registerClerkAuthRoutes, requireClerkAuth } from "./clerk-auth";
 import session from "express-session";
 import path from "path";
 
@@ -83,6 +84,9 @@ declare global {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication with passport
   setupAuth(app);
+  
+  // Register Clerk authentication routes
+  registerClerkAuthRoutes(app, storage);
   
   // Authentication routes are handled in auth.ts
 

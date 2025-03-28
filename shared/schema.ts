@@ -46,6 +46,7 @@ export const users = pgTable("users", {
   isAdmin: boolean("is_admin").default(false), // Kept for backward compatibility
   isAI: boolean("is_ai").default(false),
   roleId: integer("role_id").references(() => roles.id), // Reference to the roles table
+  clerkUserId: text("clerk_user_id").unique(), // Clerk user ID for authentication
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   lastLoginAt: timestamp("last_login_at"),
