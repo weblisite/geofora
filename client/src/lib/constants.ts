@@ -63,8 +63,8 @@ export const PRICING_PLANS = [
   {
     name: "Enterprise",
     description: "Custom Silicon Valley solution",
-    price: "Custom",
-    interval: "",
+    price: "$399",
+    interval: "month",
     features: [
       "Everything in Professional",
       "Unlimited AI-generated answers",
@@ -76,7 +76,7 @@ export const PRICING_PLANS = [
       "Custom integrations",
     ],
     disabledFeatures: [],
-    buttonText: "Contact Sales",
+    buttonText: "Get Started",
     highlighted: false,
   },
 ];
