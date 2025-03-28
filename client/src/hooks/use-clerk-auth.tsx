@@ -150,7 +150,7 @@ export function useClerkAuth() {
 
 // AppClerkProvider component to wrap the entire app
 export function AppClerkProvider({ children }: { children: ReactNode }) {
-  const publishableKey = import.meta.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY as string;
+  const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
   
   if (!publishableKey) {
     console.error('Missing Clerk publishable key');
