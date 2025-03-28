@@ -149,6 +149,7 @@ export interface IStorage {
   getLeadCaptureForm(id: number): Promise<LeadCaptureForm | undefined>;
   getLeadCaptureFormsByForum(forumId: number): Promise<LeadCaptureForm[]>;
   getLeadCaptureFormWithStats(id: number): Promise<LeadCaptureFormWithStats | undefined>;
+  getLeadCaptureFormsByUser(userId: number): Promise<LeadCaptureForm[]>;
   createLeadCaptureForm(form: InsertLeadCaptureForm): Promise<LeadCaptureForm>;
   updateLeadCaptureForm(id: number, data: Partial<InsertLeadCaptureForm>): Promise<LeadCaptureForm>;
   deleteLeadCaptureForm(id: number): Promise<void>;
@@ -156,6 +157,8 @@ export interface IStorage {
   // Lead Submission methods
   getLeadSubmission(id: number): Promise<LeadSubmission | undefined>;
   getLeadSubmissionsByForm(formId: number): Promise<LeadSubmission[]>;
+  getLeadSubmissionsByFormIds(formIds: number[]): Promise<LeadSubmission[]>;
+  getRecentLeadSubmissions(limit?: number): Promise<LeadSubmission[]>;
   createLeadSubmission(submission: InsertLeadSubmission): Promise<LeadSubmission>;
   markLeadSubmissionsAsExported(formId: number): Promise<void>;
   
@@ -2360,6 +2363,25 @@ export class MemStorage implements IStorage {
     }
     return forms;
   }
+  
+  async getLeadCaptureFormsByUser(userId: number): Promise<LeadCaptureForm[]> {
+    const forms: LeadCaptureForm[] = [];
+    // Get all forums owned by the user
+    const userForums = [];
+    for (const forum of this.forumsStore.values()) {
+      if (forum.userId === userId) {
+        userForums.push(forum.id);
+      }
+    }
+    
+    // Get forms for each of the user's forums
+    for (const form of this.leadCaptureFormsStore.values()) {
+      if (userForums.includes(form.forumId)) {
+        forms.push(form);
+      }
+    }
+    return forms;
+  }
 
   async getLeadCaptureFormWithStats(id: number): Promise<LeadCaptureFormWithStats | undefined> {
     const form = await this.getLeadCaptureForm(id);
@@ -2418,6 +2440,29 @@ export class MemStorage implements IStorage {
       }
     }
     return submissions;
+  }
+  
+  async getLeadSubmissionsByFormIds(formIds: number[]): Promise<LeadSubmission[]> {
+    const submissions: LeadSubmission[] = [];
+    for (const submission of this.leadSubmissionsStore.values()) {
+      if (formIds.includes(submission.formId)) {
+        submissions.push(submission);
+      }
+    }
+    return submissions;
+  }
+  
+  async getRecentLeadSubmissions(limit: number = 10): Promise<LeadSubmission[]> {
+    const submissions = Array.from(this.leadSubmissionsStore.values());
+    // Sort by creation date in descending order (newest first)
+    submissions.sort((a, b) => {
+      const dateA = new Date(a.createdAt);
+      const dateB = new Date(b.createdAt);
+      return dateB.getTime() - dateA.getTime();
+    });
+    
+    // Limit the results
+    return submissions.slice(0, limit);
   }
 
   async createLeadSubmission(submission: InsertLeadSubmission): Promise<LeadSubmission> {

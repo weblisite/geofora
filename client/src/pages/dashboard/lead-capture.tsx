@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Trash2, FileText, Eye, Download, Edit, BarChart2 } from "lucide-react";
+import { Loader2, Plus, Trash2, FileText, Eye, Download, Edit, BarChart2, Inbox } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 // Interface for Forum object
@@ -62,6 +62,8 @@ interface LeadSubmission {
   lastName: string | null;
   isExported: boolean | null;
   createdAt: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
 }
 
 // Form schema for lead capture form
@@ -132,6 +134,16 @@ export default function LeadCapturePage() {
       return await res.json();
     },
     enabled: !!selectedFormId,
+  });
+  
+  // Query for recent submissions across all forms
+  const { data: recentSubmissions, isLoading: isLoadingRecentSubmissions } = useQuery({
+    queryKey: ["/api/user/recent-submissions"],
+    queryFn: async () => {
+      const res = await apiRequest("/api/user/recent-submissions", { method: "GET" });
+      return await res.json();
+    },
+    enabled: !!user,
   });
 
   // Create lead form mutation
@@ -468,9 +480,61 @@ export default function LeadCapturePage() {
             </Card>
           </div>
 
-          {/* Right content - form details */}
+          {/* Right content - form details or recent submissions */}
           <div className="col-span-1 md:col-span-9">
-            {selectedFormId ? (
+            {!selectedFormId ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Submissions</CardTitle>
+                  <CardDescription>Recent submissions across all your forms</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingRecentSubmissions ? (
+                    <div className="flex items-center justify-center p-8">
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                      <span>Loading recent submissions...</span>
+                    </div>
+                  ) : recentSubmissions?.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Form</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead className="hidden sm:table-cell">Name</TableHead>
+                            <TableHead className="hidden md:table-cell">Date</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {recentSubmissions.map((submission: LeadSubmission & { formName: string }) => (
+                            <TableRow key={submission.id}>
+                              <TableCell>
+                                <div className="font-medium">{submission.formName}</div>
+                              </TableCell>
+                              <TableCell>
+                                <div>{submission.email}</div>
+                              </TableCell>
+                              <TableCell className="hidden sm:table-cell">
+                                {`${submission.firstName || ""} ${submission.lastName || ""}`.trim() || "N/A"}
+                              </TableCell>
+                              <TableCell className="hidden md:table-cell">
+                                {formatDate(submission.createdAt)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-400">
+                      <Inbox className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                      <p>No submissions yet</p>
+                      <p className="text-sm mt-2">Create forms and start capturing leads to see submissions here</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
               <Card>
                 <CardHeader>
                   <div className="flex justify-between items-center">

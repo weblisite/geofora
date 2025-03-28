@@ -442,35 +442,117 @@ export async function getLeadCaptureStats(req: Request, res: Response) {
   try {
     const period = req.query.period || "30d";
     const forumId = req.query.forumId ? parseInt(req.query.forumId as string) : undefined;
+    const userId = req.session?.userId;
+    
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
 
-    // Sample data for the demo
+    // Get all forms created by the user
+    const allUserForms = await storage.getLeadCaptureFormsByUser(userId);
+    
+    // Filter by forum if specified
+    const forms = forumId 
+      ? allUserForms.filter(form => form.forumId === forumId)
+      : allUserForms;
+    
+    // Get all form submissions across all user forms
+    const formIds = forms.map(form => form.id);
+    const submissions = await storage.getLeadSubmissionsByFormIds(formIds);
+    
+    // Count form views
+    const formViews = await storage.getFormViewsByFormIds(formIds);
+    const totalFormViews = formViews.reduce((sum, view) => sum + view.count, 0);
+    
+    // Get gated content downloads
+    const gatedContent = await storage.getGatedContentsByUserId(userId);
+    const gatedContentIds = gatedContent.map(content => content.id);
+    const contentDownloads = await storage.getContentDownloadsByContentIds(gatedContentIds);
+    const totalGatedContentDownloads = contentDownloads.reduce((sum, download) => sum + download.count, 0);
+    
+    // Calculate total leads
+    const totalLeads = submissions.length;
+    
+    // Calculate conversion rate
+    const conversionRate = totalFormViews > 0 
+      ? (totalLeads / totalFormViews) * 100 
+      : 0;
+    
+    // Calculate statistics per form
+    const formStats = [];
+    for (const form of forms) {
+      const formSubmissions = submissions.filter(sub => sub.formId === form.id);
+      const formViewsData = formViews.find(view => view.formId === form.id);
+      const viewCount = formViewsData ? formViewsData.count : 0;
+      
+      formStats.push({
+        formName: form.name,
+        views: viewCount,
+        submissions: formSubmissions.length,
+        conversionRate: viewCount > 0 ? formSubmissions.length / viewCount : 0
+      });
+    }
+    
+    // Generate weekly trends (last 5 weeks)
+    const leadsTrend = [];
+    const now = new Date();
+    
+    for (let i = 4; i >= 0; i--) {
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - (i * 7 + 7));
+      
+      const weekEnd = new Date(now);
+      weekEnd.setDate(now.getDate() - (i * 7));
+      
+      const weekSubmissions = submissions.filter(sub => {
+        const subDate = new Date(sub.createdAt);
+        return subDate >= weekStart && subDate < weekEnd;
+      });
+      
+      const weekViews = formViews.filter(view => {
+        const viewDate = new Date(view.timestamp);
+        return viewDate >= weekStart && viewDate < weekEnd;
+      }).reduce((sum, view) => sum + view.count, 0);
+      
+      const weekConversionRate = weekViews > 0 
+        ? (weekSubmissions.length / weekViews) * 100 
+        : 0;
+      
+      leadsTrend.push({
+        date: `Week ${5-i}`,
+        submissions: weekSubmissions.length,
+        conversionRate: weekConversionRate
+      });
+    }
+    
+    // Calculate forum to website funnel from analytics events
+    const forumVisitors = await storage.getForumVisitorsCount(userId);
+    const websiteClicks = await storage.getWebsiteClickCount(userId);
+    const landingPageViews = await storage.getLandingPageViewCount(userId);
+    const productViews = await storage.getProductViewCount(userId);
+    
+    const forumToWebsiteFunnel = [
+      { name: "Forum Visitors", value: forumVisitors, percentage: 100 },
+      { name: "Click Website Link", value: websiteClicks, percentage: forumVisitors > 0 ? (websiteClicks / forumVisitors) * 100 : 0 },
+      { name: "Visit Site Landing Page", value: landingPageViews, percentage: forumVisitors > 0 ? (landingPageViews / forumVisitors) * 100 : 0 },
+      { name: "View Product/Service", value: productViews, percentage: forumVisitors > 0 ? (productViews / forumVisitors) * 100 : 0 },
+      { name: "Conversion/Purchase", value: totalLeads, percentage: forumVisitors > 0 ? (totalLeads / forumVisitors) * 100 : 0 },
+    ];
+    
+    // Calculate forum to website CTR
+    const forumToWebsiteCTR = forumVisitors > 0 
+      ? (websiteClicks / forumVisitors) * 100 
+      : 0;
+    
     const leadCaptureData = {
-      totalLeads: 785,
-      totalFormViews: 3487,
-      conversionRate: 22.5,
-      forumToWebsiteCTR: 34.8,
-      gatedContentDownloads: 456,
-      formStats: [
-        { formName: "SEO Ebook Download", views: 1245, submissions: 342, conversionRate: 0.275 },
-        { formName: "Weekly SEO Tips", views: 876, submissions: 198, conversionRate: 0.226 },
-        { formName: "SEO Audit Offer", views: 654, submissions: 123, conversionRate: 0.188 },
-        { formName: "Webinar Registration", views: 432, submissions: 87, conversionRate: 0.201 },
-        { formName: "Case Study Access", views: 280, submissions: 35, conversionRate: 0.125 },
-      ],
-      leadsTrend: [
-        { date: "Week 1", submissions: 135, conversionRate: 18.5 },
-        { date: "Week 2", submissions: 153, conversionRate: 19.8 },
-        { date: "Week 3", submissions: 168, conversionRate: 21.3 },
-        { date: "Week 4", submissions: 187, conversionRate: 23.2 },
-        { date: "Week 5", submissions: 142, conversionRate: 20.7 },
-      ],
-      forumToWebsiteFunnel: [
-        { name: "Forum Visitors", value: 28453, percentage: 100 },
-        { name: "Click Website Link", value: 9876, percentage: 34.7 },
-        { name: "Visit Site Landing Page", value: 7654, percentage: 26.9 },
-        { name: "View Product/Service", value: 3245, percentage: 11.4 },
-        { name: "Conversion/Purchase", value: 785, percentage: 2.8 },
-      ]
+      totalLeads,
+      totalFormViews,
+      conversionRate,
+      forumToWebsiteCTR,
+      gatedContentDownloads: totalGatedContentDownloads,
+      formStats,
+      leadsTrend,
+      forumToWebsiteFunnel
     };
 
     res.json(leadCaptureData);

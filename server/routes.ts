@@ -1833,6 +1833,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch lead forms" });
     }
   });
+  
+  app.get("/api/user/lead-forms", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to access your lead forms" });
+      }
+
+      const userId = req.session.userId;
+      const forms = await storage.getLeadCaptureFormsByUser(userId);
+      res.json(forms);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch user's lead forms" });
+    }
+  });
 
   app.get("/api/lead-forms/:id", async (req, res) => {
     try {
@@ -2056,6 +2070,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, submissions });
     } catch (error) {
       res.status(500).json({ message: "Failed to export lead submissions" });
+    }
+  });
+  
+  app.get("/api/user/recent-submissions", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "You must be logged in to access recent submissions" });
+      }
+      
+      // Get the user's forms
+      const userId = req.session.userId;
+      const userForms = await storage.getLeadCaptureFormsByUser(userId);
+      
+      if (userForms.length === 0) {
+        return res.json([]);
+      }
+      
+      // Extract form IDs
+      const formIds = userForms.map(form => form.id);
+      
+      // Get submissions for all these forms
+      const submissions = await storage.getLeadSubmissionsByFormIds(formIds);
+      
+      // Sort by most recent first
+      submissions.sort((a, b) => {
+        const dateA = new Date(a.createdAt);
+        const dateB = new Date(b.createdAt);
+        return dateB.getTime() - dateA.getTime();
+      });
+      
+      // Limit to most recent 20
+      const recentSubmissions = submissions.slice(0, 20);
+      
+      res.json(recentSubmissions);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch recent submissions" });
     }
   });
 
