@@ -107,7 +107,7 @@ export const HOW_IT_WORKS_STEPS = [
     id: 5,
     title: "Analytics & Growth",
     description: "Monitor growth with a futuristic dashboard that provides actionable insights to optimize your forum's performance.",
-    icon: "monitoring",
+    icon: "dashboard",
   },
 ];
 

@@ -6,11 +6,11 @@ import { useEffect, useState } from "react";
 export default function HowItWorks() {
   const [activeStep, setActiveStep] = useState(1);
 
-  // Auto-advance through steps every 4 seconds
+  // Auto-advance through steps every 2.5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveStep((prev) => prev < HOW_IT_WORKS_STEPS.length ? prev + 1 : 1);
-    }, 4000);
+    }, 2500);
     return () => clearInterval(interval);
   }, []);
 
