@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -83,6 +83,11 @@ export default function Settings() {
   const { user } = useUser();
   const { signOut } = useClerk();
   const [activeTab, setActiveTab] = useState("account");
+  
+  // Force scroll back to top when component mounts to prevent scroll issues
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   
   // User settings form
   const userForm = useForm<z.infer<typeof userSettingsSchema>>({

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -64,6 +64,11 @@ export default function Integration() {
   const { user } = useClerk();
   const [activeTab, setActiveTab] = useState("embed");
   const [copiedState, setCopiedState] = useState<{ [key: string]: boolean }>({});
+  
+  // Force scroll back to top when component mounts to prevent scroll issues
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   
   // Mock data
   const { data: integrationStats, isLoading: isLoadingStats } = useQuery({
