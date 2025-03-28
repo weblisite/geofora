@@ -173,7 +173,7 @@ export default function Integration() {
 
   return (
     <div className="container mx-auto">
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 pb-10">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Integration</h1>
         </div>

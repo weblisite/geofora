@@ -199,7 +199,7 @@ export default function Settings() {
   ];
 
   return (
-    <div className="container mx-auto pb-10">
+    <div className="container mx-auto pb-20">
       <div className="flex flex-col gap-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Settings</h1>
