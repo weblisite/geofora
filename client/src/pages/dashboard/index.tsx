@@ -21,7 +21,6 @@ const KeywordAnalysis = lazy(() => import("@/components/dashboard/keyword-analys
 const Interlinking = lazy(() => import("@/components/dashboard/interlinking"));
 const Analytics = lazy(() => import("@/components/dashboard/analytics"));
 const LeadCapture = lazy(() => import("@/components/dashboard/lead-capture"));
-const GatedContent = lazy(() => import("@/components/dashboard/gated-content"));
 const CRMIntegrations = lazy(() => import("@/components/dashboard/crm-integrations"));
 const AIPersonas = lazy(() => import("@/components/dashboard/ai-personas"));
 const Integration = lazy(() => import("@/components/dashboard/integration"));
@@ -98,14 +97,6 @@ export default function DashboardPage() {
         <div className="p-6">
           <Suspense fallback={<LoadingComponent />}>
             <LeadCapture />
-          </Suspense>
-        </div>
-      );
-    } else if (location === "/dashboard/gated-content") {
-      return (
-        <div className="p-6">
-          <Suspense fallback={<LoadingComponent />}>
-            <GatedContent />
           </Suspense>
         </div>
       );

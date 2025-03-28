@@ -17,7 +17,6 @@ export default function Sidebar() {
     { name: "Interlinking", path: "/dashboard/interlinking", icon: "link", isDashboardItem: true },
     { name: "Keyword Analysis", path: "/dashboard/keyword-analysis", icon: "travel_explore", isDashboardItem: true },
     { name: "Lead Capture", path: "/dashboard/lead-capture", icon: "contact_page", isDashboardItem: true },
-    { name: "Gated Content", path: "/dashboard/gated-content", icon: "lock", isDashboardItem: true },
     { name: "CRM Integrations", path: "/dashboard/crm", icon: "sync", isDashboardItem: true },
     { name: "AI Personas", path: "/dashboard/personas", icon: "psychology", isDashboardItem: true },
     { name: "Analytics", path: "/dashboard/analytics", icon: "analytics", isDashboardItem: true },

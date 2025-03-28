@@ -9,7 +9,6 @@ import DashboardPage from "@/pages/dashboard";
 import KeywordAnalysisPage from "@/pages/dashboard/keyword-analysis";
 import InterlinkingPage from "@/pages/dashboard/interlinking";
 import LeadCapturePage from "@/pages/dashboard/lead-capture";
-import GatedContentPage from "@/pages/dashboard/gated-content";
 import CrmIntegrationsPage from "@/pages/dashboard/crm";
 import AnalyticsPage from "@/pages/dashboard/analytics";
 import ContentSchedulingPage from "@/pages/dashboard/content-scheduling";
@@ -82,7 +81,6 @@ function App() {
         <ProtectedRoute path="/dashboard/keyword-analysis" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/interlinking" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/lead-capture" component={DashboardPage} />
-        <ProtectedRoute path="/dashboard/gated-content" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/crm" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/content-scheduling" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/integration" component={DashboardPage} />
