@@ -125,6 +125,8 @@ export interface IStorage {
   getInterlinksForSource(sourceType: string, sourceId: number): Promise<ContentInterlink[]>;
   getInterlinksForTarget(targetType: string, targetId: number): Promise<ContentInterlink[]>;
   getRelevantContentForInterlinking(contentType: string, contentId: number, limit?: number): Promise<Array<{id: number, type: string, title: string, relevanceScore: number}>>;
+  getForumInterlinks(forumId?: number): Promise<ContentInterlink[]>;
+  getSeoImpactData(forumId?: number): Promise<Array<{category: string, before: number, after: number}> | null>;
   
   // Forum methods
   getForum(id: number): Promise<Forum | undefined>;
@@ -1800,6 +1802,58 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getForumInterlinks(forumId?: number): Promise<ContentInterlink[]> {
+    // Get all content interlinks
+    const allInterlinks = Array.from(this.contentInterlinksStore.values());
+    
+    // If no forumId is provided, return all interlinks
+    if (forumId === undefined) {
+      return allInterlinks;
+    }
+    
+    // Filter interlinks related to specified forum
+    // For questions/answers, we need to check if they belong to the requested forum
+    return allInterlinks.filter(link => {
+      // For source content
+      if (link.sourceType === 'question' || link.sourceType === 'answer') {
+        // Get the question
+        let questionId = link.sourceId;
+        if (link.sourceType === 'answer') {
+          const answer = this.answersStore.get(link.sourceId);
+          if (!answer) return false;
+          questionId = answer.questionId;
+        }
+        
+        // Check if the question belongs to the forum
+        const question = this.questionsStore.get(questionId);
+        if (question && question.forumId === forumId) return true;
+      }
+      
+      // For target content
+      if (link.targetType === 'question' || link.targetType === 'answer') {
+        // Get the question
+        let questionId = link.targetId;
+        if (link.targetType === 'answer') {
+          const answer = this.answersStore.get(link.targetId);
+          if (!answer) return false;
+          questionId = answer.questionId;
+        }
+        
+        // Check if the question belongs to the forum
+        const question = this.questionsStore.get(questionId);
+        if (question && question.forumId === forumId) return true;
+      }
+      
+      return false;
+    });
+  }
+  
+  async getSeoImpactData(forumId?: number): Promise<Array<{category: string, before: number, after: number}> | null> {
+    // For a real implementation, this would fetch SEO impact data from analytics
+    // For now, return null to indicate we need to use the default data
+    return null;
+  }
+  
   async getRelevantContentForInterlinking(contentType: string, contentId: number, limit: number = 5): Promise<Array<{id: number, type: string, title: string, relevanceScore: number}>> {
     const results: Array<{id: number, type: string, title: string, relevanceScore: number}> = [];
     

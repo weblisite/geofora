@@ -16,6 +16,28 @@ export interface BidirectionalInterlinkSuggestion {
   bidirectional: boolean;
 }
 
+// Interface for interlinking stats
+export interface InterlinkStats {
+  linkTypesData: Array<{
+    name: string;
+    value: number;
+  }>;
+  interlinkGrowthData: Array<{
+    month: string;
+    links: number;
+  }>;
+  seoImpactData: Array<{
+    category: string;
+    before: number;
+    after: number;
+  }>;
+  linkQualityData: Array<{
+    subject: string;
+    forum: number;
+    mainSite: number;
+  }>;
+}
+
 interface UseBidirectionalInterlinksOptions {
   onSuccess?: (data: any) => void;
   onError?: (error: Error) => void;
@@ -135,7 +157,8 @@ export function useBidirectionalInterlinks(options?: UseBidirectionalInterlinksO
       });
     },
     onSuccess: (data) => {
-      if (!data.previewOnly) {
+      // Only invalidate queries if this wasn't a preview operation
+      if (data && typeof data === 'object' && !data.previewOnly) {
         queryClient.invalidateQueries({ 
           queryKey: ["/api/interlinks"] 
         });
@@ -151,11 +174,19 @@ export function useBidirectionalInterlinks(options?: UseBidirectionalInterlinksO
       queryKey: ["/api/interlinks/content", source, limit],
       enabled: !!source,
     });
+    
+  // Get interlinking statistics
+  const getInterlinkStats = (forumId?: number) =>
+    useQuery<InterlinkStats>({
+      queryKey: ["/api/interlinks/stats", forumId],
+      enabled: !!forumId,
+    });
 
   return {
     getBidirectionalSuggestions,
     createBidirectionalInterlinks,
     generateInterlinkingStrategy,
-    getInterlinkableContent
+    getInterlinkableContent,
+    getInterlinkStats
   };
 }

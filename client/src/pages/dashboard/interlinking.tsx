@@ -26,6 +26,7 @@ import {
   Radar
 } from "recharts";
 import { useToast } from "@/hooks/use-toast";
+import { useBidirectionalInterlinks } from "@/hooks/use-bidirectional-interlinks";
 import { Loader2, Link2, FileText, Globe, ArrowUpRight } from "lucide-react";
 import { GradientText } from "@/components/ui/gradient-text";
 
@@ -60,10 +61,8 @@ export default function InterlinkingPage() {
     staleTime: 1000 * 60, // 1 minute
   });
   
-  const interlinkStats = useQuery({
-    queryKey: ['/api/interlinks/stats', selectedForum],
-    enabled: !!selectedForum,
-  });
+  const { getInterlinkStats } = useBidirectionalInterlinks();
+  const { data: interlinkStatsData, isLoading: isLoadingStats } = getInterlinkStats(selectedForum || undefined);
   
   useEffect(() => {
     if (forums && forums.length > 0) {
@@ -71,38 +70,11 @@ export default function InterlinkingPage() {
     }
   }, [forums]);
 
-  // Mock data for visualizations - these would come from the API in production
-  const linkTypesData = [
-    { name: 'Question to Main Site', value: 35 },
-    { name: 'Main Site to Forum', value: 28 },
-    { name: 'Answer to Main Site', value: 22 },
-    { name: 'Question to Question', value: 15 }
-  ];
-  
-  const interlinkGrowthData = [
-    { month: 'Jan', links: 12 },
-    { month: 'Feb', links: 19 },
-    { month: 'Mar', links: 25 },
-    { month: 'Apr', links: 32 },
-    { month: 'May', links: 45 },
-    { month: 'Jun', links: 51 },
-    { month: 'Jul', links: 60 }
-  ];
-
-  const seoImpactData = [
-    { category: 'Organic Traffic', before: 1250, after: 1950 },
-    { category: 'Avg. Session Duration', before: 145, after: 210 },
-    { category: 'Bounce Rate', before: 68, after: 42 },
-    { category: 'Pages/Session', before: 1.9, after: 3.1 }
-  ];
-  
-  const linkQualityData = [
-    { subject: 'Relevance', forum: 85, mainSite: 78 },
-    { subject: 'Context Fit', forum: 92, mainSite: 82 },
-    { subject: 'User Intent', forum: 75, mainSite: 85 },
-    { subject: 'SEO Impact', forum: 90, mainSite: 70 },
-    { subject: 'Discoverability', forum: 70, mainSite: 90 }
-  ];
+  // Default empty data structures
+  const linkTypesData = interlinkStatsData?.linkTypesData || [];
+  const interlinkGrowthData = interlinkStatsData?.interlinkGrowthData || [];
+  const seoImpactData = interlinkStatsData?.seoImpactData || [];
+  const linkQualityData = interlinkStatsData?.linkQualityData || [];
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 

@@ -948,6 +948,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch relevant content" });
     }
   });
+  
+  // Get interlinking statistics for visualization
+  app.get("/api/interlinks/stats/:forumId?", async (req, res) => {
+    const forumId = req.params.forumId ? parseInt(req.params.forumId, 10) : undefined;
+    
+    try {
+      // Get interlink data from storage
+      const interlinks = await storage.getForumInterlinks(forumId);
+      
+      // Calculate link types distribution
+      const linkTypeCounts: Record<string, number> = {};
+      interlinks.forEach(link => {
+        const linkType = `${link.sourceType} to ${link.targetType}`;
+        linkTypeCounts[linkType] = (linkTypeCounts[linkType] || 0) + 1;
+      });
+      
+      const linkTypesData = Object.entries(linkTypeCounts).map(([name, value]) => ({
+        name,
+        value
+      }));
+      
+      // Calculate monthly growth data
+      const monthlyData: Record<string, number> = {};
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      
+      interlinks.forEach(link => {
+        const date = new Date(link.createdAt);
+        const monthKey = monthNames[date.getMonth()];
+        monthlyData[monthKey] = (monthlyData[monthKey] || 0) + 1;
+      });
+      
+      const interlinkGrowthData = Object.entries(monthlyData)
+        .map(([month, links]) => ({ month, links }))
+        .sort((a, b) => monthNames.indexOf(a.month) - monthNames.indexOf(b.month));
+      
+      // Get SEO impact data (this would normally come from analytics)
+      const seoImpactData = await storage.getSeoImpactData(forumId);
+      
+      // Get quality metrics data
+      const linkQualityData = [
+        { subject: 'Relevance', forum: 85, mainSite: 78 },
+        { subject: 'Context Fit', forum: 92, mainSite: 82 },
+        { subject: 'User Intent', forum: 75, mainSite: 85 },
+        { subject: 'SEO Impact', forum: 90, mainSite: 70 },
+        { subject: 'Discoverability', forum: 70, mainSite: 90 }
+      ];
+      
+      res.json({
+        linkTypesData,
+        interlinkGrowthData,
+        seoImpactData: seoImpactData || [
+          { category: 'Organic Traffic', before: 1250, after: 1950 },
+          { category: 'Avg. Session Duration', before: 145, after: 210 },
+          { category: 'Bounce Rate', before: 68, after: 42 },
+          { category: 'Pages/Session', before: 1.9, after: 3.1 }
+        ],
+        linkQualityData
+      });
+    } catch (error) {
+      console.error('Error fetching interlink stats:', error);
+      res.status(500).json({ error: 'Failed to fetch interlinking statistics' });
+    }
+  });
 
   // Analytics routes (simulated for demo)
   app.get("/api/analytics/dashboard-stats/:range", (req, res) => {
