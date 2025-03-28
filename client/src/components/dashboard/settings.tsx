@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -48,7 +49,8 @@ import {
   UserX,
   ArrowLeft,
   Check,
-  AlertTriangle
+  AlertTriangle,
+  Pencil
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -824,7 +826,7 @@ export default function Settings() {
                         </p>
                       </div>
 
-                      <Alert variant="warning">
+                      <Alert>
                         <AlertTriangle className="h-4 w-4" />
                         <AlertTitle>Domain Setup</AlertTitle>
                         <AlertDescription>
@@ -1661,19 +1663,4 @@ export default function Settings() {
   );
 }
 
-interface LabelProps {
-  children: React.ReactNode;
-  htmlFor?: string;
-  className?: string;
-}
-
-function Label({ children, htmlFor, className }: LabelProps) {
-  return (
-    <label
-      htmlFor={htmlFor}
-      className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${className || ""}`}
-    >
-      {children}
-    </label>
-  );
-}
+// The Label component is now imported from @/components/ui/label

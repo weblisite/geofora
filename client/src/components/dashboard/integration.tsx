@@ -27,6 +27,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -1052,86 +1055,7 @@ document.addEventListener('DOMContentLoaded', function() {
   );
 }
 
-interface LabelProps {
-  children: React.ReactNode;
-  htmlFor?: string;
-  className?: string;
-}
+// The Label and Checkbox components are now imported from @/components/ui/label and @/components/ui/checkbox
 
-function Label({ children, htmlFor, className }: LabelProps) {
-  return (
-    <label
-      htmlFor={htmlFor}
-      className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${className || ""}`}
-    >
-      {children}
-    </label>
-  );
-}
-
-interface CheckboxProps {
-  id: string;
-  defaultChecked?: boolean;
-}
-
-function Checkbox({ id, defaultChecked }: CheckboxProps) {
-  return (
-    <input
-      type="checkbox"
-      id={id}
-      defaultChecked={defaultChecked}
-      className="h-4 w-4 rounded border-dark-300 bg-dark-300 text-primary focus:ring-1 focus:ring-primary/30"
-    />
-  );
-}
-
-interface SelectProps {
-  onValueChange: (value: string) => void;
-  defaultValue?: string;
-  children: React.ReactNode;
-}
-
-function Select({ onValueChange, defaultValue, children }: SelectProps) {
-  return (
-    <select
-      className="flex h-10 w-full rounded-md border border-dark-300 bg-dark-200 px-3 py-2 text-sm text-white placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-      onChange={(e) => onValueChange(e.target.value)}
-      defaultValue={defaultValue}
-    >
-      {children}
-    </select>
-  );
-}
-
-interface SelectContentProps {
-  children: React.ReactNode;
-}
-
-function SelectContent({ children }: SelectContentProps) {
-  return <div>{children}</div>;
-}
-
-interface SelectItemProps {
-  value: string;
-  children: React.ReactNode;
-}
-
-function SelectItem({ value, children }: SelectItemProps) {
-  return <option value={value}>{children}</option>;
-}
-
-interface SelectTriggerProps {
-  children: React.ReactNode;
-}
-
-function SelectTrigger({ children }: SelectTriggerProps) {
-  return <div>{children}</div>;
-}
-
-interface SelectValueProps {
-  placeholder?: string;
-}
-
-function SelectValue({ placeholder }: SelectValueProps) {
-  return <span>{placeholder}</span>;
-}
+// The Select, SelectContent, SelectItem, SelectTrigger, and SelectValue components
+// are now imported from @/components/ui/select
