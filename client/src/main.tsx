@@ -9,7 +9,7 @@ import { ClerkAuthProvider } from '@/hooks/use-clerk-auth';
 import { ENV } from '@/lib/env';
 
 // Get the Clerk publishable key from our environment utility
-const clerkPubKey = ENV.CLERK_PUBLISHABLE_KEY;
+const clerkPubKey: string = ENV.CLERK_PUBLISHABLE_KEY || '';
 
 // Logging to debug the environment variable issue
 console.log('Clerk publishable key status:', {

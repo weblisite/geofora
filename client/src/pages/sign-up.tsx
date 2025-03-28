@@ -30,7 +30,7 @@ export default function SignUpPage() {
                   formButtonPrimary: 
                     "bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 text-white",
                   footerActionLink: "text-primary-500 hover:text-primary-400",
-                  card: "bg-transparent shadow-none",
+                  card: "bg-transparent shadow-none"
                 }
               }}
               routing="path" 

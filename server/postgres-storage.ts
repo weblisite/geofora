@@ -156,6 +156,11 @@ export class PostgresStorage implements IStorage {
     return result[0];
   }
 
+  async getUserByClerkId(clerkUserId: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.clerkUserId, clerkUserId));
+    return result[0];
+  }
+
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users);
   }
@@ -203,6 +208,9 @@ export class PostgresStorage implements IStorage {
       ));
   }
 
+  // This method is already defined above with better typing
+  // Keeping this commented code for reference
+  /*
   async createUser(userData: { username: string; email: string; password: string; displayName?: string }) {
     const result = await db.insert(users).values({
       username: userData.username,
@@ -214,16 +222,9 @@ export class PostgresStorage implements IStorage {
     }).returning();
     return result[0];
   }
+  */
 
-  async getUserByEmail(email: string) {
-    const result = await db.select().from(users).where(eq(users.email, email));
-    return result[0];
-  }
-
-  async getUserByUsername(username: string) {
-    const result = await db.select().from(users).where(eq(users.username, username));
-    return result[0];
-  }
+  // These methods are already defined above
 
   // Category methods
   async getCategory(id: number): Promise<Category | undefined> {
