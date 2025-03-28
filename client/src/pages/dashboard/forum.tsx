@@ -281,47 +281,8 @@ export default function ForumManagementPage() {
     }
   }, [formData.name, editForumId]);
 
-  // Mock data for development - will be replaced with actual API data
-  const mockForums: Forum[] = [
-    {
-      id: 1,
-      name: "Tech Discussion",
-      slug: "tech-discussion",
-      description: "Forum for discussing technology topics and trends",
-      subdomain: "tech",
-      themeColor: "#3B82F6",
-      primaryFont: "Inter",
-      secondaryFont: "Roboto",
-      headingFontSize: "1.5rem",
-      bodyFontSize: "1rem",
-      mainWebsiteUrl: "https://techblog.example.com",
-      isPublic: true,
-      requiresApproval: false,
-      createdAt: "2023-05-15T10:30:00Z",
-      totalQuestions: 156,
-      totalAnswers: 892
-    },
-    {
-      id: 2,
-      name: "Health & Wellness",
-      slug: "health-wellness",
-      description: "Discussions about health, fitness, and wellbeing",
-      themeColor: "#10B981",
-      primaryFont: "Poppins",
-      secondaryFont: "Open Sans",
-      headingFontSize: "1.75rem",
-      bodyFontSize: "1.125rem",
-      mainWebsiteUrl: "https://healthblog.example.com",
-      isPublic: true,
-      requiresApproval: true,
-      createdAt: "2023-06-20T14:15:00Z",
-      totalQuestions: 87,
-      totalAnswers: 342
-    }
-  ];
-
-  // Use the actual forums data if available, otherwise use mock data
-  const forumsToDisplay: Forum[] = forums || mockForums;
+  // Use only real data from the database
+  const forumsToDisplay: Forum[] = forums || [];
 
   // Forum creation form component
   const ForumForm = () => (
