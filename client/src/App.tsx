@@ -17,6 +17,7 @@ import SignUpPage from "@/pages/sign-up";
 import PaymentPage from "@/pages/payment";
 // Only keep our custom verify page, let Clerk handle email verification directly
 import VerifyPage from "@/pages/verify";
+import EmailVerificationPage from "@/pages/email-verification";
 import UIShowcasePage from "@/pages/ui-showcase";
 import DocumentationPage from "@/pages/documentation-page";
 import NotFound from "@/pages/not-found";
@@ -93,7 +94,7 @@ function App() {
         <Route path="/sign-up" component={SignUpPage} />
         <Route path="/payment" component={PaymentPage} />
         <Route path="/sign-up/verify" component={VerifyPage} />
-        {/* No route for /sign-up/verify-email-address - let Clerk handle it entirely */}
+        <Route path="/sign-up/verify-email-address" component={EmailVerificationPage} />
         {/* Legacy route redirects */}
         <Route path="/login">
           <SignInPage />
