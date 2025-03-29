@@ -997,13 +997,20 @@ export default function Settings() {
                                   size="sm" 
                                   className="mt-2"
                                   onClick={() => {
-                                    // Convert from POLAR_PLAN_IDS format to plan type
-                                    const planType = planId === POLAR_PLAN_IDS.starter 
-                                      ? 'starter' 
-                                      : planId === POLAR_PLAN_IDS.professional 
-                                      ? 'professional' 
-                                      : 'enterprise';
-                                    handleChangePlan(planType);
+                                    // Direct Polar.sh checkout links
+                                    let checkoutUrl;
+                                    if (planId === 'starter' || planId === POLAR_PLAN_IDS.starter) {
+                                      checkoutUrl = "https://buy.polar.sh/polar_cl_saQVhkF5OgG3xuhn3eZm5G3gQUA0rAx17BHB43INwPN";
+                                    } else if (planId === 'professional' || planId === POLAR_PLAN_IDS.professional) {
+                                      checkoutUrl = "https://buy.polar.sh/polar_cl_oCymEewojyAWOZOHjZJRC1PQGo0ES0Tu2eeVh1S3N6Y";
+                                    } else if (planId === 'enterprise' || planId === POLAR_PLAN_IDS.enterprise) {
+                                      checkoutUrl = "https://buy.polar.sh/polar_cl_bXNvmdougqf83av9fFAH1DA6y3ghNMzf5Kzwy38RLVX";
+                                    }
+                                    
+                                    // Open checkout in new tab
+                                    if (checkoutUrl) {
+                                      window.open(checkoutUrl, '_blank');
+                                    }
                                   }}
                                 >
                                   {subscription?.plan === 'starter' && planId === 'professional' ? 'Upgrade' : 
