@@ -255,6 +255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/checkout/create-session", requireClerkAuth, async (req, res) => {
     try {
       const { planId, withTrial = true } = req.body;
+      console.log("Checkout request received:", { planId, withTrial });
       
       if (!req.auth?.userId) {
         return res.status(401).json({ message: "Authentication required" });
@@ -262,15 +263,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get user information
       const userId = req.auth.userId;
+      console.log("Processing checkout for user:", userId);
       const user = await storage.getUserByClerkId(userId);
       
       if (!user) {
+        console.error("User not found in database:", userId);
         return res.status(404).json({ message: "User not found" });
       }
       
       // Get user profile from Clerk for email and name
-      const clerkUser = await clerkClient.users.getUser(userId);
+      console.log("Fetching Clerk user profile for:", userId);
+      let clerkUser;
+      try {
+        clerkUser = await clerkClient.users.getUser(userId);
+      } catch (clerkError) {
+        console.error("Error fetching Clerk user:", clerkError);
+        return res.status(404).json({ message: "Failed to fetch Clerk user profile" });
+      }
+      
       if (!clerkUser) {
+        console.error("Clerk user not found:", userId);
         return res.status(404).json({ message: "Clerk user not found" });
       }
       
@@ -279,40 +291,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? `${clerkUser.firstName} ${clerkUser.lastName}`
         : clerkUser.username || "";
       
+      console.log("User details:", { userEmail, userName });
+      
       // Get return URL (where to redirect after checkout)
       const baseUrl = new URL(req.headers.referer || "http://localhost:5000");
       const successUrl = `${baseUrl.origin}/payment/success`;
+      console.log("Success URL:", successUrl);
+      
+      // Verify POLAR_ACCESS_TOKEN is available
+      console.log("Checking for POLAR_ACCESS_TOKEN:", process.env.POLAR_ACCESS_TOKEN ? "Available" : "Not available");
       
       // Create checkout session via Polar API
-      const checkoutSession = await polarApi.createCheckoutSession(
+      console.log("Creating Polar checkout session with parameters:", { 
         planId, 
-        userId,
-        userEmail,
-        userName,
-        successUrl,
-        withTrial
-      );
+        userId, 
+        withTrial,
+        successUrl
+      });
       
-      // If this is a trial, update user trial status
-      if (withTrial) {
-        await storage.updateUserPlan(user.id, {
-          trialPlan: planId,
-          isInTrial: true,
-          trialStartedAt: new Date(),
-          // Set trial end date to 7 days in the future
-          trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      try {
+        // Create checkout session via Polar API
+        const checkoutSession = await polarApi.createCheckoutSession(
+          planId, 
+          userId,
+          userEmail,
+          userName,
+          successUrl,
+          withTrial
+        );
+        
+        console.log("Checkout session created successfully:", {
+          id: checkoutSession.id,
+          url: checkoutSession.url,
+          expiresAt: checkoutSession.expires_at
         });
         
-        console.log(`Trial started for user ${user.id} with plan ${planId}`);
+        // If this is a trial, update user trial status
+        if (withTrial) {
+          await storage.updateUserPlan(user.id, {
+            trialPlan: planId,
+            isInTrial: true,
+            trialStartedAt: new Date(),
+            // Set trial end date to 7 days in the future
+            trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+          });
+          
+          console.log(`Trial started for user ${user.id} with plan ${planId}`);
+        }
+        
+        // Return checkout session URL and details
+        res.json({
+          checkoutUrl: checkoutSession.url,
+          checkoutId: checkoutSession.id,
+          clientSecret: checkoutSession.client_secret,
+          expiresAt: checkoutSession.expires_at
+        });
+      } catch (polarError) {
+        console.error("Polar API error:", polarError);
+        
+        // Fall back to URL parameter method
+        console.log("Falling back to URL parameter method");
+        const subscriptionUrl = withTrial 
+          ? getTrialSubscriptionUrl(planId, userId, successUrl)
+          : getSubscriptionUrl(planId, userId, successUrl);
+        
+        res.json({ 
+          checkoutUrl: subscriptionUrl,
+          fallback: true
+        });
       }
-      
-      // Return checkout session URL and details
-      res.json({
-        checkoutUrl: checkoutSession.url,
-        checkoutId: checkoutSession.id,
-        clientSecret: checkoutSession.client_secret,
-        expiresAt: checkoutSession.expires_at
-      });
     } catch (error) {
       console.error("Error creating checkout session:", error);
       res.status(500).json({ message: "Failed to create checkout session" });
