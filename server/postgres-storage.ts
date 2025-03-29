@@ -441,6 +441,21 @@ export class PostgresStorage implements IStorage {
   async getAllAiPersonas(): Promise<AiPersona[]> {
     return await db.select().from(aiPersonas);
   }
+  
+  async getAiPersonasByUserId(userId: number): Promise<AiPersona[]> {
+    return await db.select()
+      .from(aiPersonas)
+      .where(eq(aiPersonas.userId, userId));
+  }
+  
+  async getActiveAiPersonasByUserId(userId: number): Promise<AiPersona[]> {
+    return await db.select()
+      .from(aiPersonas)
+      .where(and(
+        eq(aiPersonas.userId, userId),
+        eq(aiPersonas.active, true)
+      ));
+  }
 
   async createAiPersona(persona: InsertAiPersona): Promise<AiPersona> {
     const result = await db.insert(aiPersonas).values(persona).returning();
@@ -451,9 +466,76 @@ export class PostgresStorage implements IStorage {
     const result = await db.update(aiPersonas).set(data).where(eq(aiPersonas.id, id)).returning();
     return result[0];
   }
+  
+  async incrementAiPersonaUsage(id: number): Promise<AiPersona> {
+    // First get the current count
+    const persona = await this.getAiPersona(id);
+    if (!persona) {
+      throw new Error(`AI Persona with ID ${id} not found`);
+    }
+    
+    // Increment the count
+    const usageCount = (persona.usageCount || 0) + 1;
+    
+    // Update the persona
+    const result = await db.update(aiPersonas)
+      .set({ usageCount })
+      .where(eq(aiPersonas.id, id))
+      .returning();
+      
+    return result[0];
+  }
+  
+  async updateAiPersonaMetrics(id: number, metrics: { 
+    rating?: number; 
+    responseTime?: number; 
+    completionRate?: number;
+  }): Promise<AiPersona> {
+    const result = await db.update(aiPersonas)
+      .set(metrics)
+      .where(eq(aiPersonas.id, id))
+      .returning();
+      
+    return result[0];
+  }
 
   async deleteAiPersona(id: number): Promise<void> {
     await db.delete(aiPersonas).where(eq(aiPersonas.id, id));
+  }
+  
+  async getUserSubscription(userId: number): Promise<{ 
+    plan: string; 
+    status: string;
+    planActiveUntil?: Date;
+  } | null> {
+    // This is a placeholder. In a real implementation, this would get the subscription details
+    // from the user record in the database or from a subscription service.
+    const user = await this.getUser(userId);
+    if (!user) {
+      return null;
+    }
+    
+    // For now, we'll return a hardcoded subscription based on the user's role
+    // In a real implementation, this would come from a subscriptions table or external API
+    if (user.roleId === 1) { // Assuming roleId 1 is admin
+      return {
+        plan: 'enterprise',
+        status: 'active',
+        planActiveUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year from now
+      };
+    } else if (user.roleId === 2) { // Assuming roleId 2 is premium user
+      return {
+        plan: 'professional',
+        status: 'active',
+        planActiveUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+      };
+    } else {
+      return {
+        plan: 'starter',
+        status: 'active',
+        planActiveUntil: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) // 14 days from now
+      };
+    }
   }
 
   // Main Site Page methods

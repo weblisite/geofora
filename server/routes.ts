@@ -533,7 +533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Personas routes
-  app.get("/api/personas", requireClerkAuth, async (req, res) => {
+  app.get("/api/ai-personas", requireClerkAuth, async (req, res) => {
     try {
       const clerkId = req.auth.userId;
       
@@ -554,6 +554,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user's AI personas:", error);
       res.status(500).json({ message: "Failed to fetch AI personas" });
+    }
+  });
+
+  // Create a new AI persona
+  app.post("/api/ai-personas", requireClerkAuth, async (req, res) => {
+    try {
+      const clerkId = req.auth.userId;
+      
+      if (!clerkId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Get user from database
+      const user = await storage.getUserByClerkId(clerkId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Check user's subscription and persona limit
+      const subscription = await storage.getUserSubscription(user.id);
+      const existingPersonas = await storage.getAiPersonasByUserId(user.id);
+      
+      let personaLimit = 20; // Default to Starter plan
+      if (subscription?.plan === "professional") {
+        personaLimit = 100;
+      } else if (subscription?.plan === "enterprise") {
+        personaLimit = Number.MAX_SAFE_INTEGER; // Unlimited
+      }
+      
+      if (existingPersonas.length >= personaLimit) {
+        return res.status(403).json({ 
+          message: `You've reached your plan's limit of ${personaLimit} AI personas. Upgrade your plan to create more.` 
+        });
+      }
+      
+      // Create the new persona
+      const newPersona = {
+        userId: user.id,
+        name: req.body.name,
+        description: req.body.description,
+        expertise: req.body.expertise,
+        personality: req.body.personality,
+        tone: req.body.tone,
+        responseLength: req.body.responseLength,
+        active: req.body.active || true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        usageCount: 0,
+        rating: 5.0, // Default initial rating
+        responseTime: 1.0, // Default initial response time in seconds
+        completionRate: 100.0, // Default initial completion rate percentage
+      };
+      
+      const createdPersona = await storage.createAiPersona(newPersona);
+      res.status(201).json(createdPersona);
+    } catch (error) {
+      console.error("Error creating AI persona:", error);
+      res.status(500).json({ message: "Failed to create AI persona" });
+    }
+  });
+  
+  // Generate AI personas from website content
+  app.post("/api/ai-personas/generate", requireClerkAuth, async (req, res) => {
+    try {
+      const { websiteUrl } = req.body;
+      
+      if (!websiteUrl) {
+        return res.status(400).json({ message: "Website URL is required" });
+      }
+      
+      const clerkId = req.auth?.userId;
+      
+      if (!clerkId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Get user from database
+      const user = await storage.getUserByClerkId(clerkId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Check user's subscription and persona limit
+      const subscription = await storage.getUserSubscription(user.id);
+      const existingPersonas = await storage.getAiPersonasByUserId(user.id);
+      
+      let personaLimit = 20; // Default to Starter plan
+      if (subscription?.plan === "professional") {
+        personaLimit = 100;
+      } else if (subscription?.plan === "enterprise") {
+        personaLimit = Number.MAX_SAFE_INTEGER; // Unlimited
+      }
+      
+      if (existingPersonas.length >= personaLimit) {
+        return res.status(403).json({ 
+          message: `You've reached your plan's limit of ${personaLimit} AI personas. Upgrade your plan to create more.` 
+        });
+      }
+
+      // Use AI to analyze the website and extract keywords
+      const keywordAnalysis = await analyzeWebsiteForKeywords(websiteUrl);
+      
+      if (!keywordAnalysis || (!keywordAnalysis.primaryKeywords && !keywordAnalysis.secondaryKeywords) || 
+          (keywordAnalysis.primaryKeywords.length === 0 && keywordAnalysis.secondaryKeywords.length === 0)) {
+        return res.status(400).json({ message: "Could not extract keywords from the website" });
+      }
+      
+      // Combine primary and secondary keywords
+      const keywords = [
+        ...keywordAnalysis.primaryKeywords,
+        ...keywordAnalysis.secondaryKeywords
+      ];
+      
+      // Generate personas based on the keywords
+      const personas = generatePersonasFromKeywords(keywords, user.id, personaLimit - existingPersonas.length);
+      
+      // Save the personas to the database
+      const createdPersonas = [];
+      for (const persona of personas) {
+        const createdPersona = await storage.createAiPersona({
+          ...persona,
+          type: persona.expertise || "intermediate" // Ensure type field is present
+        });
+        createdPersonas.push(createdPersona);
+      }
+      
+      res.status(201).json(createdPersonas);
+    } catch (error) {
+      console.error("Error generating AI personas:", error);
+      res.status(500).json({ message: "Failed to generate AI personas" });
     }
   });
   

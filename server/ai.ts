@@ -1397,6 +1397,95 @@ export async function analyzeWebsiteForKeywords(
 }
 
 /**
+ * Generate AI personas based on extracted website keywords
+ * @param keywords List of keywords to use for persona generation
+ * @param userId The user ID who will own the personas
+ * @param limit Maximum number of personas to generate (based on subscription limits)
+ */
+export function generatePersonasFromKeywords(
+  keywords: string[],
+  userId: number,
+  limit: number = 10
+): Array<any> {
+  // Personality and tone options for variety
+  const personalityOptions = [
+    "Friendly", "Professional", "Analytical", "Creative", "Engaging",
+    "Humorous", "Empathetic", "Direct", "Detailed", "Supportive"
+  ];
+  
+  const toneOptions = [
+    "Casual", "Formal", "Enthusiastic", "Neutral", "Authoritative",
+    "Educational", "Persuasive", "Informative", "Conversational", "Technical"
+  ];
+  
+  const expertiseLevels = ["beginner", "intermediate", "expert"];
+  
+  // Helper function to generate a persona name based on keyword and expertise
+  const generatePersonaName = (keyword: string, expertise: string) => {
+    const prefixes = ["Dr.", "Prof.", "Expert", "Guru", "Specialist", "Master", "Coach"];
+    const suffixes = ["Advisor", "Authority", "Pro", "Enthusiast", "Guide", "Mentor"];
+    
+    // Randomly select prefix or suffix
+    const usePrefix = Math.random() > 0.5;
+    
+    if (usePrefix) {
+      const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+      return `${prefix} ${keyword.charAt(0).toUpperCase() + keyword.slice(1)}`;
+    } else {
+      const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
+      return `${keyword.charAt(0).toUpperCase() + keyword.slice(1)} ${suffix}`;
+    }
+  };
+  
+  const personas = [];
+  
+  // Create personas up to the limit or the number of keywords (whichever is smaller)
+  const personaCount = Math.min(limit, keywords.length);
+  
+  for (let i = 0; i < personaCount; i++) {
+    const keyword = keywords[i];
+    const expertise = expertiseLevels[Math.floor(Math.random() * expertiseLevels.length)];
+    const personality = personalityOptions[Math.floor(Math.random() * personalityOptions.length)];
+    const tone = toneOptions[Math.floor(Math.random() * toneOptions.length)];
+    const responseLength = Math.floor(Math.random() * 3) + 2; // 2-4
+    
+    // Select 1-3 keywords as areas of expertise for this persona
+    const personaKeywords = [];
+    personaKeywords.push(keyword);
+    
+    // Maybe add 1-2 more keywords if available
+    for (let j = 0; j < 2; j++) {
+      if (i + j + 1 < keywords.length && Math.random() > 0.3) {
+        personaKeywords.push(keywords[i + j + 1]);
+      }
+    }
+    
+    const name = generatePersonaName(keyword, expertise);
+    const description = `${personality} AI persona with ${expertise}-level expertise in ${personaKeywords.join(', ')}. Uses a ${tone.toLowerCase()} tone.`;
+    
+    personas.push({
+      userId,
+      name,
+      description,
+      expertise: keyword,
+      personality,
+      tone,
+      responseLength,
+      keywords: personaKeywords,
+      active: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      usageCount: 0,
+      rating: 5.0, // Default initial rating
+      responseTime: 1.0, // Default initial response time in seconds
+      completionRate: 100.0, // Default initial completion rate percentage
+    });
+  }
+  
+  return personas;
+}
+
+/**
  * Generate questions for a forum based on a specific keyword or topic
  */
 export async function generateKeywordOptimizedQuestions(

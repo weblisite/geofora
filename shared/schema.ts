@@ -548,10 +548,17 @@ export const insertVoteSchema = createInsertSchema(votes).pick({
 });
 
 export const insertAiPersonaSchema = createInsertSchema(aiPersonas).pick({
+  userId: true,
   name: true,
   type: true,
+  personality: true,
+  tone: true,
+  responseLength: true,
   avatar: true,
   description: true,
+  expertise: true,
+  keywords: true,
+  active: true,
 });
 
 export const insertMainSitePageSchema = createInsertSchema(mainSitePages).pick({
@@ -1002,6 +1009,14 @@ export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => 
   }),
 }));
 
+// AI Persona relations
+export const aiPersonasRelations = relations(aiPersonas, ({ one }) => ({
+  user: one(users, {
+    fields: [aiPersonas.userId],
+    references: [users.id],
+  }),
+}));
+
 // User relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   role: one(roles, {
@@ -1015,6 +1030,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   userForumRoles: many(userForumRoles),
   contentInterlinks: many(contentInterlinks, { relationName: "createdByUser" }),
   contentSchedules: many(contentSchedules),
+  aiPersonas: many(aiPersonas),
 }));
 
 // User-Forum-Role relations
