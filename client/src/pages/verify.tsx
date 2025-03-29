@@ -13,12 +13,16 @@ export default function VerifyPage() {
     const handleCallback = async () => {
       try {
         // This will handle the redirect and update the session
-        await handleRedirectCallback();
+        const result = await handleRedirectCallback();
+        console.log("Clerk redirect callback result:", result);
         
         // If we get here, the redirect was successful, check if we're authenticated
         if (clerk.user) {
+          // Directly navigate to dashboard instead of going through another verification page
+          console.log("User verified, redirecting to dashboard");
           navigate("/dashboard");
         } else {
+          console.log("User not found after verification, redirecting to sign-in");
           navigate("/sign-in");
         }
       } catch (error) {

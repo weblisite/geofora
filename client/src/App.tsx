@@ -93,8 +93,7 @@ function App() {
         <Route path="/sign-up" component={SignUpPage} />
         <Route path="/payment" component={PaymentPage} />
         <Route path="/sign-up/verify" component={VerifyPage} />
-        <Route path="/sign-up/verify-email-address" component={VerifyEmailPage} />
-        <Route path="/verify-email-address" component={VerifyEmailPage} />
+        {/* Removed duplicate verification routes that were causing double redirects */}
         {/* Legacy route redirects */}
         <Route path="/login">
           <SignInPage />
