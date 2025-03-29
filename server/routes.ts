@@ -487,6 +487,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Dedicated endpoint for creating trial checkout sessions
+  app.post("/api/payments/create-trial-checkout", requireClerkAuth, async (req, res) => {
+    try {
+      // Get plan ID from request body
+      const { planId } = req.body;
+      
+      if (!planId) {
+        return res.status(400).json({ message: "Plan ID is required" });
+      }
+      
+      // Get authenticated user ID and info
+      const userId = req.auth.userId;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      try {
+        // Get user details from Clerk
+        const user = await clerkClient.users.getUser(userId);
+        
+        // Extract email and name for checkout
+        const userEmail = user.emailAddresses[0]?.emailAddress || '';
+        const userName = user.firstName && user.lastName 
+          ? `${user.firstName} ${user.lastName}` 
+          : user.firstName || 'User';
+        
+        // Create success URL for returning to our app
+        const successUrl = `${req.protocol}://${req.get('host')}/payment/success`;
+        
+        // Create the trial checkout session
+        const checkoutSession = await polarApi.createCheckoutForFreeTrial(
+          planId,
+          userId,
+          userEmail,
+          userName,
+          successUrl
+        );
+        
+        console.log("Trial checkout session created:", checkoutSession);
+        
+        // Return the checkout URL to the client
+        res.json({
+          checkoutUrl: checkoutSession.url,
+          checkoutId: checkoutSession.id,
+          clientSecret: checkoutSession.client_secret,
+          expiresAt: checkoutSession.expires_at
+        });
+      } catch (polarError) {
+        console.error("Polar API error for trial checkout:", polarError);
+        
+        // Fall back to URL parameter method
+        console.log("Falling back to URL parameter method for trial");
+        const successUrl = `${req.protocol}://${req.get('host')}/payment/success`;
+        const subscriptionUrl = getTrialSubscriptionUrl(planId, userId, successUrl);
+        
+        res.json({ 
+          checkoutUrl: subscriptionUrl,
+          fallback: true
+        });
+      }
+    } catch (error) {
+      console.error("Error creating trial checkout session:", error);
+      res.status(500).json({ message: "Failed to create trial checkout session" });
+    }
+  });
+  
   // Polar webhook for subscription events (created, updated, canceled)
   app.post("/api/webhooks/polar", async (req, res) => {
     try {
@@ -709,6 +776,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to process webhook" });
     }
   });
+  
+
 
   // Categories routes
   app.get("/api/categories", async (req, res) => {

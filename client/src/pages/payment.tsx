@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
-import { planStore } from "@/lib/planStore";
+import { usePlanStore } from "@/lib/planStore";
 import { PLAN_INFO, POLAR_PLAN_IDS, getSubscriptionUrl, getTrialSubscriptionUrl } from "@shared/polar-service";
 import { Button } from "@/components/ui/button";
 import { Glassmorphism } from "@/components/ui/glassmorphism";
@@ -27,7 +27,8 @@ export default function PaymentPage() {
         // Get plan from URL or localStorage
         const urlParams = new URLSearchParams(window.location.search);
         const planFromUrl = urlParams.get('plan');
-        const selectedPlan = planFromUrl || planStore.getSelectedPlan();
+        const planStore = usePlanStore();
+        const selectedPlan = planFromUrl || planStore.selectedPlanId;
         
         if (!selectedPlan) {
           toast({
@@ -176,6 +177,7 @@ export default function PaymentPage() {
   };
 
   const handleCancel = () => {
+    const planStore = usePlanStore();
     planStore.clearSelectedPlan();
     setLocation('/');
   };

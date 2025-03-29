@@ -18,13 +18,16 @@ export default function TrialConfirmationPage() {
   // Mutation to start trial and redirect to checkout
   const startTrialMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest<{checkoutUrl: string}>('/api/payments/create-trial-checkout', {
+      const response = await apiRequest('/api/payments/create-trial-checkout', {
         method: 'POST',
         body: JSON.stringify({
           planId: selectedPlanId,
         }),
       });
-      return response;
+      
+      // Parse the response as JSON
+      const data = await response.json();
+      return data;
     },
     onSuccess: (data) => {
       // Redirect to Polar checkout

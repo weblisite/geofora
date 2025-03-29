@@ -5,6 +5,17 @@ import { Glassmorphism } from "@/components/ui/glassmorphism";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 
+// Define a type for the subscription data
+interface SubscriptionData {
+  isInTrial?: boolean;
+  trialPlan?: string;
+  trialEndsAt?: string;
+  plan?: string;
+  planActiveUntil?: string;
+  status?: string;
+  polarSubscriptionId?: string;
+}
+
 export default function PaymentSuccessPage() {
   const [, setLocation] = useLocation();
   const [countdown, setCountdown] = useState(5);
@@ -14,7 +25,7 @@ export default function PaymentSuccessPage() {
   const checkoutId = searchParams.get('checkout_id');
 
   // Fetch subscription details
-  const { data: subscriptionData, isLoading } = useQuery({
+  const { data: subscriptionData, isLoading } = useQuery<SubscriptionData>({
     queryKey: ['/api/users/subscription'],
     retry: 2,
   });

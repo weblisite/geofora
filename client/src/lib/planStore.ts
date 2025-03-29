@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { POLAR_PLAN_IDS, PlanInfo, PLAN_INFO } from '@shared/polar-service';
 
+// Export the type used in the pricing component
+export type PlanType = 'starter' | 'professional' | 'enterprise';
+
 interface PlanState {
   // The currently selected plan ID (during checkout flow)
   selectedPlanId: string | null;
