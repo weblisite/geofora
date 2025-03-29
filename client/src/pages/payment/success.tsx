@@ -8,12 +8,19 @@ import { useQuery } from "@tanstack/react-query";
 export default function PaymentSuccessPage() {
   const [, setLocation] = useLocation();
   const [countdown, setCountdown] = useState(5);
+  
+  // Get checkout ID from URL if available
+  const searchParams = new URLSearchParams(window.location.search);
+  const checkoutId = searchParams.get('checkout_id');
 
   // Fetch subscription details
   const { data: subscriptionData, isLoading } = useQuery({
     queryKey: ['/api/users/subscription'],
     retry: 2,
   });
+  
+  // Check if this is a trial
+  const isTrialSignup = subscriptionData?.isInTrial || false;
 
   // Auto-redirect to dashboard after 5 seconds
   useEffect(() => {
@@ -38,11 +45,22 @@ export default function PaymentSuccessPage() {
           </div>
         </div>
         
-        <h1 className="text-2xl font-bold mb-2">Payment Successful</h1>
+        <h1 className="text-2xl font-bold mb-2">
+          {isTrialSignup ? 'Trial Activated!' : 'Payment Successful'}
+        </h1>
         
         <p className="text-gray-400 mb-6">
-          Thank you for your subscription! Your account has been activated.
+          {isTrialSignup 
+            ? 'Your 7-day free trial has been activated. Enjoy full access to all features!'
+            : 'Thank you for your subscription! Your account has been activated.'}
         </p>
+        
+        {checkoutId && (
+          <div className="mb-4 text-xs text-gray-400 bg-dark-200 p-2 rounded-md">
+            <p className="font-medium">Transaction Reference:</p>
+            <p className="font-mono">{checkoutId}</p>
+          </div>
+        )}
         
         {isLoading ? (
           <div className="mb-6">
@@ -53,15 +71,41 @@ export default function PaymentSuccessPage() {
           <Card className="bg-dark-200 p-4 mb-6 border-dark-400">
             <h3 className="font-medium mb-2">Subscription Details</h3>
             <div className="text-sm text-gray-300">
-              <p><span className="text-gray-400">Plan:</span> {subscriptionData.plan || 'Starter'}</p>
-              <p><span className="text-gray-400">Status:</span> {subscriptionData.status || 'Active'}</p>
-              {subscriptionData.planActiveUntil && (
+              <p>
+                <span className="text-gray-400">Plan:</span> {' '}
+                <span className="capitalize">
+                  {isTrialSignup && subscriptionData.trialPlan 
+                    ? subscriptionData.trialPlan.replace(/-/g, ' ') 
+                    : subscriptionData.plan || 'Starter'}
+                </span>
+              </p>
+              
+              <p>
+                <span className="text-gray-400">Status:</span> {' '}
+                {isTrialSignup ? 'Free Trial' : subscriptionData.status || 'Active'}
+              </p>
+              
+              {isTrialSignup && subscriptionData.trialEndsAt ? (
+                <p>
+                  <span className="text-gray-400">Trial ends:</span>{' '}
+                  {new Date(subscriptionData.trialEndsAt).toLocaleDateString()}
+                </p>
+              ) : subscriptionData.planActiveUntil && (
                 <p>
                   <span className="text-gray-400">Next billing:</span>{' '}
                   {new Date(subscriptionData.planActiveUntil).toLocaleDateString()}
                 </p>
               )}
             </div>
+            
+            {isTrialSignup && (
+              <div className="mt-3 pt-3 border-t border-dark-300 text-sm text-gray-400">
+                <p className="flex items-start gap-2">
+                  <span className="material-icons text-base">credit_card</span>
+                  <span>Your payment method is securely stored. You won't be charged until your trial ends, and you can cancel anytime.</span>
+                </p>
+              </div>
+            )}
           </Card>
         ) : null}
         

@@ -8,7 +8,7 @@ export const POLAR_PLAN_IDS = {
   enterprise: '5cea5e8b-dd39-4c28-bcb0-0912b17bfcba',
   
   // Free trial product ID (price set to $0)
-  free_trial: '54f4c605-18d4-4b1a-861f-16334c053518'
+  free_trial: '6026a89c-c8b6-4a4e-8709-de17d08dfecf'
 };
 
 /**
