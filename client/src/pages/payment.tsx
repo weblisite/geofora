@@ -105,8 +105,7 @@ export default function PaymentPage() {
       // Generate the return URL (dashboard)
       const returnUrl = `${window.location.origin}/dashboard?checkout_id={CHECKOUT_ID}`;
       
-      // Generate subscription URL based on trial mode
-      // Pass the plan type directly instead of the plan ID
+      // Get the direct checkout URL with parameters
       const subscriptionUrl = trialMode 
         ? getTrialSubscriptionUrl(planType, user.id, returnUrl)
         : getSubscriptionUrl(planType, user.id, returnUrl);

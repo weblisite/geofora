@@ -12,9 +12,8 @@ export const POLAR_PLAN_IDS = {
  */
 export const POLAR_CHECKOUT_LINKS = {
   starter: 'https://buy.polar.sh/polar_cl_saQVhkF5OgG3xuhn3eZm5G3gQUA0rAx17BHB43INwPN',
-  // Add Professional and Enterprise links when available
-  professional: 'https://buy.polar.sh/polar_cl_saQVhkF5OgG3xuhn3eZm5G3gQUA0rAx17BHB43INwPN', // Placeholder - replace with actual link
-  enterprise: 'https://buy.polar.sh/polar_cl_saQVhkF5OgG3xuhn3eZm5G3gQUA0rAx17BHB43INwPN'  // Placeholder - replace with actual link
+  professional: 'https://buy.polar.sh/polar_cl_oCymEewojyAWOZOHjZJRC1PQGo0ES0Tu2eeVh1S3N6Y',
+  enterprise: 'https://buy.polar.sh/polar_cl_bXNvmdougqf83av9fFAH1DA6y3ghNMzf5Kzwy38RLVX'
 };
 
 /**
