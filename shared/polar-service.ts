@@ -1,19 +1,10 @@
 /**
- * Polar.sh API configurations with actual product IDs and checkout links
+ * Polar.sh API configurations with actual product IDs
  */
 export const POLAR_PLAN_IDS = {
   starter: '9dbc8276-eb2a-4b8a-81ec-e3c7962ed314',
   professional: 'cec301e0-e05e-4515-9bc3-297e6833496a',
   enterprise: '5cea5e8b-dd39-4c28-bcb0-0912b17bfcba'
-};
-
-/**
- * Direct checkout links from Polar dashboard
- */
-export const POLAR_CHECKOUT_LINKS = {
-  starter: 'https://buy.polar.sh/polar_cl_saQVhkF5OgG3xuhn3eZm5G3gQUA0rAx17BHB43INwPN',
-  professional: 'https://buy.polar.sh/polar_cl_oCymEewojyAWOZOHjZJRC1PQGo0ES0Tu2eeVh1S3N6Y',
-  enterprise: 'https://buy.polar.sh/polar_cl_bXNvmdougqf83av9fFAH1DA6y3ghNMzf5Kzwy38RLVX'
 };
 
 /**
@@ -100,59 +91,22 @@ export const polarApi = {
 
 /**
  * Get URL for subscribing to a specific plan
- * @param planType - The plan type (starter, professional, enterprise)
- * @param userId - The user ID
- * @param returnUrl - The URL to return to after payment
- * @returns Subscription URL with proper parameters
  */
-export const getSubscriptionUrl = (planType: string, userId: string, returnUrl: string) => {
-  // Get the direct checkout link for the specified plan type
-  const baseUrl = POLAR_CHECKOUT_LINKS[planType as keyof typeof POLAR_CHECKOUT_LINKS];
-  
-  if (!baseUrl) {
-    throw new Error(`Invalid plan type: ${planType}`);
-  }
-  
-  // For Polar checkout URLs, we need to use their specific format
-  const polarUrl = new URL(baseUrl);
-  
-  // Add parameters to the URL - user_id and return_url
-  polarUrl.searchParams.append('user_id', userId);
-  polarUrl.searchParams.append('return_url', returnUrl);
-  
-  return polarUrl.toString();
+export const getSubscriptionUrl = (planId: string, userId: string, returnUrl: string) => {
+  return `https://polar.sh/subscribe/${planId}?user_id=${userId}&return_url=${encodeURIComponent(returnUrl)}`;
 };
 
 /**
  * Specifies trial-specific parameters for the subscription
- * @param planType - The plan type (starter, professional, enterprise)
+ * @param planId - The plan ID 
  * @param userId - The user ID
  * @param returnUrl - The URL to return to after payment
  * @returns Subscription URL with trial parameters
  */
-export const getTrialSubscriptionUrl = (planType: string, userId: string, returnUrl: string) => {
-  // Get the direct checkout link for the specified plan type
-  const baseUrl = POLAR_CHECKOUT_LINKS[planType as keyof typeof POLAR_CHECKOUT_LINKS];
-  
-  if (!baseUrl) {
-    throw new Error(`Invalid plan type: ${planType}`);
-  }
-  
-  // For Polar checkout URLs, we need to use their specific format
-  const polarUrl = new URL(baseUrl);
-  
-  // Add basic parameters - user_id and return_url
-  polarUrl.searchParams.append('user_id', userId);
-  polarUrl.searchParams.append('return_url', returnUrl);
-  
-  // Try multiple possible trial parameter formats
-  // One of these might be the correct format for Polar
-  polarUrl.searchParams.append('trial_period_days', '7');
-  polarUrl.searchParams.append('trial_days', '7');
-  polarUrl.searchParams.append('trial_period', '7');
-  polarUrl.searchParams.append('trial', '7');
-  
-  return polarUrl.toString();
+export const getTrialSubscriptionUrl = (planId: string, userId: string, returnUrl: string) => {
+  // For trial, we use the same subscription URL but with trial parameters
+  // Polar allows setting trial_period_days parameter
+  return `https://polar.sh/subscribe/${planId}?user_id=${userId}&return_url=${encodeURIComponent(returnUrl)}&trial_period_days=7`;
 };
 
 /**

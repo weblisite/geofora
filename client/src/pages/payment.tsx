@@ -102,13 +102,16 @@ export default function PaymentPage() {
         })
       });
       
-      // Generate the return URL (dashboard)
-      const returnUrl = `${window.location.origin}/dashboard?checkout_id={CHECKOUT_ID}`;
+      // Get the Polar plan ID
+      const polarPlanId = POLAR_PLAN_IDS[planType as keyof typeof POLAR_PLAN_IDS];
       
-      // Get the direct checkout URL with parameters
+      // Generate the return URL (dashboard)
+      const returnUrl = `${window.location.origin}/dashboard`;
+      
+      // Generate subscription URL based on trial mode
       const subscriptionUrl = trialMode 
-        ? getTrialSubscriptionUrl(planType, user.id, returnUrl)
-        : getSubscriptionUrl(planType, user.id, returnUrl);
+        ? getTrialSubscriptionUrl(polarPlanId, user.id, returnUrl)
+        : getSubscriptionUrl(polarPlanId, user.id, returnUrl);
       
       // Redirect to Polar payment page
       window.location.href = subscriptionUrl;
