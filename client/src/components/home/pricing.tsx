@@ -11,20 +11,18 @@ export default function Pricing() {
   const { openSignUp } = useClerk();
   const [, setLocation] = useLocation();
 
-  // Handle plan selection and redirect to signup
+  // Handle plan selection and redirect to Polar.sh checkout
   const handleSelectPlan = (planName: string) => {
-    let planType: PlanType;
-    
-    // Convert plan name to plan type
+    // Redirect to appropriate Polar.sh checkout URL
     switch(planName.toLowerCase()) {
       case "starter": 
-        planType = "starter"; 
+        window.open("https://buy.polar.sh/polar_cl_saQVhkF5OgG3xuhn3eZm5G3gQUA0rAx17BHB43INwPN", "_blank");
         break;
       case "professional": 
-        planType = "professional"; 
+        window.open("https://buy.polar.sh/polar_cl_oCymEewojyAWOZOHjZJRC1PQGo0ES0Tu2eeVh1S3N6Y", "_blank");
         break;
       case "enterprise": 
-        planType = "enterprise"; 
+        window.open("https://buy.polar.sh/polar_cl_bXNvmdougqf83av9fFAH1DA6y3ghNMzf5Kzwy38RLVX", "_blank");
         break;
       default:
         toast({
@@ -34,15 +32,6 @@ export default function Pricing() {
         });
         return;
     }
-    
-    // Store the selected plan
-    planStore.setSelectedPlan(planType);
-    
-    // Redirect to sign up
-    openSignUp({
-      redirectUrl: `/payment?plan=${planType}`,
-      afterSignUpUrl: `/payment?plan=${planType}`
-    });
   };
 
   return (

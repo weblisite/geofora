@@ -670,11 +670,20 @@ export default function Settings() {
                 }
                 
                 try {
-                  // Use direct checkout links from Polar
-                  const checkoutUrl = POLAR_CHECKOUT_LINKS[planType as keyof typeof POLAR_CHECKOUT_LINKS];
-                  
-                  if (!checkoutUrl) {
-                    throw new Error("Invalid plan type or missing checkout URL");
+                  // Use direct checkout links to Polar.sh
+                  let checkoutUrl;
+                  switch(planType) {
+                    case 'starter':
+                      checkoutUrl = "https://buy.polar.sh/polar_cl_saQVhkF5OgG3xuhn3eZm5G3gQUA0rAx17BHB43INwPN";
+                      break;
+                    case 'professional':
+                      checkoutUrl = "https://buy.polar.sh/polar_cl_oCymEewojyAWOZOHjZJRC1PQGo0ES0Tu2eeVh1S3N6Y";
+                      break;
+                    case 'enterprise':
+                      checkoutUrl = "https://buy.polar.sh/polar_cl_bXNvmdougqf83av9fFAH1DA6y3ghNMzf5Kzwy38RLVX";
+                      break;
+                    default:
+                      throw new Error("Invalid plan type");
                   }
                   
                   // Store user plan selection in database
@@ -687,8 +696,8 @@ export default function Settings() {
                     })
                   });
                   
-                  // Redirect to the Polar checkout page
-                  window.location.href = checkoutUrl;
+                  // Open the Polar checkout page in a new tab
+                  window.open(checkoutUrl, '_blank');
                 } catch (error) {
                   console.error("Error redirecting to subscription page:", error);
                   toast({
