@@ -260,53 +260,8 @@ export default function AIPersonas() {
     generatePersonasFromWebsite();
   };
 
-  // Sample AI personas for the demo
-  const aiPersonaList = [
-    { 
-      id: "tech-expert", 
-      name: "Tech Expert", 
-      description: "A tech-savvy AI persona for answering technical questions", 
-      expertise: "expert",
-      personality: "Analytical",
-      tone: "Professional",
-      responseLength: 4,
-      active: true,
-      usageCount: 253
-    },
-    { 
-      id: "friendly-helper", 
-      name: "Friendly Helper", 
-      description: "A approachable AI persona for new users", 
-      expertise: "beginner",
-      personality: "Friendly",
-      tone: "Casual",
-      responseLength: 2,
-      active: true,
-      usageCount: 328
-    },
-    { 
-      id: "marketing-specialist", 
-      name: "Marketing Specialist", 
-      description: "A marketing-focused AI persona for SEO and content", 
-      expertise: "expert",
-      personality: "Creative",
-      tone: "Persuasive",
-      responseLength: 3,
-      active: true,
-      usageCount: 194
-    },
-    { 
-      id: "seo-guru", 
-      name: "SEO Guru", 
-      description: "An AI expert in search engine optimization", 
-      expertise: "expert",
-      personality: "Detailed",
-      tone: "Informative",
-      responseLength: 5,
-      active: true,
-      usageCount: 217
-    }
-  ];
+  // Use data from the personas API
+  const aiPersonaList = personas || [];
 
   // Personality options
   const personalityOptions = [
@@ -724,9 +679,9 @@ export default function AIPersonas() {
                                 </div>
                               </td>
                               <td className="p-3">{persona.usageCount}</td>
-                              <td className="p-3">{(Math.random() * (5 - 4) + 4).toFixed(1)} / 5</td>
-                              <td className="p-3">{(Math.random() * (4 - 1) + 1).toFixed(1)}s</td>
-                              <td className="p-3">{Math.floor(Math.random() * (100 - 95) + 95)}%</td>
+                              <td className="p-3">{persona.rating?.toFixed(1) || '4.5'} / 5</td>
+                              <td className="p-3">{persona.responseTime?.toFixed(1) || '2.0'}s</td>
+                              <td className="p-3">{persona.completionRate || 98}%</td>
                             </tr>
                           ))
                         )}
@@ -751,29 +706,83 @@ export default function AIPersonas() {
                         #1
                       </div>
                     </div>
-                    <h3 className="text-lg font-semibold mb-1">Friendly Helper</h3>
-                    <p className="text-sm text-muted-foreground mb-4">Beginner level</p>
-                    
-                    <div className="w-full space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">User Rating</span>
-                        <span className="text-sm font-medium">4.9 / 5</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Answers</span>
-                        <span className="text-sm font-medium">328</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Positive Feedback</span>
-                        <span className="text-sm font-medium">93%</span>
-                      </div>
+                    {/* Get the persona with highest rating */}
+                    {aiPersonaList.length > 0 ? (
+                      <>
+                        <h3 className="text-lg font-semibold mb-1">
+                          {aiPersonaList
+                            .sort((a, b) => (b.rating || 0) - (a.rating || 0))[0]?.name || "AI Persona"}
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          {aiPersonaList
+                            .sort((a, b) => (b.rating || 0) - (a.rating || 0))[0]?.expertise || "Expert"} level
+                        </p>
+                        
+                        <div className="w-full space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm">User Rating</span>
+                            <span className="text-sm font-medium">
+                              {aiPersonaList
+                                .sort((a, b) => (b.rating || 0) - (a.rating || 0))[0]?.rating?.toFixed(1) || "4.5"} / 5
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm">Answers</span>
+                            <span className="text-sm font-medium">
+                              {aiPersonaList
+                                .sort((a, b) => (b.rating || 0) - (a.rating || 0))[0]?.usageCount || 0}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm">Completion Rate</span>
+                            <span className="text-sm font-medium">
+                              {aiPersonaList
+                                .sort((a, b) => (b.rating || 0) - (a.rating || 0))[0]?.completionRate || 98}%
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <h3 className="text-lg font-semibold mb-1">No Personas Yet</h3>
+                        <p className="text-sm text-muted-foreground mb-4">Create your first AI persona</p>
+                        
+                        <div className="w-full space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm">User Rating</span>
+                            <span className="text-sm font-medium">- / 5</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm">Answers</span>
+                            <span className="text-sm font-medium">0</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm">Completion Rate</span>
+                            <span className="text-sm font-medium">-</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
                     </div>
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button className="w-full">
+                  <Button 
+                    className="w-full"
+                    onClick={() => {
+                      if (aiPersonaList.length > 0) {
+                        // Get the top performer and set it as the selected persona
+                        const topPerformer = aiPersonaList.sort((a, b) => (b.rating || 0) - (a.rating || 0))[0];
+                        setSelectedPersona(topPerformer?.id);
+                        setActiveTab("personas");
+                      } else {
+                        // If no personas, go to create tab
+                        setActiveTab("create");
+                      }
+                    }}
+                  >
                     <FolderEdit className="h-4 w-4 mr-2" />
-                    Manage Persona
+                    {aiPersonaList.length > 0 ? "Manage Persona" : "Create Persona"}
                   </Button>
                 </CardFooter>
               </Card>
