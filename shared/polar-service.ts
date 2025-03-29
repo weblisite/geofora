@@ -115,9 +115,10 @@ export const polarApi = {
         throw new Error('Polar access token not configured');
       }
       
-      // Prepare the checkout session request
+      // Prepare the checkout session request with correct format
       const payload: any = {
-        products: [productId],
+        product_id: productId,
+        product_price_id: productId, // Both fields required by the API
         customer_email: userEmail,
         customer_name: userName,
         customer_external_id: userId, // Use Clerk ID as external ID
@@ -131,8 +132,8 @@ export const polarApi = {
       // If this is a trial, add trial-specific parameters
       if (withTrial) {
         payload.metadata.trialPeriodDays = 7;
-        // Trial periods are set at the product level in Polar
-        // But we can add this to the metadata for our reference
+        // We'll need to configure the trial settings in Polar dashboard
+        // as the API doesn't directly support trial period parameters
       }
       
       // Make the API request to create the checkout session

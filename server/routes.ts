@@ -5,7 +5,7 @@ import { z } from "zod";
 import * as crypto from "crypto";
 import { generateAnswer, generateSeoQuestions, analyzeQuestionSeo, generateInterlinkingSuggestions } from "./ai";
 import { clerkClient } from '@clerk/clerk-sdk-node';
-import { polarApi } from '@shared/polar-service';
+import { polarApi, getSubscriptionUrl, getTrialSubscriptionUrl, POLAR_PLAN_IDS } from '@shared/polar-service';
 import { 
   insertUserSchema, 
   insertQuestionSchema, 
@@ -248,6 +248,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error saving plan selection:", error);
       res.status(500).json({ message: "Failed to save plan selection" });
+    }
+  });
+  
+  // Test endpoint for Polar API
+  app.get("/api/polar/test", async (req, res) => {
+    try {
+      console.log("Testing Polar API access");
+      const polarAccessToken = process.env.POLAR_ACCESS_TOKEN;
+      
+      if (!polarAccessToken) {
+        console.log("No POLAR_ACCESS_TOKEN found in environment");
+        return res.status(500).json({ message: "No Polar access token configured" });
+      }
+      
+      console.log("POLAR_ACCESS_TOKEN is present");
+      
+      // Create a minimal products list we can test with - using a real email domain
+      const testPayload = {
+        product_id: POLAR_PLAN_IDS.starter,
+        product_price_id: POLAR_PLAN_IDS.starter, // Using same ID for both fields
+        customer_email: "test@gmail.com", // Using a real domain
+        customer_name: "Test User",
+        metadata: {
+          test: "true"
+        }
+      };
+      
+      console.log("Using test payload:", JSON.stringify(testPayload));
+      
+      // Test if we can create a checkout session
+      const response = await fetch('https://api.polar.sh/v1/checkouts', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${polarAccessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(testPayload)
+      });
+      
+      console.log("Polar API test response status:", response.status);
+      console.log("Response headers:", response.headers);
+      
+      // Get the response text (might be JSON or error message)
+      const responseText = await response.text();
+      console.log("Response text:", responseText);
+      
+      // Try to parse as JSON if possible
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (parseError) {
+        // Not JSON, use as is
+        responseData = responseText;
+      }
+      
+      if (!response.ok) {
+        console.error("Error accessing Polar API:", responseText);
+        return res.status(response.status).json({
+          message: "Failed to connect to Polar API", 
+          status: response.status,
+          statusText: response.statusText,
+          error: responseData
+        });
+      }
+      
+      console.log("Successfully connected to Polar API");
+      
+      res.json({ 
+        success: true, 
+        message: "Successfully connected to Polar API", 
+        data: responseData,
+        token_info: {
+          // For debugging, output just the first 5 chars of the token
+          token_prefix: polarAccessToken.substring(0, 5),
+          token_length: polarAccessToken.length
+        }
+      });
+    } catch (error) {
+      console.error("Polar API test error:", error);
+      res.status(500).json({ 
+        message: "Error testing Polar API", 
+        error: String(error)
+      });
     }
   });
   
