@@ -16,6 +16,7 @@ import SignInPage from "@/pages/sign-in";
 import SignUpPage from "@/pages/sign-up";
 import PaymentPage from "@/pages/payment";
 import VerifyEmailPage from "@/pages/verify-email-address";
+import VerifyPage from "@/pages/verify";
 import UIShowcasePage from "@/pages/ui-showcase";
 import DocumentationPage from "@/pages/documentation-page";
 import NotFound from "@/pages/not-found";
@@ -91,6 +92,7 @@ function App() {
         <Route path="/sign-in" component={SignInPage} />
         <Route path="/sign-up" component={SignUpPage} />
         <Route path="/payment" component={PaymentPage} />
+        <Route path="/sign-up/verify" component={VerifyPage} />
         <Route path="/sign-up/verify-email-address" component={VerifyEmailPage} />
         <Route path="/verify-email-address" component={VerifyEmailPage} />
         {/* Legacy route redirects */}
