@@ -659,7 +659,7 @@ export default function Settings() {
               };
               
               // Helper function to handle upgrading or changing plan
-              const handleChangePlan = async (planId) => {
+              const handleChangePlan = async (planType) => {
                 if (!userId) {
                   toast({
                     title: "Authentication required",
@@ -670,14 +670,25 @@ export default function Settings() {
                 }
                 
                 try {
-                  // Generate a return URL to the settings page after payment
-                  const returnUrl = window.location.origin + '/dashboard/settings?tab=billing';
+                  // Use direct checkout links from Polar
+                  const checkoutUrl = POLAR_CHECKOUT_LINKS[planType as keyof typeof POLAR_CHECKOUT_LINKS];
                   
-                  // Get the subscription URL
-                  const subscriptionUrl = getSubscriptionUrl(planId, userId, returnUrl);
+                  if (!checkoutUrl) {
+                    throw new Error("Invalid plan type or missing checkout URL");
+                  }
                   
-                  // Redirect to the Polar subscription page
-                  window.location.href = subscriptionUrl;
+                  // Store user plan selection in database
+                  await apiRequest('/api/users/select-plan', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                      userId,
+                      planType,
+                      isTrial: false
+                    })
+                  });
+                  
+                  // Redirect to the Polar checkout page
+                  window.location.href = checkoutUrl;
                 } catch (error) {
                   console.error("Error redirecting to subscription page:", error);
                   toast({
@@ -747,8 +758,8 @@ export default function Settings() {
                                   variant="outline"
                                   onClick={() => handleChangePlan(
                                     subscription?.plan === 'starter' 
-                                      ? POLAR_PLAN_IDS.PROFESSIONAL 
-                                      : POLAR_PLAN_IDS.ENTERPRISE
+                                      ? 'professional' 
+                                      : 'enterprise'
                                   )}
                                 >
                                   {subscription?.plan === 'starter' ? 'Upgrade' : 'Change Plan'}
@@ -804,8 +815,8 @@ export default function Settings() {
                                   className="w-full justify-start"
                                   onClick={() => handleChangePlan(
                                     subscription?.plan === 'starter' 
-                                      ? POLAR_PLAN_IDS.PROFESSIONAL 
-                                      : POLAR_PLAN_IDS.ENTERPRISE
+                                      ? 'professional' 
+                                      : 'enterprise'
                                   )}
                                 >
                                   <Pencil className="h-4 w-4 mr-2" />
@@ -976,7 +987,15 @@ export default function Settings() {
                                   variant="outline" 
                                   size="sm" 
                                   className="mt-2"
-                                  onClick={() => handleChangePlan(planId)}
+                                  onClick={() => {
+                                    // Convert from POLAR_PLAN_IDS format to plan type
+                                    const planType = planId === POLAR_PLAN_IDS.starter 
+                                      ? 'starter' 
+                                      : planId === POLAR_PLAN_IDS.professional 
+                                      ? 'professional' 
+                                      : 'enterprise';
+                                    handleChangePlan(planType);
+                                  }}
                                 >
                                   {subscription?.plan === 'starter' && planId === 'professional' ? 'Upgrade' : 
                                    subscription?.plan === 'starter' && planId === 'enterprise' ? 'Upgrade' : 
