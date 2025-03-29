@@ -22,3 +22,20 @@ export default function ApiDocs() {
     </div>
   );
 }
+import { Footer } from "../components/layout/footer";
+import { Navbar } from "../components/layout/navbar";
+
+export default function ApiDocsPage() {
+  return (
+    <div className="min-h-screen bg-gray-900">
+      <Navbar />
+      <main className="container mx-auto px-4 py-16">
+        <h1 className="text-4xl font-bold text-white mb-8">API Documentation</h1>
+        <p className="text-gray-300 mb-8">
+          Comprehensive documentation for integrating with our AI-powered forum platform.
+        </p>
+      </main>
+      <Footer />
+    </div>
+  );
+}

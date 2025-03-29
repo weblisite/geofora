@@ -17,3 +17,20 @@ export default function Partners() {
     </div>
   );
 }
+import { Footer } from "../components/layout/footer";
+import { Navbar } from "../components/layout/navbar";
+
+export default function PartnersPage() {
+  return (
+    <div className="min-h-screen bg-gray-900">
+      <Navbar />
+      <main className="container mx-auto px-4 py-16">
+        <h1 className="text-4xl font-bold text-white mb-8">Our Partners</h1>
+        <p className="text-gray-300 mb-8">
+          We collaborate with industry leaders to provide the best AI-powered forum solutions.
+        </p>
+      </main>
+      <Footer />
+    </div>
+  );
+}

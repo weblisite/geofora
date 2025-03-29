@@ -105,6 +105,12 @@ function App() {
         </Route>
         <Route path="/ui-showcase" component={UIShowcasePage} />
         <Route path="/documentation" component={DocumentationPage} />
+        <Route path="/partners" component={PartnersPage} />
+        <Route path="/about" component={AboutPage} />
+        <Route path="/press" component={PressPage} />
+        <Route path="/api-docs" component={ApiDocsPage} />
+        <Route path="/case-studies" component={CaseStudiesPage} />
+        <Route path="/careers" component={CareersPage} />
         <Route component={NotFound} />
       </Switch>
       <Toaster />
