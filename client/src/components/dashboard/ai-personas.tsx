@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -70,6 +70,37 @@ import {
 } from "@/components/ui/alert";
 import { apiRequest } from "@/lib/queryClient";
 
+// Define TypeScript interfaces
+interface Persona {
+  id: number;
+  name: string;
+  description: string;
+  personality: string;
+  expertise: "beginner" | "intermediate" | "expert";
+  tone: string;
+  responseLength: number;
+  active: boolean;
+  usageCount: number;
+  rating?: number;
+  responseTime?: number;
+  completionRate?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+interface UserSubscription {
+  plan: "starter" | "professional" | "enterprise";
+  status: string;
+  planActiveUntil: Date | null;
+}
+
+interface PersonaStats {
+  totalUsage: number;
+  avgRating: number;
+  topPerforming: Persona[];
+}
+
+// Zod schema for validation
 const personaSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
@@ -83,7 +114,7 @@ const personaSchema = z.object({
 export default function AIPersonas() {
   const { user } = useClerk();
   const [activeTab, setActiveTab] = useState("personas");
-  const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
+  const [selectedPersona, setSelectedPersona] = useState<number | null>(null);
   
   // Query client for mutations
   const queryClient = useQueryClient();
@@ -99,40 +130,57 @@ export default function AIPersonas() {
   // Get user's subscription details
   const { data: userSubscription, isLoading: isLoadingSubscription } = useQuery({
     queryKey: ["/api/user/subscription"],
-    enabled: !!user,
-    onSuccess: (data) => {
+    enabled: !!user
+  }) as { 
+    data: UserSubscription | undefined, 
+    isLoading: boolean 
+  };
+  
+  // Update persona limits when subscription data changes
+  useEffect(() => {
+    if (userSubscription) {
       // Set persona limits based on subscription plan
-      if (data?.plan === "professional") {
+      if (userSubscription.plan === "professional") {
         setPersonaLimit(100);
-      } else if (data?.plan === "enterprise") {
+      } else if (userSubscription.plan === "enterprise") {
         setPersonaLimit(Infinity);
       } else {
         setPersonaLimit(20); // Starter plan default
       }
     }
-  });
+  }, [userSubscription]);
   
   // Get user's AI personas
   const { data: personas, isLoading: isLoadingPersonas } = useQuery({
     queryKey: ["/api/ai-personas"],
-    enabled: !!user,
-    onSuccess: (data) => {
-      // Calculate remaining personas
-      if (data && personaLimit !== Infinity) {
-        setRemainingPersonas(Math.max(0, personaLimit - data.length));
-      }
+    enabled: !!user
+  }) as {
+    data: Persona[] | undefined,
+    isLoading: boolean
+  };
+  
+  // Update remaining personas count when data changes
+  useEffect(() => {
+    if (personas && personaLimit !== Infinity) {
+      setRemainingPersonas(Math.max(0, personaLimit - personas.length));
     }
-  });
+  }, [personas, personaLimit]);
 
   const { data: personaStats, isLoading: isLoadingStats } = useQuery({
     queryKey: ["/api/ai-personas/stats"],
-    enabled: !!user,
-  });
+    enabled: !!user
+  }) as {
+    data: PersonaStats | undefined,
+    isLoading: boolean
+  };
   
   // Mutation for creating a new persona
   const createPersonaMutation = useMutation({
-    mutationFn: (data: z.infer<typeof personaSchema>) => {
-      return apiRequest("/api/ai-personas", "POST", data);
+    mutationFn: async (data: z.infer<typeof personaSchema>) => {
+      return await apiRequest("/api/ai-personas", {
+        method: "POST",
+        body: JSON.stringify(data)
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ai-personas"] });
@@ -154,8 +202,11 @@ export default function AIPersonas() {
   
   // Mutation for generating personas from a website
   const generatePersonasMutation = useMutation({
-    mutationFn: (url: string) => {
-      return apiRequest("/api/ai-personas/generate", "POST", { websiteUrl: url });
+    mutationFn: async (url: string) => {
+      return await apiRequest("/api/ai-personas/generate", {
+        method: "POST",
+        body: JSON.stringify({ websiteUrl: url })
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ai-personas"] });
@@ -261,7 +312,7 @@ export default function AIPersonas() {
   };
 
   // Use data from the personas API
-  const aiPersonaList = personas || [];
+  const aiPersonaList: Persona[] = personas || [];
 
   // Personality options
   const personalityOptions = [

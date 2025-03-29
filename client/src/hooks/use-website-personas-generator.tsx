@@ -90,10 +90,12 @@ export function useWebsitePersonasGenerator({
 
       // Invalidate the AI personas cache to trigger a refresh
       queryClient.invalidateQueries({ queryKey: ['/api/ai-personas'] });
+      
+      const data = await result.json();
 
       toast({
         title: 'Personas generated',
-        description: `Successfully created ${result.length} AI personas based on website content.`,
+        description: `Successfully created ${data.length || data.count || 'multiple'} AI personas based on website content.`,
       });
 
       return result;
