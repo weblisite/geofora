@@ -90,7 +90,7 @@ export default function Navbar() {
               </Link>
               <Link
                 href="/sign-up"
-                className="inline-flex items-center px-6 py-2 text-sm font-medium text-white transition-all rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 shadow-glow"
+                className="hidden md:inline-flex items-center px-6 py-2 text-sm font-medium text-white transition-all rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 shadow-glow"
               >
                 <span>Launch Now</span>
                 <span className="ml-2 material-icons text-sm">arrow_forward</span>
