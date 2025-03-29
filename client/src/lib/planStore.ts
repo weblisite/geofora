@@ -1,42 +1,41 @@
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { POLAR_PLAN_IDS, PlanInfo, PLAN_INFO } from '@shared/polar-service';
+
+interface PlanState {
+  // The currently selected plan ID (during checkout flow)
+  selectedPlanId: string | null;
+  
+  // Information about the selected plan (name, features, etc.)
+  selectedPlanInfo: PlanInfo | null;
+  
+  // Actions
+  selectPlan: (planId: string) => void;
+  clearSelectedPlan: () => void;
+}
+
 /**
- * Simple store to maintain selected plan across the authentication flow
+ * Store for managing plan selection during the checkout process
+ * Persists the selection in localStorage so it survives page refreshes
  */
-
-// Plan types
-export type PlanType = 'starter' | 'professional' | 'enterprise';
-
-// Store for the current selected plan
-let selectedPlan: PlanType | null = null;
-
-export const planStore = {
-  /**
-   * Set the selected plan
-   */
-  setSelectedPlan: (plan: PlanType) => {
-    selectedPlan = plan;
-    // Also save to localStorage for persistence across page refreshes
-    localStorage.setItem('selectedPlan', plan);
-  },
-
-  /**
-   * Get the currently selected plan
-   */
-  getSelectedPlan: (): PlanType | null => {
-    // If no plan in memory, try to retrieve from localStorage
-    if (!selectedPlan) {
-      const storedPlan = localStorage.getItem('selectedPlan');
-      if (storedPlan && ['starter', 'professional', 'enterprise'].includes(storedPlan)) {
-        selectedPlan = storedPlan as PlanType;
-      }
+export const usePlanStore = create<PlanState>()(
+  persist(
+    (set) => ({
+      selectedPlanId: null,
+      selectedPlanInfo: null,
+      
+      selectPlan: (planId: string) => set(() => ({
+        selectedPlanId: planId,
+        selectedPlanInfo: PLAN_INFO[planId] || null,
+      })),
+      
+      clearSelectedPlan: () => set(() => ({
+        selectedPlanId: null,
+        selectedPlanInfo: null,
+      })),
+    }),
+    {
+      name: 'plan-selection-storage',
     }
-    return selectedPlan;
-  },
-
-  /**
-   * Clear the selected plan
-   */
-  clearSelectedPlan: () => {
-    selectedPlan = null;
-    localStorage.removeItem('selectedPlan');
-  }
-};
+  )
+);
