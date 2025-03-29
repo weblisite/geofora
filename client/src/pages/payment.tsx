@@ -119,18 +119,29 @@ export default function PaymentPage() {
       if (isDirectCheckout) {
         // Use the direct checkout API
         try {
+          // Getting more user details to pass to checkout
+          const userEmail = user.primaryEmailAddress?.emailAddress;
+          const userName = user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim();
+          
+          // Create a more complete checkout request with required fields
           const result: any = await apiRequest('/api/checkout/create-session', {
             method: 'POST',
             body: JSON.stringify({
               planId: polarPlanId,
+              userId: user.id,
+              userEmail: userEmail,
+              userName: userName,
+              successUrl: `${window.location.origin}/payment/success`,
               withTrial: trialMode
             })
           });
           
           if (result && result.checkoutUrl) {
+            console.log("Checkout session created successfully:", result);
             // Redirect to the checkout URL
             window.location.href = result.checkoutUrl;
           } else {
+            console.error("Invalid checkout response:", result);
             throw new Error("No checkout URL returned");
           }
         } catch (checkoutError) {

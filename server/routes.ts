@@ -337,14 +337,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create direct checkout session with Polar API
   app.post("/api/checkout/create-session", requireClerkAuth, async (req, res) => {
     try {
-      const { planId, withTrial = true } = req.body;
-      console.log("Checkout request received:", { planId, withTrial });
+      // Get required parameters from request body
+      const { 
+        planId, 
+        userId: clientUserId, 
+        userEmail: clientEmail,
+        userName: clientName,
+        successUrl: clientSuccessUrl,
+        withTrial = true 
+      } = req.body;
       
+      console.log("Checkout request received:", { 
+        planId, 
+        clientUserId, 
+        clientEmail,
+        clientName,
+        clientSuccessUrl,
+        withTrial 
+      });
+      
+      // Ensure user is authenticated
       if (!req.auth?.userId) {
         return res.status(401).json({ message: "Authentication required" });
       }
       
-      // Get user information
+      // Get user information, prioritize server auth
       const userId = req.auth.userId;
       console.log("Processing checkout for user:", userId);
       const user = await storage.getUserByClerkId(userId);
@@ -354,31 +371,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      // Get user profile from Clerk for email and name
-      console.log("Fetching Clerk user profile for:", userId);
-      let clerkUser;
-      try {
-        clerkUser = await clerkClient.users.getUser(userId);
-      } catch (clerkError) {
-        console.error("Error fetching Clerk user:", clerkError);
-        return res.status(404).json({ message: "Failed to fetch Clerk user profile" });
+      // Use client-provided values if available, otherwise fetch from Clerk
+      let userEmail = clientEmail;
+      let userName = clientName;
+      
+      // If client didn't provide email/name, fetch from Clerk
+      if (!userEmail || !userName) {
+        console.log("Client didn't provide complete user details, fetching from Clerk");
+        
+        try {
+          const clerkUser = await clerkClient.users.getUser(userId);
+          
+          if (!clerkUser) {
+            console.error("Clerk user not found:", userId);
+            return res.status(404).json({ message: "Clerk user not found" });
+          }
+          
+          userEmail = userEmail || clerkUser.emailAddresses[0]?.emailAddress || "";
+          userName = userName || (clerkUser.firstName && clerkUser.lastName
+            ? `${clerkUser.firstName} ${clerkUser.lastName}`
+            : clerkUser.username || "");
+            
+        } catch (clerkError) {
+          console.error("Error fetching Clerk user:", clerkError);
+          return res.status(404).json({ message: "Failed to fetch Clerk user profile" });
+        }
       }
       
-      if (!clerkUser) {
-        console.error("Clerk user not found:", userId);
-        return res.status(404).json({ message: "Clerk user not found" });
-      }
-      
-      const userEmail = clerkUser.emailAddresses[0]?.emailAddress || "";
-      const userName = clerkUser.firstName && clerkUser.lastName
-        ? `${clerkUser.firstName} ${clerkUser.lastName}`
-        : clerkUser.username || "";
-      
-      console.log("User details:", { userEmail, userName });
+      console.log("Final user details:", { userEmail, userName });
       
       // Get return URL (where to redirect after checkout)
-      const baseUrl = new URL(req.headers.referer || "http://localhost:5000");
-      const successUrl = `${baseUrl.origin}/payment/success`;
+      // Use client-provided success URL if available, otherwise generate one
+      const successUrl = clientSuccessUrl || `${req.protocol}://${req.get('host')}/payment/success`;
       console.log("Success URL:", successUrl);
       
       // Verify POLAR_ACCESS_TOKEN is available

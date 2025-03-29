@@ -132,8 +132,10 @@ export const polarApi = {
       // If this is a trial, add trial-specific parameters
       if (withTrial) {
         payload.metadata.trialPeriodDays = 7;
-        // We'll need to configure the trial settings in Polar dashboard
-        // as the API doesn't directly support trial period parameters
+        payload.metadata.is_trial = true;
+        
+        // Add trial flag directly to the API request payload
+        payload.trial_period_days = 7;
       }
       
       // Make the API request to create the checkout session
