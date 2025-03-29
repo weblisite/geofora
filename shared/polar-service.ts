@@ -138,15 +138,19 @@ export const getTrialSubscriptionUrl = (planType: string, userId: string, return
     throw new Error(`Invalid plan type: ${planType}`);
   }
   
-  // For Polar checkout URLs, we need to use their specific format:
-  // The base URL is https://buy.polar.sh/{checkout_id}
-  // Parameters need to be added to the buy.polar.sh URL with query parameters
+  // For Polar checkout URLs, we need to use their specific format
   const polarUrl = new URL(baseUrl);
   
-  // Add parameters to the URL - user_id, return_url, and trial_period_days
+  // Add basic parameters - user_id and return_url
   polarUrl.searchParams.append('user_id', userId);
   polarUrl.searchParams.append('return_url', returnUrl);
+  
+  // Try multiple possible trial parameter formats
+  // One of these might be the correct format for Polar
   polarUrl.searchParams.append('trial_period_days', '7');
+  polarUrl.searchParams.append('trial_days', '7');
+  polarUrl.searchParams.append('trial_period', '7');
+  polarUrl.searchParams.append('trial', '7');
   
   return polarUrl.toString();
 };
