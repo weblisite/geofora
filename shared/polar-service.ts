@@ -2,9 +2,13 @@
  * Polar.sh API configurations with actual product IDs
  */
 export const POLAR_PLAN_IDS = {
+  // Main product IDs
   starter: '9dbc8276-eb2a-4b8a-81ec-e3c7962ed314',
   professional: 'cec301e0-e05e-4515-9bc3-297e6833496a',
-  enterprise: '5cea5e8b-dd39-4c28-bcb0-0912b17bfcba'
+  enterprise: '5cea5e8b-dd39-4c28-bcb0-0912b17bfcba',
+  
+  // Free trial product ID (price set to $0)
+  free_trial: '54f4c605-18d4-4b1a-861f-16334c053518'
 };
 
 /**
@@ -104,7 +108,7 @@ export const polarApi = {
     userEmail: string,
     userName: string,
     successUrl: string,
-    withTrial: boolean = true
+    withTrial: boolean = false
   ) => {
     try {
       const polarAccessToken = typeof window === 'undefined' 
@@ -159,6 +163,80 @@ export const polarApi = {
       return sessionData;
     } catch (error) {
       console.error('Error creating checkout session:', error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Create a checkout session specifically for the free trial
+   * Uses a $0 product to create a subscription that can be upgraded later
+   * @param realProductId - The Polar product ID that the user will be upgraded to after the trial
+   * @param userId - The Clerk user ID (used for customer identification)
+   * @param userEmail - User email for pre-filling checkout form
+   * @param userName - User name for pre-filling checkout form
+   * @param successUrl - URL to redirect after successful checkout
+   * @returns Checkout session data including URL and client secret
+   */
+  createCheckoutForFreeTrial: async (
+    realProductId: string,
+    userId: string,
+    userEmail: string,
+    userName: string,
+    successUrl: string
+  ) => {
+    try {
+      const polarAccessToken = typeof window === 'undefined' 
+        ? process.env.POLAR_ACCESS_TOKEN 
+        : import.meta.env.VITE_POLAR_ACCESS_TOKEN;
+        
+      if (!polarAccessToken) {
+        throw new Error('Polar access token not configured');
+      }
+      
+      // Prepare the checkout session request for the free trial
+      // We use a $0 product for the trial and store the real product ID in metadata
+      const payload: any = {
+        product_id: POLAR_PLAN_IDS.free_trial,
+        product_price_id: POLAR_PLAN_IDS.free_trial,
+        customer_email: userEmail,
+        customer_name: userName,
+        customer_external_id: userId,
+        success_url: successUrl,
+        metadata: {
+          clerkUserId: userId,
+          isTrialSignup: true,
+          trialPeriodDays: 7,
+          realProductId: realProductId, // Store the product ID to upgrade to later
+          planType: Object.keys(POLAR_PLAN_IDS).find(key => 
+            POLAR_PLAN_IDS[key as keyof typeof POLAR_PLAN_IDS] === realProductId
+          ) || 'starter'
+        }
+      };
+      
+      console.log('Creating free trial checkout with payload:', payload);
+      
+      // Make the API request to create the checkout session
+      const response = await fetch('https://api.polar.sh/v1/checkouts', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${polarAccessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Failed to create free trial checkout session:', errorData);
+        throw new Error(`Failed to create free trial checkout: ${response.statusText}`);
+      }
+      
+      // Return the checkout session data
+      const sessionData = await response.json();
+      console.log('Free trial checkout created successfully:', sessionData);
+      return sessionData;
+    } catch (error) {
+      console.error('Error creating free trial checkout:', error);
       throw error;
     }
   }

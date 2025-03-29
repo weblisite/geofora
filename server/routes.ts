@@ -417,34 +417,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       try {
-        // Create checkout session via Polar API
-        const checkoutSession = await polarApi.createCheckoutSession(
-          planId, 
-          userId,
-          userEmail,
-          userName,
-          successUrl,
-          withTrial
-        );
+        let checkoutSession;
         
-        console.log("Checkout session created successfully:", {
-          id: checkoutSession.id,
-          url: checkoutSession.url,
-          expiresAt: checkoutSession.expires_at
-        });
-        
-        // If this is a trial, update user trial status
+        // If this is a trial request, use the special free trial checkout endpoint
         if (withTrial) {
+          console.log("Creating free trial checkout with $0 price plan");
+          checkoutSession = await polarApi.createCheckoutForFreeTrial(
+            planId,  // This is the real product ID they want after trial
+            userId,
+            userEmail,
+            userName,
+            successUrl
+          );
+          
+          // Update user trial status
           await storage.updateUserPlan(user.id, {
-            trialPlan: planId,
+            trialPlan: planId,  // Store the real plan they'll get after trial
             isInTrial: true,
             trialStartedAt: new Date(),
             // Set trial end date to 7 days in the future
             trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
           });
           
-          console.log(`Trial started for user ${user.id} with plan ${planId}`);
+          console.log(`Free trial started for user ${user.id} with plan ${planId} (will be charged after trial)`);
+          
+        } else {
+          // Regular checkout for direct payment (no trial)
+          console.log("Creating regular checkout for immediate payment");
+          checkoutSession = await polarApi.createCheckoutSession(
+            planId, 
+            userId,
+            userEmail,
+            userName,
+            successUrl,
+            false // withTrial=false for direct payment
+          );
         }
+        
+        console.log("Checkout session created successfully:", {
+          id: checkoutSession.id,
+          url: checkoutSession.url,
+          expiresAt: checkoutSession.expires_at
+        });
         
         // Return checkout session URL and details
         res.json({
@@ -604,8 +618,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           polarSubscriptionId: subId
         };
         
-        // If user was in a trial, this means they've converted to a paid plan
-        if (user.isInTrial) {
+        // Handle trial-related metadata that might be present in subscription data
+        const metadata = subscription?.metadata || {};
+        
+        // Check if this is a free trial subscription ($0) that needs to be upgraded later
+        const isFreeTrial = metadata.isTrialSignup === 'true' || metadata.is_trial === 'true';
+        const realProductId = metadata.realProductId;
+        
+        // If user was in a trial with a $0 subscription, this means they just started a trial
+        if (isFreeTrial && realProductId) {
+          console.log(`User ${user.id} started a free trial, will upgrade to ${realProductId} after trial period`);
+          
+          // Store the real product ID to upgrade to later, but keep isInTrial=true
+          updateData.trialPlan = realProductId;
+          updateData.isInTrial = true;
+          updateData.trialStartedAt = new Date();
+          updateData.trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+          updateData.trialHasPaymentMethod = true;
+          
+        } else if (user.isInTrial) {
+          // This is a regular conversion from trial to paid plan
           updateData.isInTrial = false;
           updateData.trialHasPaymentMethod = true;
           console.log(`User ${user.id} converted from trial to paid plan: ${planType}`);
