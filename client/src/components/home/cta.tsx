@@ -20,15 +20,15 @@ export default function CTA() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/register" className="inline-flex items-center justify-center px-8 py-3 text-base font-medium text-white transition-all rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 shadow-glow min-w-[200px]">
+            <Link href="/#pricing" className="inline-flex items-center justify-center px-8 py-3 text-base font-medium text-white transition-all rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 shadow-glow min-w-[200px]">
               <span>Launch Now</span>
               <span className="ml-2 material-icons">rocket_launch</span>
             </Link>
 
-            <a href="#" className="inline-flex items-center justify-center px-8 py-3 text-base font-medium text-white transition-all bg-dark-300 rounded-lg hover:bg-dark-400 border border-primary-500/30 min-w-[200px]">
+            <Link href="/#pricing" className="inline-flex items-center justify-center px-8 py-3 text-base font-medium text-white transition-all bg-dark-300 rounded-lg hover:bg-dark-400 border border-primary-500/30 min-w-[200px]">
               <span>Request Demo</span>
               <span className="ml-2 material-icons">play_circle</span>
-            </a>
+            </Link>
           </div>
         </div>
       </div>

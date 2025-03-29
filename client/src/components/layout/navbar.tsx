@@ -89,7 +89,7 @@ export default function Navbar() {
                 Log In
               </Link>
               <Link
-                href="/sign-up"
+                href="/#pricing"
                 className="hidden md:inline-flex items-center px-6 py-2 text-sm font-medium text-white transition-all rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 shadow-glow"
               >
                 <span>Launch Now</span>

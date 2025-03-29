@@ -24,7 +24,7 @@ export default function HeroSection() {
 
             <div className="flex gap-4">
               <Link 
-                href="/sign-up" 
+                href="/#pricing" 
                 className="inline-flex items-center justify-center px-6 sm:px-8 py-3 text-base font-medium text-white transition-all rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 shadow-glow"
               >
                 <span>Launch Now</span>
