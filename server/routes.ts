@@ -619,7 +619,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate AI personas from website content
   app.post("/api/ai-personas/generate", requireClerkAuth, async (req, res) => {
     try {
-      const { websiteUrl } = req.body;
+      const { websiteUrl, count } = req.body;
       
       if (!websiteUrl) {
         return res.status(400).json({ message: "Website URL is required" });
@@ -655,6 +655,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Determine how many personas to generate
+      const requestedCount = count ? parseInt(count.toString(), 10) : 5; // Default to 5 if not specified
+      const maxAllowed = personaLimit - existingPersonas.length;
+      const personaCount = Math.min(requestedCount, maxAllowed);
+      
       // Use AI to analyze the website and extract keywords
       const keywordAnalysis = await analyzeWebsiteForKeywords(websiteUrl);
       
@@ -670,7 +675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
       
       // Generate personas based on the keywords
-      const personas = generatePersonasFromKeywords(keywords, user.id, personaLimit - existingPersonas.length);
+      const personas = generatePersonasFromKeywords(keywords, user.id, personaCount);
       
       // Save the personas to the database
       const createdPersonas = [];

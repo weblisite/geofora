@@ -36,6 +36,7 @@ import { z } from "zod";
 import { useClerk } from "@clerk/clerk-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
+import { useWebsitePersonasGenerator } from "@/hooks/use-website-personas-generator";
 import { 
   Brain, 
   FolderEdit, 
@@ -220,29 +221,30 @@ export default function AIPersonas() {
     generatePersonasMutation.mutate(websiteUrl);
   };
   
+  // Use our custom hook for website-based persona generation
+  const {
+    websiteUrl,
+    setWebsiteUrl,
+    personaCount,
+    setPersonaCount,
+    isGenerating,
+    generatePersonasFromWebsite
+  } = useWebsitePersonasGenerator();
+
   // Handle website-based persona generation from the new tab
   const handleGenerateFromWebsite = () => {
-    if (!websiteUrl) {
-      toast({
-        title: "Website URL required",
-        description: "Please enter a valid website URL to generate personas.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (personas && personaLimit !== Infinity && personas.length >= personaLimit) {
-      toast({
-        title: "Persona limit reached",
-        description: `You've reached your plan's limit of ${personaLimit} personas. Upgrade your plan to create more.`,
-        variant: "destructive",
-      });
-      return;
-    }
-    
     // Check if there's enough room for the requested number of personas
     if (personaLimit !== Infinity && personas) {
       const availableSlots = personaLimit - personas.length;
+      if (availableSlots <= 0) {
+        toast({
+          title: "Persona limit reached",
+          description: `You've reached your plan's limit of ${personaLimit} personas. Upgrade your plan to create more.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
       if (personaCount > availableSlots) {
         toast({
           title: "Persona limit will be exceeded",
@@ -253,10 +255,8 @@ export default function AIPersonas() {
       }
     }
     
-    setIsGenerating(true);
-    
-    // Pass the websiteUrl and count to the API
-    generatePersonasMutation.mutate(websiteUrl);
+    // Call the generate function from our custom hook
+    generatePersonasFromWebsite();
   };
 
   // Sample AI personas for the demo
