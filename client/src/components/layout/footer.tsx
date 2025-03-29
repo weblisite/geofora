@@ -61,17 +61,17 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-400 hover:text-primary-400 transition-colors">
+                <Link href="/case-studies" className="text-gray-400 hover:text-primary-400 transition-colors">
                   Case Studies
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-400 hover:text-primary-400 transition-colors">
+                <Link href="/documentation" className="text-gray-400 hover:text-primary-400 transition-colors">
                   Documentation
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-400 hover:text-primary-400 transition-colors">
+                <Link href="/api-docs" className="text-gray-400 hover:text-primary-400 transition-colors">
                   API
                 </Link>
               </li>
@@ -82,28 +82,28 @@ export default function Footer() {
             <h5 className="text-white font-semibold mb-4">Resources</h5>
             <ul className="space-y-2">
               <li>
-                <Link href="#" className="text-gray-400 hover:text-primary-400 transition-colors">
-                  Blog
+                <a href="https://forum.cmofy.com" className="text-gray-400 hover:text-primary-400 transition-colors">
+                  Forum
+                </a>
+              </li>
+              <li>
+                <Link href="https://forum.cmofy.com" className="text-gray-400 hover:text-primary-400 transition-colors">
+                  Webinars
+                </Link>
+              </li>
+              <li>
+                <Link href="https://forum.cmofy.com" className="text-gray-400 hover:text-primary-400 transition-colors">
+                  Help Center
+                </Link>
+              </li>
+              <li>
+                <Link href="https://forum.cmofy.com" className="text-gray-400 hover:text-primary-400 transition-colors">
+                  Community
                 </Link>
               </li>
               <li>
                 <Link href="#" className="text-gray-400 hover:text-primary-400 transition-colors">
                   Guides
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="text-gray-400 hover:text-primary-400 transition-colors">
-                  Webinars
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="text-gray-400 hover:text-primary-400 transition-colors">
-                  Help Center
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="text-gray-400 hover:text-primary-400 transition-colors">
-                  Community
                 </Link>
               </li>
             </ul>
@@ -113,17 +113,17 @@ export default function Footer() {
             <h5 className="text-white font-semibold mb-4">Company</h5>
             <ul className="space-y-2">
               <li>
-                <Link href="#" className="text-gray-400 hover:text-primary-400 transition-colors">
+                <Link href="/about" className="text-gray-400 hover:text-primary-400 transition-colors">
                   About Us
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-400 hover:text-primary-400 transition-colors">
+                <Link href="/careers" className="text-gray-400 hover:text-primary-400 transition-colors">
                   Careers
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-400 hover:text-primary-400 transition-colors">
+                <Link href="/press" className="text-gray-400 hover:text-primary-400 transition-colors">
                   Press
                 </Link>
               </li>
@@ -133,7 +133,7 @@ export default function Footer() {
                 </a>
               </li>
               <li>
-                <Link href="#" className="text-gray-400 hover:text-primary-400 transition-colors">
+                <Link href="/partners" className="text-gray-400 hover:text-primary-400 transition-colors">
                   Partners
                 </Link>
               </li>
