@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, LayoutDashboard, Lightbulb, LineChart, MousePointerClick, Zap, Loader2 } from "lucide-react";
 import { UserButton } from "@clerk/clerk-react";
 import ForumManagementPage from "./forum";
+import { useSubscriptionCheck } from "@/hooks/use-subscription-check";
 
 // Lazy load components to improve initial load time
 const KeywordAnalysis = lazy(() => import("@/components/dashboard/keyword-analysis"));
@@ -56,6 +57,9 @@ export default function DashboardPage() {
   const [dateRange, setDateRange] = useState("30d");
   const [activeTab, setActiveTab] = useState("overview");
   const [prevLocation, setPrevLocation] = useState(location);
+  
+  // Check if user has an active subscription, redirect to billing page if not
+  const { isActive, isLoading: isLoadingSubscription } = useSubscriptionCheck();
   
   // Effect to track location changes and invalidate queries when navigating back to a tab
   useEffect(() => {
