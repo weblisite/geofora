@@ -175,26 +175,12 @@ export class PostgresStorage implements IStorage {
     return result[0];
   }
   
-  async updateUserPlan(userId: number, data: { 
-    plan?: string, 
-    planActiveUntil?: Date | null, 
-    polarSubscriptionId?: string | null,
-    isInTrial?: boolean,
-    trialStartedAt?: Date | null,
-    trialEndsAt?: Date | null,
-    trialPlan?: string | null,
-    trialHasPaymentMethod?: boolean
-  }): Promise<User> {
+  async updateUserPlan(userId: number, data: { plan?: string, planActiveUntil?: Date | null, polarSubscriptionId?: string | null }): Promise<User> {
     const result = await db.update(users)
       .set({
         plan: data.plan !== undefined ? data.plan : undefined,
         planActiveUntil: data.planActiveUntil !== undefined ? data.planActiveUntil : undefined,
         polarSubscriptionId: data.polarSubscriptionId !== undefined ? data.polarSubscriptionId : undefined,
-        isInTrial: data.isInTrial !== undefined ? data.isInTrial : undefined,
-        trialStartedAt: data.trialStartedAt !== undefined ? data.trialStartedAt : undefined,
-        trialEndsAt: data.trialEndsAt !== undefined ? data.trialEndsAt : undefined,
-        trialPlan: data.trialPlan !== undefined ? data.trialPlan : undefined,
-        trialHasPaymentMethod: data.trialHasPaymentMethod !== undefined ? data.trialHasPaymentMethod : undefined,
         updatedAt: new Date()
       })
       .where(eq(users.id, userId))

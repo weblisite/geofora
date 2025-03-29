@@ -55,9 +55,9 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col overflow-x-hidden">
+    <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-grow w-full">
+      <main className="flex-grow">
         <HeroSection />
         <PainPoints />
         <Features />

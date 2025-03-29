@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
-import { usePlanStore } from "@/lib/planStore";
+import { planStore } from "@/lib/planStore";
 import { PLAN_INFO, POLAR_PLAN_IDS, getSubscriptionUrl, getTrialSubscriptionUrl } from "@shared/polar-service";
 import { Button } from "@/components/ui/button";
 import { Glassmorphism } from "@/components/ui/glassmorphism";
@@ -9,7 +9,6 @@ import { toast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Card } from "@/components/ui/card";
 
 export default function PaymentPage() {
   const { user } = useUser();
@@ -27,8 +26,7 @@ export default function PaymentPage() {
         // Get plan from URL or localStorage
         const urlParams = new URLSearchParams(window.location.search);
         const planFromUrl = urlParams.get('plan');
-        const planStore = usePlanStore();
-        const selectedPlan = planFromUrl || planStore.selectedPlanId;
+        const selectedPlan = planFromUrl || planStore.getSelectedPlan();
         
         if (!selectedPlan) {
           toast({
@@ -72,13 +70,6 @@ export default function PaymentPage() {
     initPage();
   }, [setLocation]);
 
-  const [isDirectCheckout, setIsDirectCheckout] = useState(true);
-  const [checkoutState, setCheckoutState] = useState<{
-    checkoutUrl?: string;
-    checkoutId?: string;
-    isReady: boolean;
-  }>({ isReady: false });
-  
   const handleProceedToPayment = async () => {
     try {
       if (!user || !planType) {
@@ -117,54 +108,13 @@ export default function PaymentPage() {
       // Generate the return URL (dashboard)
       const returnUrl = `${window.location.origin}/dashboard`;
       
-      if (isDirectCheckout) {
-        // Use the direct checkout API
-        try {
-          // Getting more user details to pass to checkout
-          const userEmail = user.primaryEmailAddress?.emailAddress;
-          const userName = user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim();
-          
-          // Create a more complete checkout request with required fields
-          const result: any = await apiRequest('/api/checkout/create-session', {
-            method: 'POST',
-            body: JSON.stringify({
-              planId: polarPlanId,
-              userId: user.id,
-              userEmail: userEmail,
-              userName: userName,
-              successUrl: `${window.location.origin}/payment/success`,
-              withTrial: trialMode
-            })
-          });
-          
-          if (result && result.checkoutUrl) {
-            console.log("Checkout session created successfully:", result);
-            // Redirect to the checkout URL
-            window.location.href = result.checkoutUrl;
-          } else {
-            console.error("Invalid checkout response:", result);
-            throw new Error("No checkout URL returned");
-          }
-        } catch (checkoutError) {
-          console.error("Direct checkout error:", checkoutError);
-          
-          // Fall back to the standard method
-          const subscriptionUrl = trialMode 
-            ? getTrialSubscriptionUrl(polarPlanId, user.id, returnUrl)
-            : getSubscriptionUrl(polarPlanId, user.id, returnUrl);
-          
-          // Redirect to Polar payment page
-          window.location.href = subscriptionUrl;
-        }
-      } else {
-        // Use the standard redirect method
-        const subscriptionUrl = trialMode 
-          ? getTrialSubscriptionUrl(polarPlanId, user.id, returnUrl)
-          : getSubscriptionUrl(polarPlanId, user.id, returnUrl);
-        
-        // Redirect to Polar payment page
-        window.location.href = subscriptionUrl;
-      }
+      // Generate subscription URL based on trial mode
+      const subscriptionUrl = trialMode 
+        ? getTrialSubscriptionUrl(polarPlanId, user.id, returnUrl)
+        : getSubscriptionUrl(polarPlanId, user.id, returnUrl);
+      
+      // Redirect to Polar payment page
+      window.location.href = subscriptionUrl;
     } catch (error) {
       console.error("Payment processing error:", error);
       setLoading(false);
@@ -177,7 +127,6 @@ export default function PaymentPage() {
   };
 
   const handleCancel = () => {
-    const planStore = usePlanStore();
     planStore.clearSelectedPlan();
     setLocation('/');
   };

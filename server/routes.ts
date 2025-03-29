@@ -5,7 +5,6 @@ import { z } from "zod";
 import * as crypto from "crypto";
 import { generateAnswer, generateSeoQuestions, analyzeQuestionSeo, generateInterlinkingSuggestions } from "./ai";
 import { clerkClient } from '@clerk/clerk-sdk-node';
-import { polarApi, getSubscriptionUrl, getTrialSubscriptionUrl, POLAR_PLAN_IDS } from '@shared/polar-service';
 import { 
   insertUserSchema, 
   insertQuestionSchema, 
@@ -207,7 +206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Handle plan selection (before redirecting to Polar)
   app.post("/api/users/select-plan", requireClerkAuth, async (req, res) => {
     try {
-      const { userId, planType, isTrial } = req.body;
+      const { userId, planType } = req.body;
       
       if (!userId || !planType) {
         return res.status(400).json({ message: "Missing userId or planType" });
@@ -220,337 +219,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      // Base update data
-      const updateData: any = { plan: planType };
+      // Update the user with the selected plan
+      await storage.updateUserPlan(user.id, { plan: planType });
       
-      // If this is a trial signup, set trial-specific fields
-      if (isTrial) {
-        const now = new Date();
-        const trialEndDate = new Date();
-        trialEndDate.setDate(now.getDate() + 7); // 7-day trial period
-        
-        updateData.isInTrial = true;
-        updateData.trialStartedAt = now;
-        updateData.trialEndsAt = trialEndDate;
-        updateData.trialPlan = planType;
-        
-        console.log(`Setting up trial for user ${user.id} - Plan: ${planType}, Trial ends: ${trialEndDate}`);
-      }
-      
-      // Update the user with the selected plan and trial information if applicable
-      await storage.updateUserPlan(user.id, updateData);
-      
-      res.json({ 
-        message: "Plan selection saved",
-        isTrial: isTrial || false,
-        plan: planType
-      });
+      res.json({ message: "Plan selection saved" });
     } catch (error) {
       console.error("Error saving plan selection:", error);
       res.status(500).json({ message: "Failed to save plan selection" });
-    }
-  });
-  
-  // Test endpoint for Polar API
-  app.get("/api/polar/test", async (req, res) => {
-    try {
-      console.log("Testing Polar API access");
-      const polarAccessToken = process.env.POLAR_ACCESS_TOKEN;
-      
-      if (!polarAccessToken) {
-        console.log("No POLAR_ACCESS_TOKEN found in environment");
-        return res.status(500).json({ message: "No Polar access token configured" });
-      }
-      
-      console.log("POLAR_ACCESS_TOKEN is present");
-      
-      // Create a minimal products list we can test with - using a real email domain
-      const testPayload = {
-        product_id: POLAR_PLAN_IDS.starter,
-        product_price_id: POLAR_PLAN_IDS.starter, // Using same ID for both fields
-        customer_email: "test@gmail.com", // Using a real domain
-        customer_name: "Test User",
-        metadata: {
-          test: "true"
-        }
-      };
-      
-      console.log("Using test payload:", JSON.stringify(testPayload));
-      
-      // Test if we can create a checkout session
-      const response = await fetch('https://api.polar.sh/v1/checkouts', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${polarAccessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(testPayload)
-      });
-      
-      console.log("Polar API test response status:", response.status);
-      console.log("Response headers:", response.headers);
-      
-      // Get the response text (might be JSON or error message)
-      const responseText = await response.text();
-      console.log("Response text:", responseText);
-      
-      // Try to parse as JSON if possible
-      let responseData;
-      try {
-        responseData = JSON.parse(responseText);
-      } catch (parseError) {
-        // Not JSON, use as is
-        responseData = responseText;
-      }
-      
-      if (!response.ok) {
-        console.error("Error accessing Polar API:", responseText);
-        return res.status(response.status).json({
-          message: "Failed to connect to Polar API", 
-          status: response.status,
-          statusText: response.statusText,
-          error: responseData
-        });
-      }
-      
-      console.log("Successfully connected to Polar API");
-      
-      res.json({ 
-        success: true, 
-        message: "Successfully connected to Polar API", 
-        data: responseData,
-        token_info: {
-          // For debugging, output just the first 5 chars of the token
-          token_prefix: polarAccessToken.substring(0, 5),
-          token_length: polarAccessToken.length
-        }
-      });
-    } catch (error) {
-      console.error("Polar API test error:", error);
-      res.status(500).json({ 
-        message: "Error testing Polar API", 
-        error: String(error)
-      });
-    }
-  });
-  
-  // Create direct checkout session with Polar API
-  app.post("/api/checkout/create-session", requireClerkAuth, async (req, res) => {
-    try {
-      // Get required parameters from request body
-      const { 
-        planId, 
-        userId: clientUserId, 
-        userEmail: clientEmail,
-        userName: clientName,
-        successUrl: clientSuccessUrl,
-        withTrial = true 
-      } = req.body;
-      
-      console.log("Checkout request received:", { 
-        planId, 
-        clientUserId, 
-        clientEmail,
-        clientName,
-        clientSuccessUrl,
-        withTrial 
-      });
-      
-      // Ensure user is authenticated
-      if (!req.auth?.userId) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-      
-      // Get user information, prioritize server auth
-      const userId = req.auth.userId;
-      console.log("Processing checkout for user:", userId);
-      const user = await storage.getUserByClerkId(userId);
-      
-      if (!user) {
-        console.error("User not found in database:", userId);
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      // Use client-provided values if available, otherwise fetch from Clerk
-      let userEmail = clientEmail;
-      let userName = clientName;
-      
-      // If client didn't provide email/name, fetch from Clerk
-      if (!userEmail || !userName) {
-        console.log("Client didn't provide complete user details, fetching from Clerk");
-        
-        try {
-          const clerkUser = await clerkClient.users.getUser(userId);
-          
-          if (!clerkUser) {
-            console.error("Clerk user not found:", userId);
-            return res.status(404).json({ message: "Clerk user not found" });
-          }
-          
-          userEmail = userEmail || clerkUser.emailAddresses[0]?.emailAddress || "";
-          userName = userName || (clerkUser.firstName && clerkUser.lastName
-            ? `${clerkUser.firstName} ${clerkUser.lastName}`
-            : clerkUser.username || "");
-            
-        } catch (clerkError) {
-          console.error("Error fetching Clerk user:", clerkError);
-          return res.status(404).json({ message: "Failed to fetch Clerk user profile" });
-        }
-      }
-      
-      console.log("Final user details:", { userEmail, userName });
-      
-      // Get return URL (where to redirect after checkout)
-      // Use client-provided success URL if available, otherwise generate one
-      const successUrl = clientSuccessUrl || `${req.protocol}://${req.get('host')}/payment/success`;
-      console.log("Success URL:", successUrl);
-      
-      // Verify POLAR_ACCESS_TOKEN is available
-      console.log("Checking for POLAR_ACCESS_TOKEN:", process.env.POLAR_ACCESS_TOKEN ? "Available" : "Not available");
-      
-      // Create checkout session via Polar API
-      console.log("Creating Polar checkout session with parameters:", { 
-        planId, 
-        userId, 
-        withTrial,
-        successUrl
-      });
-      
-      try {
-        let checkoutSession;
-        
-        // If this is a trial request, use the special free trial checkout endpoint
-        if (withTrial) {
-          console.log("Creating free trial checkout with $0 price plan");
-          checkoutSession = await polarApi.createCheckoutForFreeTrial(
-            planId,  // This is the real product ID they want after trial
-            userId,
-            userEmail,
-            userName,
-            successUrl
-          );
-          
-          // Update user trial status
-          await storage.updateUserPlan(user.id, {
-            trialPlan: planId,  // Store the real plan they'll get after trial
-            isInTrial: true,
-            trialStartedAt: new Date(),
-            // Set trial end date to 7 days in the future
-            trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-          });
-          
-          console.log(`Free trial started for user ${user.id} with plan ${planId} (will be charged after trial)`);
-          
-        } else {
-          // Regular checkout for direct payment (no trial)
-          console.log("Creating regular checkout for immediate payment");
-          checkoutSession = await polarApi.createCheckoutSession(
-            planId, 
-            userId,
-            userEmail,
-            userName,
-            successUrl,
-            false // withTrial=false for direct payment
-          );
-        }
-        
-        console.log("Checkout session created successfully:", {
-          id: checkoutSession.id,
-          url: checkoutSession.url,
-          expiresAt: checkoutSession.expires_at
-        });
-        
-        // Return checkout session URL and details
-        res.json({
-          checkoutUrl: checkoutSession.url,
-          checkoutId: checkoutSession.id,
-          clientSecret: checkoutSession.client_secret,
-          expiresAt: checkoutSession.expires_at
-        });
-      } catch (polarError) {
-        console.error("Polar API error:", polarError);
-        
-        // Fall back to URL parameter method
-        console.log("Falling back to URL parameter method");
-        const subscriptionUrl = withTrial 
-          ? getTrialSubscriptionUrl(planId, userId, successUrl)
-          : getSubscriptionUrl(planId, userId, successUrl);
-        
-        res.json({ 
-          checkoutUrl: subscriptionUrl,
-          fallback: true
-        });
-      }
-    } catch (error) {
-      console.error("Error creating checkout session:", error);
-      res.status(500).json({ message: "Failed to create checkout session" });
-    }
-  });
-  
-  // Dedicated endpoint for creating trial checkout sessions
-  app.post("/api/payments/create-trial-checkout", requireClerkAuth, async (req, res) => {
-    try {
-      // Get plan ID from request body
-      const { planId } = req.body;
-      
-      if (!planId) {
-        return res.status(400).json({ message: "Plan ID is required" });
-      }
-      
-      // Get authenticated user ID and info
-      const userId = req.auth.userId;
-      
-      if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-      
-      try {
-        // Get user details from Clerk
-        const user = await clerkClient.users.getUser(userId);
-        
-        // Extract email and name for checkout
-        const userEmail = user.emailAddresses[0]?.emailAddress || '';
-        const userName = user.firstName && user.lastName 
-          ? `${user.firstName} ${user.lastName}` 
-          : user.firstName || 'User';
-        
-        // Create success URL for returning to our app
-        const successUrl = `${req.protocol}://${req.get('host')}/payment/success`;
-        
-        // Create the trial checkout session
-        const checkoutSession = await polarApi.createCheckoutForFreeTrial(
-          planId,
-          userId,
-          userEmail,
-          userName,
-          successUrl
-        );
-        
-        console.log("Trial checkout session created:", checkoutSession);
-        
-        // Return the checkout URL to the client
-        res.json({
-          checkoutUrl: checkoutSession.url,
-          checkoutId: checkoutSession.id,
-          clientSecret: checkoutSession.client_secret,
-          expiresAt: checkoutSession.expires_at
-        });
-      } catch (polarError) {
-        console.error("Polar API error for trial checkout:", polarError);
-        
-        // Fall back to URL parameter method
-        console.log("Falling back to URL parameter method for trial");
-        const successUrl = `${req.protocol}://${req.get('host')}/payment/success`;
-        const subscriptionUrl = getTrialSubscriptionUrl(planId, userId, successUrl);
-        
-        res.json({ 
-          checkoutUrl: subscriptionUrl,
-          fallback: true
-        });
-      }
-    } catch (error) {
-      console.error("Error creating trial checkout session:", error);
-      res.status(500).json({ message: "Failed to create trial checkout session" });
     }
   });
   
@@ -679,38 +354,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Update the user's plan with all available information
-        const updateData: any = {
+        await storage.updateUserPlan(user.id, {
           plan: planType,
           planActiveUntil: expirationDate,
           polarSubscriptionId: subId
-        };
-        
-        // Handle trial-related metadata that might be present in subscription data
-        const metadata = subscription?.metadata || {};
-        
-        // Check if this is a free trial subscription ($0) that needs to be upgraded later
-        const isFreeTrial = metadata.isTrialSignup === 'true' || metadata.is_trial === 'true';
-        const realProductId = metadata.realProductId;
-        
-        // If user was in a trial with a $0 subscription, this means they just started a trial
-        if (isFreeTrial && realProductId) {
-          console.log(`User ${user.id} started a free trial, will upgrade to ${realProductId} after trial period`);
-          
-          // Store the real product ID to upgrade to later, but keep isInTrial=true
-          updateData.trialPlan = realProductId;
-          updateData.isInTrial = true;
-          updateData.trialStartedAt = new Date();
-          updateData.trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-          updateData.trialHasPaymentMethod = true;
-          
-        } else if (user.isInTrial) {
-          // This is a regular conversion from trial to paid plan
-          updateData.isInTrial = false;
-          updateData.trialHasPaymentMethod = true;
-          console.log(`User ${user.id} converted from trial to paid plan: ${planType}`);
-        }
-        
-        await storage.updateUserPlan(user.id, updateData);
+        });
       } 
       else if (event === 'subscription.deleted' || event === 'subscription.canceled' || event === 'subscription.cancelled' || event === 'subscription.failed') {
         const { user_id, subscription_id } = data;
@@ -719,21 +367,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (user_id) {
           const user = await storage.getUserByClerkId(user_id);
           if (user) {
-            const updateData: any = {
+            await storage.updateUserPlan(user.id, {
               planActiveUntil: null,
               polarSubscriptionId: null
-            };
-            
-            // If user was in trial, reset all trial fields
-            if (user.isInTrial) {
-              updateData.isInTrial = false;
-              updateData.trialPlan = null;
-              updateData.trialStartedAt = null;
-              updateData.trialEndsAt = null;
-              console.log(`Trial subscription canceled for user ${user.id}`);
-            }
-            
-            await storage.updateUserPlan(user.id, updateData);
+            });
           } else {
             console.warn(`User not found for cancellation with Clerk ID: ${user_id}`);
           }
@@ -744,22 +381,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const user = users.find(u => u.polarSubscriptionId === subscription_id);
           
           if (user) {
-            const updateData: any = {
+            await storage.updateUserPlan(user.id, {
               plan: 'starter', // Downgrade to starter plan
               planActiveUntil: null,
               polarSubscriptionId: null
-            };
-            
-            // If user was in trial, reset all trial fields
-            if (user.isInTrial) {
-              updateData.isInTrial = false;
-              updateData.trialPlan = null;
-              updateData.trialStartedAt = null;
-              updateData.trialEndsAt = null;
-              console.log(`Trial subscription canceled for user ${user.id} (by subscription ID)`);
-            }
-            
-            await storage.updateUserPlan(user.id, updateData);
+            });
           } else {
             console.warn(`User not found for cancellation with subscription ID: ${subscription_id}`);
           }
@@ -776,8 +402,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to process webhook" });
     }
   });
-  
-
 
   // Categories routes
   app.get("/api/categories", async (req, res) => {

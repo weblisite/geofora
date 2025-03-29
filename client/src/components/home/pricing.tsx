@@ -3,14 +3,13 @@ import { GradientText } from "@/components/ui/gradient-text";
 import { Glassmorphism } from "@/components/ui/glassmorphism";
 import { cn } from "@/lib/utils";
 import { useClerk } from "@clerk/clerk-react";
-import { usePlanStore, PlanType } from "@/lib/planStore";
+import { planStore, PlanType } from "@/lib/planStore";
 import { useLocation } from "wouter";
 import { toast } from "@/hooks/use-toast";
 
 export default function Pricing() {
   const { openSignUp } = useClerk();
   const [, setLocation] = useLocation();
-  const { selectPlan } = usePlanStore();
 
   // Handle plan selection and redirect to signup
   const handleSelectPlan = (planName: string) => {
@@ -37,7 +36,7 @@ export default function Pricing() {
     }
     
     // Store the selected plan
-    selectPlan(planType);
+    planStore.setSelectedPlan(planType);
     
     // Redirect to sign up
     openSignUp({
