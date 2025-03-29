@@ -25,6 +25,14 @@ import { useEffect, useState } from "react";
 import { initAnalytics, trackPageView } from "@/lib/analytics-tracker";
 import React from "react";
 
+// Placeholder page components for site sections
+const PartnersPage = () => <div className="min-h-screen p-8"><h1 className="text-3xl font-bold mb-6">Partners</h1><p>Coming soon!</p></div>;
+const AboutPage = () => <div className="min-h-screen p-8"><h1 className="text-3xl font-bold mb-6">About Us</h1><p>Coming soon!</p></div>;
+const PressPage = () => <div className="min-h-screen p-8"><h1 className="text-3xl font-bold mb-6">Press</h1><p>Coming soon!</p></div>;
+const ApiDocsPage = () => <div className="min-h-screen p-8"><h1 className="text-3xl font-bold mb-6">API Documentation</h1><p>Coming soon!</p></div>;
+const CaseStudiesPage = () => <div className="min-h-screen p-8"><h1 className="text-3xl font-bold mb-6">Case Studies</h1><p>Coming soon!</p></div>;
+const CareersPage = () => <div className="min-h-screen p-8"><h1 className="text-3xl font-bold mb-6">Careers</h1><p>Coming soon!</p></div>;
+
 function App() {
   const [location] = useLocation();
   const analyticsInitialized = React.useRef(false);

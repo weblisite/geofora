@@ -834,7 +834,7 @@ export default function LeadCapturePage() {
                   </Button>
                 </CardContent>
               </Card>
-            )}
+            )
           </div>
         </div>
 
