@@ -15,8 +15,7 @@ import ContentSchedulingPage from "@/pages/dashboard/content-scheduling";
 import SignInPage from "@/pages/sign-in";
 import SignUpPage from "@/pages/sign-up";
 import PaymentPage from "@/pages/payment";
-// Use passthrough component that doesn't interfere with Clerk
-import ClerkPassthrough from "@/pages/clerk-passthrough";
+// No verification component needed - let Clerk handle it directly
 import VerifyPage from "@/pages/verify";
 import UIShowcasePage from "@/pages/ui-showcase";
 import DocumentationPage from "@/pages/documentation-page";
@@ -94,8 +93,8 @@ function App() {
         <Route path="/sign-up" component={SignUpPage} />
         <Route path="/payment" component={PaymentPage} />
         <Route path="/sign-up/verify" component={VerifyPage} />
-        {/* Handle verification route with a component that lets Clerk handle verification */}
-        <Route path="/sign-up/verify-email-address" component={ClerkPassthrough} />
+        {/* Empty route for Clerk to handle email verification directly */}
+        <Route path="/sign-up/verify-email-address" />
         {/* Legacy route redirects */}
         <Route path="/login">
           <SignInPage />
