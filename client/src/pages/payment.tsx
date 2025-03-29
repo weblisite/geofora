@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import { planStore } from "@/lib/planStore";
-import { PLAN_INFO, POLAR_PLAN_IDS, getSubscriptionUrl, getTrialSubscriptionUrl } from "@shared/polar-service";
+import { PLAN_INFO, POLAR_PLAN_IDS, POLAR_CHECKOUT_LINKS } from "@shared/polar-service";
 import { Button } from "@/components/ui/button";
 import { Glassmorphism } from "@/components/ui/glassmorphism";
 import { useLocation } from "wouter";
@@ -102,19 +102,15 @@ export default function PaymentPage() {
         })
       });
       
-      // Get the Polar plan ID
-      const polarPlanId = POLAR_PLAN_IDS[planType as keyof typeof POLAR_PLAN_IDS];
+      // Use direct checkout links provided by Polar.sh
+      const checkoutUrl = POLAR_CHECKOUT_LINKS[planType as keyof typeof POLAR_CHECKOUT_LINKS];
       
-      // Generate the return URL (dashboard)
-      const returnUrl = `${window.location.origin}/dashboard`;
+      if (!checkoutUrl) {
+        throw new Error("Invalid plan type or missing checkout URL");
+      }
       
-      // Generate subscription URL based on trial mode
-      const subscriptionUrl = trialMode 
-        ? getTrialSubscriptionUrl(polarPlanId, user.id, returnUrl)
-        : getSubscriptionUrl(polarPlanId, user.id, returnUrl);
-      
-      // Redirect to Polar payment page
-      window.location.href = subscriptionUrl;
+      // Redirect to Polar checkout page
+      window.location.href = checkoutUrl;
     } catch (error) {
       console.error("Payment processing error:", error);
       setLoading(false);

@@ -8,6 +8,15 @@ export const POLAR_PLAN_IDS = {
 };
 
 /**
+ * Direct checkout links for Polar.sh
+ */
+export const POLAR_CHECKOUT_LINKS = {
+  starter: 'https://buy.polar.sh/polar_cl_saQVhkF5OgG3xuhn3eZm5G3gQUA0rAx17BHB43INwPN',
+  professional: 'https://buy.polar.sh/polar_cl_oCymEewojyAWOZOHjZJRC1PQGo0ES0Tu2eeVh1S3N6Y',
+  enterprise: 'https://buy.polar.sh/polar_cl_bXNvmdougqf83av9fFAH1DA6y3ghNMzf5Kzwy38RLVX'
+};
+
+/**
  * Handles API requests to Polar.sh
  */
 export const polarApi = {
