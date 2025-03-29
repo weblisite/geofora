@@ -533,12 +533,326 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Personas routes
-  app.get("/api/personas", async (req, res) => {
+  app.get("/api/personas", requireClerkAuth, async (req, res) => {
     try {
-      const personas = await storage.getAllAIPersonas();
+      const clerkId = req.auth.userId;
+      
+      if (!clerkId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Get user from database
+      const user = await storage.getUserByClerkId(clerkId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Get all personas that belong to this user
+      const personas = await storage.getAiPersonasByUserId(user.id);
       res.json(personas);
     } catch (error) {
+      console.error("Error fetching user's AI personas:", error);
       res.status(500).json({ message: "Failed to fetch AI personas" });
+    }
+  });
+  
+  // Get persona stats (usage data)
+  app.get("/api/ai-personas/stats", requireClerkAuth, async (req, res) => {
+    try {
+      const clerkId = req.auth.userId;
+      
+      if (!clerkId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Get user from database
+      const user = await storage.getUserByClerkId(clerkId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Get persona stats
+      const personas = await storage.getAiPersonasByUserId(user.id);
+      
+      // For now, we just return the personas with their built-in stats
+      // In the future, we could aggregate additional stats from other tables
+      res.json(personas);
+    } catch (error) {
+      console.error("Error fetching persona stats:", error);
+      res.status(500).json({ message: "Failed to fetch persona stats" });
+    }
+  });
+  
+  // Create a new AI persona
+  app.post("/api/ai-personas", requireClerkAuth, async (req, res) => {
+    try {
+      const clerkId = req.auth.userId;
+      
+      if (!clerkId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Get user from database
+      const user = await storage.getUserByClerkId(clerkId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Check user's subscription plan and persona limit
+      const subscription = await storage.getUserSubscription(user.id);
+      let personaLimit: number | null = null;
+      
+      if (subscription?.plan === 'starter') {
+        personaLimit = 20;
+      } else if (subscription?.plan === 'professional') {
+        personaLimit = 100;
+      }
+      
+      // If there's a limit, check if it's been reached
+      if (personaLimit !== null) {
+        const currentPersonas = await storage.getAiPersonasByUserId(user.id);
+        
+        if (currentPersonas.length >= personaLimit) {
+          return res.status(403).json({ 
+            message: `Your plan allows a maximum of ${personaLimit} AI personas. Please upgrade your plan to create more.`,
+            currentCount: currentPersonas.length,
+            limit: personaLimit
+          });
+        }
+      }
+      
+      // Create the new persona
+      const newPersona = await storage.createAiPersona({
+        ...req.body,
+        userId: user.id
+      });
+      
+      res.status(201).json(newPersona);
+    } catch (error) {
+      console.error("Error creating AI persona:", error);
+      res.status(500).json({ message: "Failed to create AI persona" });
+    }
+  });
+  
+  // Update an AI persona
+  app.patch("/api/ai-personas/:id", requireClerkAuth, async (req, res) => {
+    try {
+      const clerkId = req.auth.userId;
+      const personaId = parseInt(req.params.id);
+      
+      if (!clerkId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Get user from database
+      const user = await storage.getUserByClerkId(clerkId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Check if persona exists and belongs to this user
+      const persona = await storage.getAiPersona(personaId);
+      
+      if (!persona) {
+        return res.status(404).json({ message: "AI persona not found" });
+      }
+      
+      if (persona.userId !== user.id) {
+        return res.status(403).json({ message: "You don't have permission to update this AI persona" });
+      }
+      
+      // Update the persona
+      const updatedPersona = await storage.updateAiPersona(personaId, req.body);
+      
+      res.json(updatedPersona);
+    } catch (error) {
+      console.error("Error updating AI persona:", error);
+      res.status(500).json({ message: "Failed to update AI persona" });
+    }
+  });
+  
+  // Delete an AI persona
+  app.delete("/api/ai-personas/:id", requireClerkAuth, async (req, res) => {
+    try {
+      const clerkId = req.auth.userId;
+      const personaId = parseInt(req.params.id);
+      
+      if (!clerkId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Get user from database
+      const user = await storage.getUserByClerkId(clerkId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Check if persona exists and belongs to this user
+      const persona = await storage.getAiPersona(personaId);
+      
+      if (!persona) {
+        return res.status(404).json({ message: "AI persona not found" });
+      }
+      
+      if (persona.userId !== user.id) {
+        return res.status(403).json({ message: "You don't have permission to delete this AI persona" });
+      }
+      
+      // Delete the persona
+      await storage.deleteAiPersona(personaId);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting AI persona:", error);
+      res.status(500).json({ message: "Failed to delete AI persona" });
+    }
+  });
+  
+  // Generate AI personas from website keywords
+  app.post("/api/ai-personas/generate-from-website", requireClerkAuth, async (req, res) => {
+    try {
+      const clerkId = req.auth.userId;
+      const { websiteUrl, count = 10 } = req.body;
+      
+      if (!clerkId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      if (!websiteUrl) {
+        return res.status(400).json({ message: "Website URL is required" });
+      }
+      
+      // Get user from database
+      const user = await storage.getUserByClerkId(clerkId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Check user's subscription plan and persona limit
+      const subscription = await storage.getUserSubscription(user.id);
+      let personaLimit: number | null = null;
+      let requestedCount = Math.min(count, 20); // Cap the initial request at 20
+      
+      if (subscription?.plan === 'starter') {
+        personaLimit = 20;
+      } else if (subscription?.plan === 'professional') {
+        personaLimit = 100;
+      }
+      
+      // If there's a limit, check how many personas can still be created
+      if (personaLimit !== null) {
+        const currentPersonas = await storage.getAiPersonasByUserId(user.id);
+        const remainingSlots = personaLimit - currentPersonas.length;
+        
+        if (remainingSlots <= 0) {
+          return res.status(403).json({ 
+            message: `Your plan allows a maximum of ${personaLimit} AI personas. Please upgrade your plan to create more.`,
+            currentCount: currentPersonas.length,
+            limit: personaLimit
+          });
+        }
+        
+        // Limit the number of personas to generate based on remaining slots
+        requestedCount = Math.min(requestedCount, remainingSlots);
+      }
+      
+      // Step 1: Analyze the website for keywords
+      const keywordAnalysis = await analyzeWebsiteForKeywords(websiteUrl);
+      
+      if (!keywordAnalysis || !keywordAnalysis.primaryKeywords || !keywordAnalysis.secondaryKeywords) {
+        return res.status(500).json({ message: "Failed to extract keywords from the website" });
+      }
+      
+      // Step 2: Generate AI personas based on the keywords
+      const personalityOptions = [
+        "Friendly", "Professional", "Analytical", "Creative", "Engaging",
+        "Humorous", "Empathetic", "Direct", "Detailed", "Supportive"
+      ];
+      
+      const toneOptions = [
+        "Casual", "Formal", "Enthusiastic", "Neutral", "Authoritative",
+        "Educational", "Persuasive", "Informative", "Conversational", "Technical"
+      ];
+      
+      const expertiseLevels = ["beginner", "intermediate", "expert"];
+      
+      // Name generation function
+      const generatePersonaName = (keyword: string, expertise: string) => {
+        const prefixes = ["Dr.", "Prof.", "Expert", "Guru", "Specialist", "Master", "Coach"];
+        const suffixes = ["Advisor", "Authority", "Pro", "Enthusiast", "Guide", "Mentor"];
+        
+        // Randomly select prefix or suffix
+        const usePrefix = Math.random() > 0.5;
+        
+        if (usePrefix) {
+          const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+          return `${prefix} ${keyword.charAt(0).toUpperCase() + keyword.slice(1)}`;
+        } else {
+          const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
+          return `${keyword.charAt(0).toUpperCase() + keyword.slice(1)} ${suffix}`;
+        }
+      };
+      
+      const createdPersonas = [];
+      
+      // Combined pool of keywords - prioritize primary keywords
+      const keywords = [
+        ...keywordAnalysis.primaryKeywords, 
+        ...keywordAnalysis.secondaryKeywords
+      ].slice(0, requestedCount * 2); // Get double the number of keywords we need
+      
+      // Create personas up to the requested count
+      for (let i = 0; i < requestedCount && i < keywords.length; i++) {
+        const keyword = keywords[i];
+        const expertise = expertiseLevels[Math.floor(Math.random() * expertiseLevels.length)];
+        const personality = personalityOptions[Math.floor(Math.random() * personalityOptions.length)];
+        const tone = toneOptions[Math.floor(Math.random() * toneOptions.length)];
+        const responseLength = Math.floor(Math.random() * 3) + 2; // 2-4
+        
+        // Select 1-3 keywords as areas of expertise for this persona
+        const personaKeywords = [];
+        personaKeywords.push(keyword);
+        
+        // Maybe add 1-2 more keywords if available
+        for (let j = 0; j < 2; j++) {
+          if (i + j + 1 < keywords.length && Math.random() > 0.3) {
+            personaKeywords.push(keywords[i + j + 1]);
+          }
+        }
+        
+        const name = generatePersonaName(keyword, expertise);
+        const description = `${personality} AI persona with ${expertise}-level expertise in ${personaKeywords.join(', ')}. Uses a ${tone.toLowerCase()} tone.`;
+        
+        // Create the persona in the database
+        const newPersona = await storage.createAiPersona({
+          userId: user.id,
+          name,
+          description,
+          type: expertise,
+          expertise: keyword,
+          personality,
+          tone,
+          responseLength,
+          keywords: personaKeywords,
+          active: true
+        });
+        
+        createdPersonas.push(newPersona);
+      }
+      
+      res.status(201).json({
+        message: `Generated ${createdPersonas.length} AI personas based on your website keywords`,
+        personas: createdPersonas
+      });
+    } catch (error) {
+      console.error("Error generating AI personas from website:", error);
+      res.status(500).json({ message: "Failed to generate AI personas from website" });
     }
   });
 

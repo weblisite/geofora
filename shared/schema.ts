@@ -136,10 +136,22 @@ export const votes = pgTable("votes", {
 // AI personas configuration
 export const aiPersonas = pgTable("ai_personas", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id), // Owner of the persona
   name: text("name").notNull(),
   type: text("type").notNull(), // 'beginner', 'intermediate', 'expert', 'moderator'
+  personality: text("personality"), // Personality traits
+  tone: text("tone"), // Communication tone
+  responseLength: integer("response_length").default(3), // 1-5 scale
   avatar: text("avatar"),
   description: text("description"),
+  expertise: text("expertise"), // Specific domain expertise based on keywords
+  keywords: text("keywords").array(), // Keywords this persona specializes in
+  active: boolean("active").default(true),
+  usageCount: integer("usage_count").default(0), // Number of times this persona has been used
+  rating: real("rating").default(4.5), // Average user rating
+  responseTime: real("response_time").default(2.0), // Average response time in seconds
+  completionRate: integer("completion_rate").default(98), // Percentage of successful completions
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Main site pages schema
