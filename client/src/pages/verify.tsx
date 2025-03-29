@@ -13,7 +13,9 @@ export default function VerifyPage() {
     const handleCallback = async () => {
       try {
         // This will handle the redirect and update the session
-        const result = await handleRedirectCallback();
+        const result = await handleRedirectCallback({
+          redirectUrl: window.location.href
+        });
         console.log("Clerk redirect callback result:", result);
         
         // If we get here, the redirect was successful, check if we're authenticated

@@ -15,7 +15,8 @@ import ContentSchedulingPage from "@/pages/dashboard/content-scheduling";
 import SignInPage from "@/pages/sign-in";
 import SignUpPage from "@/pages/sign-up";
 import PaymentPage from "@/pages/payment";
-import VerifyEmailPage from "@/pages/verify-email-address";
+// Import is no longer needed as the route is disabled
+// import VerifyEmailPage from "@/pages/verify-email-address";
 import VerifyPage from "@/pages/verify";
 import UIShowcasePage from "@/pages/ui-showcase";
 import DocumentationPage from "@/pages/documentation-page";
