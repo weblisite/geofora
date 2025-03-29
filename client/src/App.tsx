@@ -14,7 +14,6 @@ import AnalyticsPage from "@/pages/dashboard/analytics";
 import ContentSchedulingPage from "@/pages/dashboard/content-scheduling";
 import SignInPage from "@/pages/sign-in";
 import SignUpPage from "@/pages/sign-up";
-import PaymentPage from "@/pages/payment";
 // Only keep our custom verify page, let Clerk handle email verification directly
 import VerifyPage from "@/pages/verify";
 import EmailVerificationPage from "@/pages/email-verification";
@@ -92,7 +91,6 @@ function App() {
         <ProtectedRoute path="/dashboard/conversions" component={DashboardPage} />
         <Route path="/sign-in" component={SignInPage} />
         <Route path="/sign-up" component={SignUpPage} />
-        <Route path="/payment" component={PaymentPage} />
         <Route path="/sign-up/verify" component={VerifyPage} />
         <Route path="/sign-up/verify-email-address" component={EmailVerificationPage} />
         {/* Legacy route redirects */}
