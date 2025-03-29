@@ -15,7 +15,8 @@ import ContentSchedulingPage from "@/pages/dashboard/content-scheduling";
 import SignInPage from "@/pages/sign-in";
 import SignUpPage from "@/pages/sign-up";
 import PaymentPage from "@/pages/payment";
-import VerifyEmailAddressPage from "@/pages/verify-email-address";
+// Import is no longer needed as the route is disabled
+// import VerifyEmailPage from "@/pages/verify-email-address";
 import VerifyPage from "@/pages/verify";
 import UIShowcasePage from "@/pages/ui-showcase";
 import DocumentationPage from "@/pages/documentation-page";
@@ -93,8 +94,10 @@ function App() {
         <Route path="/sign-up" component={SignUpPage} />
         <Route path="/payment" component={PaymentPage} />
         <Route path="/sign-up/verify" component={VerifyPage} />
-        {/* Special route for email verification - use dedicated component that doesn't auto-redirect */}
-        <Route path="/sign-up/verify-email-address" component={VerifyEmailAddressPage} />
+        {/* Handle old verification route with redirect to the new one */}
+        <Route path="/sign-up/verify-email-address">
+          <VerifyPage />
+        </Route>
         {/* Legacy route redirects */}
         <Route path="/login">
           <SignInPage />
