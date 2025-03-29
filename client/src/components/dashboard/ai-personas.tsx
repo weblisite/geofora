@@ -221,15 +221,16 @@ export default function AIPersonas() {
     generatePersonasMutation.mutate(websiteUrl);
   };
   
-  // Use our custom hook for website-based persona generation
+  // Use our custom hook for website-based persona generation with the existing state variables
   const {
-    websiteUrl,
-    setWebsiteUrl,
-    personaCount,
-    setPersonaCount,
-    isGenerating,
     generatePersonasFromWebsite
-  } = useWebsitePersonasGenerator();
+  } = useWebsitePersonasGenerator({
+    initialWebsiteUrl: websiteUrl,
+    initialPersonaCount: personaCount,
+    onWebsiteUrlChange: setWebsiteUrl,
+    onPersonaCountChange: setPersonaCount,
+    onGeneratingChange: setIsGenerating
+  });
 
   // Handle website-based persona generation from the new tab
   const handleGenerateFromWebsite = () => {

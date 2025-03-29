@@ -4,12 +4,52 @@ import { useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 
 /**
+ * Props for the useWebsitePersonasGenerator hook
+ */
+interface UseWebsitePersonasGeneratorProps {
+  initialWebsiteUrl?: string;
+  initialPersonaCount?: number;
+  onWebsiteUrlChange?: (url: string) => void;
+  onPersonaCountChange?: (count: number) => void;
+  onGeneratingChange?: (isGenerating: boolean) => void;
+}
+
+/**
  * Custom hook for generating AI personas from website content
  */
-export function useWebsitePersonasGenerator() {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [websiteUrl, setWebsiteUrl] = useState('');
-  const [personaCount, setPersonaCount] = useState(3);
+export function useWebsitePersonasGenerator({
+  initialWebsiteUrl = '',
+  initialPersonaCount = 3,
+  onWebsiteUrlChange,
+  onPersonaCountChange,
+  onGeneratingChange
+}: UseWebsitePersonasGeneratorProps = {}) {
+  // Use separate internal state if no external state handlers provided
+  const [internalIsGenerating, setInternalIsGenerating] = useState(false);
+  const [internalWebsiteUrl, setInternalWebsiteUrl] = useState(initialWebsiteUrl);
+  const [internalPersonaCount, setInternalPersonaCount] = useState(initialPersonaCount);
+  
+  // Helper functions to update both internal state and call external handlers if provided
+  const setIsGenerating = (value: boolean) => {
+    setInternalIsGenerating(value);
+    if (onGeneratingChange) onGeneratingChange(value);
+  };
+  
+  const setWebsiteUrl = (value: string) => {
+    setInternalWebsiteUrl(value);
+    if (onWebsiteUrlChange) onWebsiteUrlChange(value);
+  };
+  
+  const setPersonaCount = (value: number) => {
+    setInternalPersonaCount(value);
+    if (onPersonaCountChange) onPersonaCountChange(value);
+  };
+  
+  // Use external state if handler is provided, otherwise use internal state
+  const isGenerating = onGeneratingChange ? false : internalIsGenerating;
+  const websiteUrl = onWebsiteUrlChange ? initialWebsiteUrl : internalWebsiteUrl;
+  const personaCount = onPersonaCountChange ? initialPersonaCount : internalPersonaCount;
+  
   const queryClient = useQueryClient();
 
   /**
