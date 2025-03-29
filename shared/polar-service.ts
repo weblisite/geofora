@@ -86,6 +86,78 @@ export const polarApi = {
     }
     
     return response.json();
+  },
+  
+  /**
+   * Create a checkout session directly through Polar API
+   * @param productId - The Polar product ID
+   * @param userId - The Clerk user ID (used for customer identification)
+   * @param userEmail - User email for pre-filling checkout form
+   * @param userName - User name for pre-filling checkout form
+   * @param successUrl - URL to redirect after successful checkout
+   * @param withTrial - Whether to include a 7-day free trial
+   * @returns Checkout session data including URL and client secret
+   */
+  createCheckoutSession: async (
+    productId: string,
+    userId: string,
+    userEmail: string,
+    userName: string,
+    successUrl: string,
+    withTrial: boolean = true
+  ) => {
+    try {
+      const polarAccessToken = typeof window === 'undefined' 
+        ? process.env.POLAR_ACCESS_TOKEN 
+        : import.meta.env.VITE_POLAR_ACCESS_TOKEN;
+        
+      if (!polarAccessToken) {
+        throw new Error('Polar access token not configured');
+      }
+      
+      // Prepare the checkout session request
+      const payload: any = {
+        products: [productId],
+        customer_email: userEmail,
+        customer_name: userName,
+        customer_external_id: userId, // Use Clerk ID as external ID
+        success_url: successUrl,
+        metadata: {
+          clerkUserId: userId,
+          isTrialSignup: withTrial
+        }
+      };
+      
+      // If this is a trial, add trial-specific parameters
+      if (withTrial) {
+        payload.metadata.trialPeriodDays = 7;
+        // Trial periods are set at the product level in Polar
+        // But we can add this to the metadata for our reference
+      }
+      
+      // Make the API request to create the checkout session
+      const response = await fetch('https://api.polar.sh/v1/checkouts', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${polarAccessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Failed to create Polar checkout session:', errorData);
+        throw new Error(`Failed to create checkout session: ${response.statusText}`);
+      }
+      
+      // Return the checkout session data
+      const sessionData = await response.json();
+      return sessionData;
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      throw error;
+    }
   }
 };
 

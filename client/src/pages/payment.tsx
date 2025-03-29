@@ -9,6 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
 
 export default function PaymentPage() {
   const { user } = useUser();
@@ -70,6 +71,13 @@ export default function PaymentPage() {
     initPage();
   }, [setLocation]);
 
+  const [isDirectCheckout, setIsDirectCheckout] = useState(true);
+  const [checkoutState, setCheckoutState] = useState<{
+    checkoutUrl?: string;
+    checkoutId?: string;
+    isReady: boolean;
+  }>({ isReady: false });
+  
   const handleProceedToPayment = async () => {
     try {
       if (!user || !planType) {
@@ -108,13 +116,43 @@ export default function PaymentPage() {
       // Generate the return URL (dashboard)
       const returnUrl = `${window.location.origin}/dashboard`;
       
-      // Generate subscription URL based on trial mode
-      const subscriptionUrl = trialMode 
-        ? getTrialSubscriptionUrl(polarPlanId, user.id, returnUrl)
-        : getSubscriptionUrl(polarPlanId, user.id, returnUrl);
-      
-      // Redirect to Polar payment page
-      window.location.href = subscriptionUrl;
+      if (isDirectCheckout) {
+        // Use the direct checkout API
+        try {
+          const result: any = await apiRequest('/api/checkout/create-session', {
+            method: 'POST',
+            body: JSON.stringify({
+              planId: polarPlanId,
+              withTrial: trialMode
+            })
+          });
+          
+          if (result && result.checkoutUrl) {
+            // Redirect to the checkout URL
+            window.location.href = result.checkoutUrl;
+          } else {
+            throw new Error("No checkout URL returned");
+          }
+        } catch (checkoutError) {
+          console.error("Direct checkout error:", checkoutError);
+          
+          // Fall back to the standard method
+          const subscriptionUrl = trialMode 
+            ? getTrialSubscriptionUrl(polarPlanId, user.id, returnUrl)
+            : getSubscriptionUrl(polarPlanId, user.id, returnUrl);
+          
+          // Redirect to Polar payment page
+          window.location.href = subscriptionUrl;
+        }
+      } else {
+        // Use the standard redirect method
+        const subscriptionUrl = trialMode 
+          ? getTrialSubscriptionUrl(polarPlanId, user.id, returnUrl)
+          : getSubscriptionUrl(polarPlanId, user.id, returnUrl);
+        
+        // Redirect to Polar payment page
+        window.location.href = subscriptionUrl;
+      }
     } catch (error) {
       console.error("Payment processing error:", error);
       setLoading(false);

@@ -5,6 +5,7 @@ import { z } from "zod";
 import * as crypto from "crypto";
 import { generateAnswer, generateSeoQuestions, analyzeQuestionSeo, generateInterlinkingSuggestions } from "./ai";
 import { clerkClient } from '@clerk/clerk-sdk-node';
+import { polarApi } from '@shared/polar-service';
 import { 
   insertUserSchema, 
   insertQuestionSchema, 
@@ -247,6 +248,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error saving plan selection:", error);
       res.status(500).json({ message: "Failed to save plan selection" });
+    }
+  });
+  
+  // Create direct checkout session with Polar API
+  app.post("/api/checkout/create-session", requireClerkAuth, async (req, res) => {
+    try {
+      const { planId, withTrial = true } = req.body;
+      
+      if (!req.auth?.userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Get user information
+      const userId = req.auth.userId;
+      const user = await storage.getUserByClerkId(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Get user profile from Clerk for email and name
+      const clerkUser = await clerkClient.users.getUser(userId);
+      if (!clerkUser) {
+        return res.status(404).json({ message: "Clerk user not found" });
+      }
+      
+      const userEmail = clerkUser.emailAddresses[0]?.emailAddress || "";
+      const userName = clerkUser.firstName && clerkUser.lastName
+        ? `${clerkUser.firstName} ${clerkUser.lastName}`
+        : clerkUser.username || "";
+      
+      // Get return URL (where to redirect after checkout)
+      const baseUrl = new URL(req.headers.referer || "http://localhost:5000");
+      const successUrl = `${baseUrl.origin}/payment/success`;
+      
+      // Create checkout session via Polar API
+      const checkoutSession = await polarApi.createCheckoutSession(
+        planId, 
+        userId,
+        userEmail,
+        userName,
+        successUrl,
+        withTrial
+      );
+      
+      // If this is a trial, update user trial status
+      if (withTrial) {
+        await storage.updateUserPlan(user.id, {
+          trialPlan: planId,
+          isInTrial: true,
+          trialStartedAt: new Date(),
+          // Set trial end date to 7 days in the future
+          trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        });
+        
+        console.log(`Trial started for user ${user.id} with plan ${planId}`);
+      }
+      
+      // Return checkout session URL and details
+      res.json({
+        checkoutUrl: checkoutSession.url,
+        checkoutId: checkoutSession.id,
+        clientSecret: checkoutSession.client_secret,
+        expiresAt: checkoutSession.expires_at
+      });
+    } catch (error) {
+      console.error("Error creating checkout session:", error);
+      res.status(500).json({ message: "Failed to create checkout session" });
     }
   });
   
