@@ -106,15 +106,21 @@ export const polarApi = {
  * @returns Subscription URL with proper parameters
  */
 export const getSubscriptionUrl = (planType: string, userId: string, returnUrl: string) => {
-  // Use the direct checkout links instead of constructing URLs
+  // Get the direct checkout link for the specified plan type
   const baseUrl = POLAR_CHECKOUT_LINKS[planType as keyof typeof POLAR_CHECKOUT_LINKS];
   
   if (!baseUrl) {
     throw new Error(`Invalid plan type: ${planType}`);
   }
   
-  // Append parameters to the checkout link
-  return `${baseUrl}?user_id=${userId}&return_url=${encodeURIComponent(returnUrl)}`;
+  // For Polar checkout URLs, we need to use their specific format
+  const polarUrl = new URL(baseUrl);
+  
+  // Add parameters to the URL - user_id and return_url
+  polarUrl.searchParams.append('user_id', userId);
+  polarUrl.searchParams.append('return_url', returnUrl);
+  
+  return polarUrl.toString();
 };
 
 /**
@@ -125,15 +131,24 @@ export const getSubscriptionUrl = (planType: string, userId: string, returnUrl: 
  * @returns Subscription URL with trial parameters
  */
 export const getTrialSubscriptionUrl = (planType: string, userId: string, returnUrl: string) => {
-  // Use the direct checkout links instead of constructing URLs
+  // Get the direct checkout link for the specified plan type
   const baseUrl = POLAR_CHECKOUT_LINKS[planType as keyof typeof POLAR_CHECKOUT_LINKS];
   
   if (!baseUrl) {
     throw new Error(`Invalid plan type: ${planType}`);
   }
   
-  // Append parameters to the checkout link including trial period
-  return `${baseUrl}?user_id=${userId}&return_url=${encodeURIComponent(returnUrl)}&trial_period_days=7`;
+  // For Polar checkout URLs, we need to use their specific format:
+  // The base URL is https://buy.polar.sh/{checkout_id}
+  // Parameters need to be added to the buy.polar.sh URL with query parameters
+  const polarUrl = new URL(baseUrl);
+  
+  // Add parameters to the URL - user_id, return_url, and trial_period_days
+  polarUrl.searchParams.append('user_id', userId);
+  polarUrl.searchParams.append('return_url', returnUrl);
+  polarUrl.searchParams.append('trial_period_days', '7');
+  
+  return polarUrl.toString();
 };
 
 /**
