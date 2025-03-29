@@ -206,7 +206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Handle plan selection (before redirecting to Polar)
   app.post("/api/users/select-plan", requireClerkAuth, async (req, res) => {
     try {
-      const { userId, planType } = req.body;
+      const { userId, planType, isTrial } = req.body;
       
       if (!userId || !planType) {
         return res.status(400).json({ message: "Missing userId or planType" });
@@ -219,10 +219,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      // Update the user with the selected plan
-      await storage.updateUserPlan(user.id, { plan: planType });
+      // Base update data
+      const updateData: any = { plan: planType };
       
-      res.json({ message: "Plan selection saved" });
+      // If this is a trial signup, set trial-specific fields
+      if (isTrial) {
+        const now = new Date();
+        const trialEndDate = new Date();
+        trialEndDate.setDate(now.getDate() + 7); // 7-day trial period
+        
+        updateData.isInTrial = true;
+        updateData.trialStartedAt = now;
+        updateData.trialEndsAt = trialEndDate;
+        updateData.trialPlan = planType;
+        
+        console.log(`Setting up trial for user ${user.id} - Plan: ${planType}, Trial ends: ${trialEndDate}`);
+      }
+      
+      // Update the user with the selected plan and trial information if applicable
+      await storage.updateUserPlan(user.id, updateData);
+      
+      res.json({ 
+        message: "Plan selection saved",
+        isTrial: isTrial || false,
+        plan: planType
+      });
     } catch (error) {
       console.error("Error saving plan selection:", error);
       res.status(500).json({ message: "Failed to save plan selection" });
@@ -354,11 +375,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Update the user's plan with all available information
-        await storage.updateUserPlan(user.id, {
+        const updateData: any = {
           plan: planType,
           planActiveUntil: expirationDate,
           polarSubscriptionId: subId
-        });
+        };
+        
+        // If user was in a trial, this means they've converted to a paid plan
+        if (user.isInTrial) {
+          updateData.isInTrial = false;
+          updateData.trialHasPaymentMethod = true;
+          console.log(`User ${user.id} converted from trial to paid plan: ${planType}`);
+        }
+        
+        await storage.updateUserPlan(user.id, updateData);
       } 
       else if (event === 'subscription.deleted' || event === 'subscription.canceled' || event === 'subscription.cancelled' || event === 'subscription.failed') {
         const { user_id, subscription_id } = data;
@@ -367,10 +397,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (user_id) {
           const user = await storage.getUserByClerkId(user_id);
           if (user) {
-            await storage.updateUserPlan(user.id, {
+            const updateData: any = {
               planActiveUntil: null,
               polarSubscriptionId: null
-            });
+            };
+            
+            // If user was in trial, reset all trial fields
+            if (user.isInTrial) {
+              updateData.isInTrial = false;
+              updateData.trialPlan = null;
+              updateData.trialStartedAt = null;
+              updateData.trialEndsAt = null;
+              console.log(`Trial subscription canceled for user ${user.id}`);
+            }
+            
+            await storage.updateUserPlan(user.id, updateData);
           } else {
             console.warn(`User not found for cancellation with Clerk ID: ${user_id}`);
           }
@@ -381,11 +422,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const user = users.find(u => u.polarSubscriptionId === subscription_id);
           
           if (user) {
-            await storage.updateUserPlan(user.id, {
+            const updateData: any = {
               plan: 'starter', // Downgrade to starter plan
               planActiveUntil: null,
               polarSubscriptionId: null
-            });
+            };
+            
+            // If user was in trial, reset all trial fields
+            if (user.isInTrial) {
+              updateData.isInTrial = false;
+              updateData.trialPlan = null;
+              updateData.trialStartedAt = null;
+              updateData.trialEndsAt = null;
+              console.log(`Trial subscription canceled for user ${user.id} (by subscription ID)`);
+            }
+            
+            await storage.updateUserPlan(user.id, updateData);
           } else {
             console.warn(`User not found for cancellation with subscription ID: ${subscription_id}`);
           }
