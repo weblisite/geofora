@@ -117,7 +117,7 @@ export default function Pricing() {
 
         <div className="mt-12 text-center">
           <p className="text-gray-400 mb-4">Not sure which plan is right for you?</p>
-          <a href="#" className="inline-flex items-center text-primary-400 hover:text-primary-300">
+          <a href="https://calendly.com/cmofy/meeting" target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-primary-400 hover:text-primary-300">
             <span>Schedule a personalized demo</span>
             <span className="material-icons text-sm ml-1">arrow_forward</span>
           </a>

@@ -25,10 +25,10 @@ export default function CTA() {
               <span className="ml-2 material-icons">rocket_launch</span>
             </Link>
 
-            <Link href="/#pricing" className="inline-flex items-center justify-center px-8 py-3 text-base font-medium text-white transition-all bg-dark-300 rounded-lg hover:bg-dark-400 border border-primary-500/30 min-w-[200px]">
+            <a href="https://calendly.com/cmofy/meeting" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-8 py-3 text-base font-medium text-white transition-all bg-dark-300 rounded-lg hover:bg-dark-400 border border-primary-500/30 min-w-[200px]">
               <span>Request Demo</span>
               <span className="ml-2 material-icons">play_circle</span>
-            </Link>
+            </a>
           </div>
         </div>
       </div>
