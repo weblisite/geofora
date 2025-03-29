@@ -111,7 +111,7 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-dark-100/95 backdrop-blur-md py-4 px-4 absolute left-0 right-0 top-full border-t border-primary-500/20 shadow-lg animate-in fade-in slide-in-from-top duration-300">
+        <div className="md:hidden fixed top-[60px] left-0 right-0 bg-dark-800 shadow-lg z-50 max-w-full">
           <div className="flex flex-col space-y-4">
             <Link
               href="/#features"

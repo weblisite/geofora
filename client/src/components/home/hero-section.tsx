@@ -57,7 +57,7 @@ export default function HeroSection() {
           </div>
 
           <div className="lg:col-span-8 relative flex justify-center mt-8 lg:mt-0">
-            <div className="relative w-full max-w-xl mx-auto lg:max-w-3xl xl:max-w-4xl">
+            <div className="relative w-full max-w-xl mx-auto lg:max-w-3xl xl:max-w-4xl px-4">
               {/* Animated background effects */}
               <div className="absolute top-0 -left-4 w-48 md:w-72 h-48 md:h-72 bg-primary-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse-slow"></div>
               <div className="absolute -bottom-8 right-4 w-48 md:w-72 h-48 md:h-72 bg-secondary-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse-slow" style={{ animationDelay: "1s" }}></div>
