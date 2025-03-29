@@ -15,8 +15,8 @@ import ContentSchedulingPage from "@/pages/dashboard/content-scheduling";
 import SignInPage from "@/pages/sign-in";
 import SignUpPage from "@/pages/sign-up";
 import PaymentPage from "@/pages/payment";
-// Import for the dedicated non-redirecting email verification page
-import VerifyEmailAddressPage from "@/pages/verify-email-address";
+// Use passthrough component that doesn't interfere with Clerk
+import ClerkPassthrough from "@/pages/clerk-passthrough";
 import VerifyPage from "@/pages/verify";
 import UIShowcasePage from "@/pages/ui-showcase";
 import DocumentationPage from "@/pages/documentation-page";
@@ -94,8 +94,8 @@ function App() {
         <Route path="/sign-up" component={SignUpPage} />
         <Route path="/payment" component={PaymentPage} />
         <Route path="/sign-up/verify" component={VerifyPage} />
-        {/* Handle old verification route with dedicated component that doesn't auto-redirect */}
-        <Route path="/sign-up/verify-email-address" component={VerifyEmailAddressPage} />
+        {/* Handle verification route with a component that lets Clerk handle verification */}
+        <Route path="/sign-up/verify-email-address" component={ClerkPassthrough} />
         {/* Legacy route redirects */}
         <Route path="/login">
           <SignInPage />
