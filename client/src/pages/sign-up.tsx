@@ -1,13 +1,30 @@
-import { Redirect } from "wouter";
+import { Redirect, useLocation } from "wouter";
 import { useClerkAuth } from "@/hooks/use-clerk-auth";
 import { SignUp } from "@clerk/clerk-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { planStore } from "@/lib/planStore";
 
 export default function SignUpPage() {
   const { user, isLoading } = useClerkAuth();
+  const [, setLocation] = useLocation();
+  const [redirectUrl, setRedirectUrl] = useState("/dashboard");
   
-  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    // Check if there's a plan selected
+    const selectedPlan = planStore.getSelectedPlan();
+    if (selectedPlan) {
+      // If there's a plan selected, we want to redirect to payment page after signup
+      setRedirectUrl(`/payment?plan=${selectedPlan}`);
+    }
+  }, []);
+  
+  // Redirect to appropriate page if already logged in
   if (!isLoading && user) {
+    const selectedPlan = planStore.getSelectedPlan();
+    if (selectedPlan) {
+      return <Redirect to={`/payment?plan=${selectedPlan}`} />;
+    }
     return <Redirect to="/dashboard" />;
   }
   
@@ -48,7 +65,7 @@ export default function SignUpPage() {
               routing="path" 
               path="/sign-up" 
               signInUrl="/sign-in"
-              redirectUrl="/dashboard"
+              redirectUrl={redirectUrl}
             />
           </CardContent>
         </Card>

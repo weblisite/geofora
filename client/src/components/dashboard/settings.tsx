@@ -35,7 +35,7 @@ import { useClerk, useAuth } from "@clerk/clerk-react";
 import { useUser } from "@clerk/clerk-react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { PLAN_INFO, POLAR_PLAN_IDS, getSubscriptionUrl } from "@shared/polar-service";
+import { PLAN_INFO, POLAR_PLAN_IDS, POLAR_CHECKOUT_LINKS, getSubscriptionUrl } from "@shared/polar-service";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { 
