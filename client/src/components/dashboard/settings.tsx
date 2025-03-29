@@ -1035,7 +1035,7 @@ export default function Settings() {
                         <Button 
                           variant="outline" 
                           className="w-full"
-                          onClick={() => window.location.href = "mailto:support@example.com"}
+                          onClick={() => window.location.href = "mailto:support@cmofy.com"}
                         >
                           Contact Support
                         </Button>

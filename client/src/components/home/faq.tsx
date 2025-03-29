@@ -45,7 +45,7 @@ export default function FAQ() {
 
         <div className="mt-12 text-center">
           <p className="text-gray-400 mb-4">Have more questions?</p>
-          <a href="#" className="inline-flex items-center px-6 py-2 text-sm font-medium text-white transition-all rounded-lg border border-primary-500 bg-dark-200 hover:bg-primary-500/10">
+          <a href="mailto:support@cmofy.com" className="inline-flex items-center px-6 py-2 text-sm font-medium text-white transition-all rounded-lg border border-primary-500 bg-dark-200 hover:bg-primary-500/10">
             <span>Contact Support</span>
           </a>
         </div>

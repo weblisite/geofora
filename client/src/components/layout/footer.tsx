@@ -128,9 +128,9 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-400 hover:text-primary-400 transition-colors">
+                <a href="mailto:support@cmofy.com" className="text-gray-400 hover:text-primary-400 transition-colors">
                   Contact
-                </Link>
+                </a>
               </li>
               <li>
                 <Link href="#" className="text-gray-400 hover:text-primary-400 transition-colors">
