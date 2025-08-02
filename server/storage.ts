@@ -2683,44 +2683,7 @@ export class MemStorage implements IStorage {
     this.crmIntegrationsStore.delete(id);
   }
 
-  // Lead Form View Tracking methods
-  async recordLeadFormView(view: InsertLeadFormView): Promise<LeadFormView> {
-    const id = this.leadFormViewId++;
-    const newView: LeadFormView = {
-      ...view,
-      id,
-      createdAt: new Date()
-    };
-    this.leadFormViewsStore.set(id, newView);
-    return newView;
-  }
 
-  async getLeadFormStats(formId: number): Promise<{ views: number; submissions: number; conversionRate: number }> {
-    let views = 0;
-    let conversions = 0;
-
-    // Count views
-    for (const view of this.leadFormViewsStore.values()) {
-      if (view.formId === formId) {
-        views++;
-        if (view.isConversion) {
-          conversions++;
-        }
-      }
-    }
-
-    // Count submissions
-    const submissions = (await this.getLeadSubmissionsByForm(formId)).length;
-    
-    // Calculate conversion rate
-    const conversionRate = views > 0 ? (submissions / views) * 100 : 0;
-
-    return {
-      views,
-      submissions,
-      conversionRate
-    };
-  }
 
   // Content Schedule methods
   async getContentSchedule(id: number): Promise<ContentSchedule | undefined> {
