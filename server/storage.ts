@@ -2077,20 +2077,7 @@ export class MemStorage implements IStorage {
     return Array.from(this.forumsStore.values());
   }
   
-  async countQuestionsByForum(forumId: number): Promise<number> {
-    let count = 0;
-    for (const question of this.questionsStore.values()) {
-      // We need to find questions associated with this forum
-      // In a real implementation, questions would have forumId directly
-      // Here we're getting categories for the forum and checking if the question belongs to them
-      const categories = await this.getCategoriesByForum(forumId);
-      const categoryIds = categories.map(c => c.id);
-      if (categoryIds.includes(question.categoryId)) {
-        count++;
-      }
-    }
-    return count;
-  }
+
   
   async countAnswersByForum(forumId: number, options?: { startDate?: string, endDate?: string }): Promise<number> {
     let count = 0;

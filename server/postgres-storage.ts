@@ -172,10 +172,6 @@ export class PostgresStorage implements IStorage {
       .returning();
     return result[0];
   }
-  
-  async getAllUsers(): Promise<User[]> {
-    return await db.select().from(users);
-  }
 
   async deleteUser(id: number): Promise<void> {
     await db.delete(users).where(eq(users.id, id));
