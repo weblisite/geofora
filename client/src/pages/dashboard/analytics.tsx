@@ -197,28 +197,37 @@ export default function AnalyticsPage() {
     enabled: !!user,
   });
 
+  // Auto-select first forum when forums are loaded
+  useEffect(() => {
+    if (forums && forums.length > 0 && !selectedForumId) {
+      setSelectedForumId(forums[0].id);
+    }
+  }, [forums, selectedForumId]);
+
   // Query for dashboard stats
   const { data: dashboardStats, isLoading: isLoadingStats } = useQuery({
     queryKey: ["/api/analytics/dashboard-stats", timePeriod, selectedForumId],
     queryFn: async () => {
-      const forumParam = selectedForumId ? `&forumId=${selectedForumId}` : "";
+      const forumParam = selectedForumId ? `?forumId=${selectedForumId}` : "";
       const res = await apiRequest(`/api/analytics/dashboard-stats/${timePeriod}${forumParam}`, {
         method: "GET"
       });
       return await res.json();
     },
+    enabled: !!selectedForumId,
   });
 
   // Query for traffic data
   const { data: trafficData, isLoading: isLoadingTraffic } = useQuery({
     queryKey: ["/api/analytics/traffic", timePeriod, selectedForumId],
     queryFn: async () => {
-      const forumParam = selectedForumId ? `&forumId=${selectedForumId}` : "";
+      const forumParam = selectedForumId ? `?forumId=${selectedForumId}` : "";
       const res = await apiRequest(`/api/analytics/traffic/${timePeriod}${forumParam}`, {
         method: "GET"
       });
       return await res.json();
     },
+    enabled: !!selectedForumId,
   });
 
   // Query for daily traffic data
@@ -231,6 +240,7 @@ export default function AnalyticsPage() {
       });
       return await res.json();
     },
+    enabled: !!selectedForumId,
   });
 
   // Query for top content
@@ -243,6 +253,7 @@ export default function AnalyticsPage() {
       });
       return await res.json();
     },
+    enabled: !!selectedForumId,
   });
 
   // Query for SEO rankings
@@ -255,6 +266,7 @@ export default function AnalyticsPage() {
       });
       return await res.json();
     },
+    enabled: !!selectedForumId,
   });
 
   // Query for conversion funnel data
@@ -267,6 +279,7 @@ export default function AnalyticsPage() {
       });
       return await res.json();
     },
+    enabled: !!selectedForumId,
   });
 
   // Query for referral traffic
@@ -279,6 +292,7 @@ export default function AnalyticsPage() {
       });
       return await res.json();
     },
+    enabled: !!selectedForumId,
   });
 
   // Query for device distribution
@@ -291,6 +305,7 @@ export default function AnalyticsPage() {
       });
       return await res.json();
     },
+    enabled: !!selectedForumId,
   });
 
   // Query for geographic data
@@ -303,6 +318,7 @@ export default function AnalyticsPage() {
       });
       return await res.json();
     },
+    enabled: !!selectedForumId,
   });
 
   // Query for lead capture stats
@@ -315,6 +331,7 @@ export default function AnalyticsPage() {
       });
       return await res.json();
     },
+    enabled: !!selectedForumId,
   });
 
   // Function to render trend indicator

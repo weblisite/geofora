@@ -23,7 +23,7 @@ export default function DashboardPreview() {
                   <span className="material-icons text-sm">forum</span>
                 </div>
                 <span className="text-lg font-bold">
-                  <GradientText>ForumAI</GradientText>
+                  <GradientText>GeoFora</GradientText>
                 </span>
               </div>
 

@@ -1,7 +1,9 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { checkDatabaseConnection, initDatabase } from "./database";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 const app = express();
 
@@ -72,13 +74,11 @@ app.use((req, res, next) => {
   
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
-  });
+  // Add 404 handler for unknown routes
+  app.use(notFoundHandler);
+  
+  // Add comprehensive error handler
+  app.use(errorHandler);
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
@@ -89,15 +89,17 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
+  // Production-ready server configuration
+  const port = process.env.PORT || 4000;
+  const host = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1';
+  
   server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
+    port: parseInt(port.toString()),
+    host,
   }, () => {
-    log(`serving on port ${port}`);
+    log(`🚀 Server running on ${host}:${port} in ${process.env.NODE_ENV || 'development'} mode`);
+    if (process.env.NODE_ENV === 'production') {
+      log(`🌍 Health check available at: http://${host}:${port}/api/health`);
+    }
   });
 })();

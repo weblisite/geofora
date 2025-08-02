@@ -2,10 +2,43 @@ import { FORUM_CATEGORIES } from "@/lib/constants";
 import { GradientText } from "@/components/ui/gradient-text";
 import { Glassmorphism } from "@/components/ui/glassmorphism";
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function ForumPreview() {
-  // Use real question data from the API instead of mock data
-  const previewQuestions = [
+  // Fetch real questions from the API
+  const { data: questions, isLoading } = useQuery({
+    queryKey: ["/api/questions", "preview"],
+    queryFn: async () => {
+      try {
+        const res = await apiRequest("/api/questions?limit=3&sort=recent", {
+          method: "GET"
+        });
+        return await res.json();
+      } catch (error) {
+        console.error("Error fetching preview questions:", error);
+        return [];
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Transform API data to match expected structure, with fallback data
+  const previewQuestions = questions?.length > 0 ? questions.map((q: any, index: number) => ({
+    id: q.id,
+    title: q.title,
+    excerpt: q.content ? q.content.substring(0, 150) + "..." : "No content available",
+    author: {
+      name: q.user?.displayName || q.user?.username || "Anonymous User",
+      role: index === 0 ? "AI Specialist" : index === 1 ? "Marketing Lead" : "SEO Consultant",
+      verified: q.user?.isAdmin || false,
+      premium: q.user?.roleId === 2 || false,
+    },
+    timeAgo: formatTimeAgo(q.createdAt),
+    answers: q.answerCount || 0,
+    views: q.viewCount || 0,
+  })).slice(0, 3) : [
+    // Fallback data if no real questions available
     {
       id: 1,
       title: "What's the most effective way to implement AI-driven content strategies in 2024?",
@@ -46,6 +79,24 @@ export default function ForumPreview() {
       views: 5200,
     },
   ];
+
+  // Helper function to format timestamps
+  function formatTimeAgo(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    const diffInDays = Math.floor(diffInHours / 24);
+
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes} minutes ago`;
+    } else if (diffInHours < 24) {
+      return `${diffInHours} hours ago`;
+    } else {
+      return `${diffInDays} days ago`;
+    }
+  }
 
   return (
     <section className="py-20 bg-dark-100">

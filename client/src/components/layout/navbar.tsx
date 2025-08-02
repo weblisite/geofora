@@ -35,7 +35,7 @@ export default function Navbar() {
             <span className="material-icons">forum</span>
           </div>
           <span className="text-2xl font-bold">
-            <GradientText>ForumAI</GradientText>
+            <GradientText>GeoFora</GradientText>
           </span>
         </Link>
 

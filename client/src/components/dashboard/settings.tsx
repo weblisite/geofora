@@ -31,8 +31,8 @@ import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useClerk, useAuth } from "@clerk/clerk-react";
-import { useUser } from "@clerk/clerk-react";
+import { useClerkAuth } from "@/hooks/use-clerk-auth";
+import { useClerk } from "@clerk/clerk-react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { PLAN_INFO, POLAR_PLAN_IDS, POLAR_CHECKOUT_LINKS, getSubscriptionUrl } from "@shared/polar-service";
@@ -87,7 +87,7 @@ const forumSettingsSchema = z.object({
 });
 
 export default function Settings() {
-  const { user } = useUser();
+  const { user } = useClerkAuth();
   const { signOut } = useClerk();
   const [activeTab, setActiveTab] = useState("account");
   
@@ -115,7 +115,7 @@ export default function Settings() {
   const forumForm = useForm<z.infer<typeof forumSettingsSchema>>({
     resolver: zodResolver(forumSettingsSchema),
     defaultValues: {
-      name: "ForumAI",
+      name: "GeoFora",
       description: "A community-driven question and answer platform",
       primaryColor: "#3B82F6",
       enableAI: true,
@@ -1264,7 +1264,7 @@ export default function Settings() {
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <Label>Meta Title</Label>
-                      <Input placeholder="ForumAI - Your Community Forum" />
+                      <Input placeholder="GeoFora - Your Community Forum" />
                     </div>
 
                     <div className="space-y-2">

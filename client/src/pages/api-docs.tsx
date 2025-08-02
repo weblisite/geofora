@@ -10,7 +10,7 @@ export default function ApiDocs() {
         <div className="prose prose-invert max-w-none">
           <h2 className="text-2xl">API Overview</h2>
           <p className="text-gray-300">
-            ForumAI provides a powerful RESTful API that allows you to integrate our platform with your existing systems.
+            GeoFora provides a powerful RESTful API that allows you to integrate our platform with your existing systems.
           </p>
           <h2 className="text-2xl mt-8">Authentication</h2>
           <p className="text-gray-300">

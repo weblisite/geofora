@@ -32,10 +32,6 @@ import {
 } from "@shared/schema";
 // Import PostgreSQL storage
 import { PostgresStorage } from './postgres-storage';
-import session from 'express-session';
-import createMemoryStore from 'memorystore';
-
-const MemoryStore = createMemoryStore(session);
 
 // Storage interface with CRUD methods
 export interface IStorage {
@@ -101,8 +97,9 @@ export interface IStorage {
   getAnswer(id: number): Promise<Answer | undefined>;
   getAnswerWithDetails(id: number): Promise<AnswerWithDetails | undefined>;
   getAnswersForQuestion(questionId: number): Promise<AnswerWithDetails[]>;
+  getAllAnswersWithDetails(limit?: number): Promise<AnswerWithDetails[]>;
   createAnswer(answer: InsertAnswer): Promise<Answer>;
-  countAnswersByForum(forumId: number): Promise<number>;
+  countAnswersByForum(forumId: number, options?: { startDate?: string, endDate?: string }): Promise<number>;
 
   // Vote methods
   getVote(id: number): Promise<Vote | undefined>;
@@ -229,9 +226,6 @@ export interface IStorage {
   getLatestSeoWeeklyReport(forumId: number): Promise<SeoWeeklyReportWithDetails | undefined>;
   createSeoWeeklyReport(report: InsertSeoWeeklyReport): Promise<SeoWeeklyReport>;
   
-  // Session store
-  sessionStore: session.Store;
-  
   // User Engagement Tracking
   createUserEngagementMetric(metric: InsertUserEngagementMetric): Promise<UserEngagementMetric>;
   getUserEngagementMetricsByForum(forumId: number, startDate?: string, endDate?: string): Promise<UserEngagementMetric[]>;
@@ -240,11 +234,22 @@ export interface IStorage {
   getReturnVisitorRateTrend(forumId: number, days?: number): Promise<{ date: string, rate: number }[]>;
   getUserJourneys(forumId: number, days?: number, limit?: number): Promise<{ path: string[], count: number }[]>;
   
+  // Traffic Analytics
+  getTrafficStatsByForum(forumId: number, startDate: string, endDate: string): Promise<any[]>;
+  getReferralsByForum(forumId: number, startDate: string, endDate: string): Promise<any[]>;
+  getPageTrafficByForum(forumId: number, startDate: string, endDate: string): Promise<any[]>;
+  getCrossSiteTrafficByForum(forumId: number, startDate: string, endDate: string): Promise<any[]>;
+  getDailyTrafficByForum(forumId: number, startDate: string, endDate: string): Promise<any[]>;
+  
   // Content Performance Tracking
   createContentPerformanceMetric(metric: InsertContentPerformanceMetric): Promise<ContentPerformanceMetric>;
   getContentPerformanceMetricsByForum(forumId: number, contentType?: string): Promise<ContentPerformanceMetric[]>;
   getContentPerformanceMetricsByContent(contentType: string, contentId: number): Promise<ContentPerformanceMetric[]>;
   getTopPerformingContent(forumId: number, limit?: number): Promise<ContentPerformanceMetric[]>;
+  getTopPerformingContentAcrossForums(limit?: number): Promise<ContentPerformanceMetric[]>;
+  getQuestionsByForumWithMetrics(forumId: number, limit?: number): Promise<any[]>;
+  getQuestionsWithMetrics(limit?: number): Promise<any[]>;
+  countQuestionsByForum(forumId: number, options?: { startDate?: string, endDate?: string }): Promise<number>;
   getContentEngagementTrend(forumId: number, days?: number): Promise<{ date: string, avgTimeOnPage: number, interactionRate: number }[]>;
   
   // Analytics Events
@@ -295,6 +300,9 @@ export interface IStorage {
   }): Promise<any>;
   getUserByEmail(email: string): Promise<any>;
   getUserByUsername(username: string): Promise<any>;
+  
+  // Health check
+  healthCheck(): Promise<boolean>;
 }
 
 // In-memory storage implementation
@@ -360,7 +368,6 @@ export class MemStorage implements IStorage {
   private analyticsEventId: number;
   private funnelDefinitionId: number;
   private funnelAnalyticId: number;
-  public sessionStore: session.Store;
 
   constructor() {
     // Initialize stores
@@ -394,11 +401,6 @@ export class MemStorage implements IStorage {
     this.analyticsEventsStore = new Map();
     this.funnelDefinitionsStore = new Map();
     this.funnelAnalyticsStore = new Map();
-    
-    // Create session store from memorystore
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000 // prune expired entries every 24h
-    });
 
     // Initialize IDs
     this.roleId = 1;
@@ -809,7 +811,7 @@ export class MemStorage implements IStorage {
       { 
         username: "admin", 
         password: "admin123", 
-        email: "admin@forumai.com", 
+        email: "admin@geofora.ai", 
         displayName: "Admin",
         avatar: "https://i.pravatar.cc/150?img=1",
         isAdmin: true,
@@ -849,7 +851,7 @@ export class MemStorage implements IStorage {
       { 
         username: "ai_beginner", 
         password: "aibegin123", 
-        email: "ai_beginner@forumai.com", 
+        email: "ai_beginner@geofora.ai", 
         displayName: "AI Beginner",
         avatar: "https://i.pravatar.cc/150?img=25",
         isAdmin: false,
@@ -860,7 +862,7 @@ export class MemStorage implements IStorage {
       { 
         username: "ai_expert", 
         password: "aiexpert123", 
-        email: "ai_expert@forumai.com", 
+        email: "ai_expert@geofora.ai", 
         displayName: "AI Expert",
         avatar: "https://i.pravatar.cc/150?img=35",
         isAdmin: false,
@@ -1699,6 +1701,35 @@ export class MemStorage implements IStorage {
     return result.sort((a, b) => b.votes - a.votes);
   }
 
+  async getAllAnswersWithDetails(limit?: number): Promise<AnswerWithDetails[]> {
+    const result: AnswerWithDetails[] = [];
+    
+    for (const answer of this.answersStore.values()) {
+      const user = this.usersStore.get(answer.userId);
+      if (!user) continue;
+      
+      // Count votes for this answer
+      let voteCount = 0;
+      for (const vote of this.votesStore.values()) {
+        if (vote.answerId === answer.id) {
+          voteCount += vote.isUpvote ? 1 : -1;
+        }
+      }
+      
+      result.push({
+        ...answer,
+        user,
+        votes: voteCount
+      });
+    }
+    
+    // Sort by creation date (newest first)
+    const sorted = result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    
+    // Apply limit if specified
+    return limit ? sorted.slice(0, limit) : sorted;
+  }
+
   async createAnswer(answer: InsertAnswer): Promise<Answer> {
     const id = this.answerId++;
     const newAnswer: Answer = { 
@@ -2061,7 +2092,7 @@ export class MemStorage implements IStorage {
     return count;
   }
   
-  async countAnswersByForum(forumId: number): Promise<number> {
+  async countAnswersByForum(forumId: number, options?: { startDate?: string, endDate?: string }): Promise<number> {
     let count = 0;
     for (const answer of this.answersStore.values()) {
       const question = this.questionsStore.get(answer.questionId);
@@ -2070,7 +2101,18 @@ export class MemStorage implements IStorage {
         const categories = await this.getCategoriesByForum(forumId);
         const categoryIds = categories.map(c => c.id);
         if (categoryIds.includes(question.categoryId)) {
-          count++;
+          // Apply date filters if provided
+          if (options?.startDate || options?.endDate) {
+            const createdAt = new Date(answer.createdAt);
+            const startDate = options.startDate ? new Date(options.startDate) : new Date(0);
+            const endDate = options.endDate ? new Date(options.endDate) : new Date();
+            
+            if (createdAt >= startDate && createdAt <= endDate) {
+              count++;
+            }
+          } else {
+            count++;
+          }
         }
       }
     }
@@ -3321,6 +3363,54 @@ export class MemStorage implements IStorage {
       .slice(0, limit);
   }
 
+  async getTopPerformingContentAcrossForums(limit: number = 10): Promise<ContentPerformanceMetric[]> {
+    return [...this.contentPerformanceMetricsStore.values()]
+      .sort((a, b) => b.pageViews - a.pageViews)
+      .slice(0, limit);
+  }
+
+  async getQuestionsByForumWithMetrics(forumId: number, limit: number = 10): Promise<any[]> {
+    const questions = [...this.questionsStore.values()]
+      .filter(q => q.categoryId === forumId)
+      .slice(0, limit);
+    
+    // Add metrics for each question
+    return questions.map(q => ({
+      ...q,
+      viewCount: Math.floor(Math.random() * 1000),
+      answerCount: [...this.answersStore.values()].filter(a => a.questionId === q.id).length,
+      seoPositions: []
+    }));
+  }
+
+  async getQuestionsWithMetrics(limit: number = 10): Promise<any[]> {
+    const questions = [...this.questionsStore.values()].slice(0, limit);
+    
+    // Add metrics for each question
+    return questions.map(q => ({
+      ...q,
+      viewCount: Math.floor(Math.random() * 1000),
+      answerCount: [...this.answersStore.values()].filter(a => a.questionId === q.id).length,
+      seoPositions: []
+    }));
+  }
+
+  async countQuestionsByForum(forumId: number, options?: { startDate?: string, endDate?: string }): Promise<number> {
+    let questions = [...this.questionsStore.values()].filter(q => q.categoryId === forumId);
+    
+    if (options?.startDate || options?.endDate) {
+      const startDate = options.startDate ? new Date(options.startDate) : new Date(0);
+      const endDate = options.endDate ? new Date(options.endDate) : new Date();
+      
+      questions = questions.filter(q => {
+        const createdAt = new Date(q.createdAt);
+        return createdAt >= startDate && createdAt <= endDate;
+      });
+    }
+    
+    return questions.length;
+  }
+
   async getContentEngagementTrend(
     forumId: number, 
     days: number = 30
@@ -3712,6 +3802,37 @@ export class MemStorage implements IStorage {
     
     this.funnelAnalyticsStore.set(id, updatedAnalytic);
     return updatedAnalytic;
+  }
+
+  // Traffic Analytics methods
+  async getTrafficStatsByForum(forumId: number, startDate: string, endDate: string): Promise<any[]> {
+    // Return empty array for now - no traffic data in memory storage
+    return [];
+  }
+
+  async getReferralsByForum(forumId: number, startDate: string, endDate: string): Promise<any[]> {
+    // Return empty array for now - no referral data in memory storage
+    return [];
+  }
+
+  async getPageTrafficByForum(forumId: number, startDate: string, endDate: string): Promise<any[]> {
+    // Return empty array for now - no page traffic data in memory storage
+    return [];
+  }
+
+  async getCrossSiteTrafficByForum(forumId: number, startDate: string, endDate: string): Promise<any[]> {
+    // Return empty array for now - no cross-site traffic data in memory storage
+    return [];
+  }
+
+  async getDailyTrafficByForum(forumId: number, startDate: string, endDate: string): Promise<any[]> {
+    // Return empty array for now - no daily traffic data in memory storage
+    return [];
+  }
+
+  async healthCheck(): Promise<boolean> {
+    // Memory storage is always healthy
+    return true;
   }
 }
 

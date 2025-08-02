@@ -52,6 +52,35 @@ declare global {
 }
 
 /**
+ * Helper function to get user ID from Clerk authentication
+ */
+export async function getClerkUserId(req: Request): Promise<string | null> {
+  try {
+    const token = req.headers.authorization?.split(' ')[1] || req.cookies?.['__session'];
+    if (!token) return null;
+    
+    const sessionClaims = await clerkClient.verifyToken(token);
+    return sessionClaims.sub || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Helper function to get database user from Clerk authentication
+ */
+export async function getClerkUser(req: Request, storage: IStorage): Promise<any | null> {
+  try {
+    const clerkUserId = await getClerkUserId(req);
+    if (!clerkUserId) return null;
+    
+    return await storage.getUserByClerkId(clerkUserId);
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
  * Register Clerk auth routes
  */
 export function registerClerkAuthRoutes(app: Express, storage: IStorage) {

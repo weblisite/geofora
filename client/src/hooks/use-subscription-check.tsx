@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { useAuth } from '@clerk/clerk-react';
+import { useClerkAuth } from '@/hooks/use-clerk-auth';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { toast } from '@/hooks/use-toast';
 
 /**
@@ -18,7 +19,8 @@ export function useSubscriptionCheck(
 ) {
   const [, setLocation] = useLocation();
   const [location] = useLocation();
-  const { userId } = useAuth();
+  const { user } = useClerkAuth();
+  const userId = user?.id;
   const [checked, setChecked] = useState(false);
 
   // Query subscription data from API
@@ -28,6 +30,12 @@ export function useSubscriptionCheck(
     error: subscriptionError 
   } = useQuery({
     queryKey: ['/api/users/subscription'],
+    queryFn: async () => {
+      const res = await apiRequest('/api/users/subscription', {
+        method: 'GET'
+      });
+      return await res.json();
+    },
     enabled: !!userId
   });
 

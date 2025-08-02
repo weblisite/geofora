@@ -12,7 +12,7 @@ export default function Footer() {
                 <span className="material-icons">forum</span>
               </div>
               <span className="text-2xl font-bold">
-                <GradientText>ForumAI</GradientText>
+                <GradientText>GeoFora</GradientText>
               </span>
             </Link>
             <p className="text-gray-400 mb-4">
@@ -143,7 +143,7 @@ export default function Footer() {
 
         <div className="pt-8 mt-8 border-t border-dark-300 flex flex-col md:flex-row items-center justify-between">
           <p className="text-gray-400 text-sm mb-4 md:mb-0">
-            © {new Date().getFullYear()} ForumAI. All rights reserved.
+            © {new Date().getFullYear()} GeoFora. All rights reserved.
           </p>
           <div className="flex flex-wrap gap-4 justify-center md:justify-end">
             <Link href="#" className="text-gray-400 hover:text-primary-400 text-sm transition-colors">

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useClerk } from "@clerk/clerk-react";
+import { useClerkAuth } from "@/hooks/use-clerk-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -36,22 +36,56 @@ interface InterlinkingSuggestion {
 }
 
 const Interlinking = () => {
-  const { userId } = useClerk();
+  const { user } = useClerkAuth();
+  const userId = user?.id;
   const { toast } = useToast();
   const [selectedContentId, setSelectedContentId] = useState<number | null>(null);
   const [relevanceThreshold, setRelevanceThreshold] = useState([70]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("forum-to-forum");
 
-  // Fetch all forum content (questions and answers)
-  const { data: forumContent, isLoading: forumContentLoading } = useQuery({
-    queryKey: ["/api/content/forum-content"],
+  // Fetch questions for interlinking
+  const { data: questions, isLoading: questionsLoading } = useQuery({
+    queryKey: ["/api/questions", "interlinking"],
+    queryFn: async () => {
+      try {
+        const res = await apiRequest("/api/questions?limit=50", { method: "GET" });
+        return await res.json();
+      } catch (error) {
+        console.error("Error fetching questions:", error);
+        return [];
+      }
+    },
     enabled: !!userId,
   });
 
-  // Fetch all main website content
+  // Fetch answers for interlinking  
+  const { data: answers, isLoading: answersLoading } = useQuery({
+    queryKey: ["/api/answers", "interlinking"],
+    queryFn: async () => {
+      try {
+        const res = await apiRequest("/api/answers?limit=50", { method: "GET" });
+        return await res.json();
+      } catch (error) {
+        console.error("Error fetching answers:", error);
+        return [];
+      }
+    },
+    enabled: !!userId,
+  });
+
+  // Fetch main site pages for interlinking
   const { data: mainSiteContent, isLoading: mainSiteContentLoading } = useQuery({
-    queryKey: ["/api/content/main-site-content"],
+    queryKey: ["/api/main-pages"],
+    queryFn: async () => {
+      try {
+        const res = await apiRequest("/api/main-pages", { method: "GET" });
+        return await res.json();
+      } catch (error) {
+        console.error("Error fetching main pages:", error);
+        return [];
+      }
+    },
     enabled: !!userId,
   });
 
@@ -105,72 +139,22 @@ const Interlinking = () => {
     );
   };
 
-  // Get fallback forum content when API data isn't available
-  const getFallbackForumContent = (): InterlinkableContent[] => [
-    {
-      id: 1,
-      type: "question",
-      title: "What are the best SEO practices for e-commerce product pages?",
-      content: "I'm running an online store and want to optimize my product pages for better search visibility. What are the current best practices for e-commerce SEO specifically for product detail pages?"
-    },
-    {
-      id: 2,
-      type: "question",
-      title: "How to improve Core Web Vitals for a WordPress site?",
-      content: "My WordPress site has poor Core Web Vitals scores, especially on mobile. I'm looking for specific techniques to improve LCP, FID and CLS metrics without completely rebuilding the site."
-    },
-    {
-      id: 3,
-      type: "answer",
-      title: "Answer to: What are the best SEO practices for e-commerce product pages?",
-      content: "For e-commerce product pages, focus on unique product descriptions, schema markup for products, optimized images with descriptive alt text, customer reviews, related product recommendations, and mobile optimization. Use specific product terms in URLs, titles, and headers."
-    },
-    {
-      id: 4,
-      type: "question",
-      title: "Content gap analysis techniques for SaaS marketing",
-      content: "What are effective methods for identifying content gaps in SaaS marketing? Looking for both manual techniques and tools that can help find topics we should be covering."
-    },
-    {
-      id: 5,
-      type: "answer",
-      title: "Answer to: How to improve Core Web Vitals for a WordPress site?",
-      content: "To improve Core Web Vitals on WordPress: 1) Use a lightweight theme, 2) Optimize images with WebP format and lazy loading, 3) Implement proper caching, 4) Minimize or defer JavaScript, 5) Use a good hosting provider, 6) Reduce plugin count, 7) Consider a CDN, 8) Optimize CSS delivery and remove unused CSS."
-    },
-  ];
-
-  // Get fallback main site content when API data isn't available
-  const getFallbackMainContent = (): InterlinkableContent[] => [
-    {
-      id: 101,
-      type: "main_page",
-      title: "Complete Guide to E-commerce SEO",
-      content: "This comprehensive guide covers all aspects of e-commerce SEO including product page optimization, category structure, technical SEO for online stores, and conversion optimization techniques."
-    },
-    {
-      id: 102,
-      type: "main_page",
-      title: "Understanding and Improving Core Web Vitals",
-      content: "Learn what Core Web Vitals are, how they impact your rankings, and practical steps to improve LCP, FID, and CLS on various platforms including WordPress, Shopify, and custom sites."
-    },
-    {
-      id: 103,
-      type: "main_page",
-      title: "Content Strategy Guide for SaaS Companies",
-      content: "Discover how to build an effective content strategy specifically for SaaS companies. Topics include user journey mapping, content gap analysis, keyword research, and measuring content ROI."
-    },
-    {
-      id: 104,
-      type: "main_page",
-      title: "Technical SEO Audit Checklist",
-      content: "A complete technical SEO audit checklist with 75+ items to check, organized by priority. Includes instructions for fixing common issues and recommended tools for each audit section."
-    },
-    {
-      id: 105,
-      type: "main_page",
-      title: "Local SEO Guide for Small Businesses",
-      content: "Step-by-step guide to local SEO for small businesses. Covers Google Business Profile optimization, local citation building, review management, and local content strategies."
-    },
+  // Combine questions and answers into forum content
+  const forumContent: InterlinkableContent[] = [
+    // Transform questions
+    ...(questions || []).map((q: any) => ({
+      id: q.id,
+      type: "question" as const,
+      title: q.title,
+      content: q.content || "No content available"
+    })),
+    // Transform answers
+    ...(answers || []).map((a: any) => ({
+      id: a.id,
+      type: "answer" as const,
+      title: `Answer to: ${a.question?.title || 'Question'}`,
+      content: a.content || "No content available"
+    }))
   ];
 
   // Get fallback interlinking suggestions when API data isn't available
@@ -214,8 +198,9 @@ const Interlinking = () => {
   ];
 
   // Use fallback data if API data isn't available
-  const displayForumContent = forumContent || getFallbackForumContent();
-  const displayMainContent = mainSiteContent || getFallbackMainContent();
+  // Use real data from API calls
+  const displayForumContent = forumContent;
+  const displayMainContent = mainSiteContent || [];
   const displaySuggestions = interlinkingSuggestions || getFallbackInterlinkingSuggestions();
 
   // Filter content based on the threshold
@@ -261,7 +246,7 @@ const Interlinking = () => {
               </div>
             </CardHeader>
             <CardContent>
-              {forumContentLoading ? (
+              {questionsLoading || answersLoading ? (
                 <div className="flex justify-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>

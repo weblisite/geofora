@@ -8,10 +8,21 @@ import { storage } from "./storage";
 export async function getDashboardStats(req: Request, res: Response) {
   try {
     const period = req.params.period || "30d";
-    const forumId = req.query.forumId ? parseInt(req.query.forumId as string) : undefined;
+    let forumId = req.query.forumId ? parseInt(req.query.forumId as string) : undefined;
+    
+    // If no forumId provided, try to get user's first forum
+    if (!forumId && req.auth?.userId) {
+      const user = await storage.getUserByClerkId(req.auth.userId);
+      if (user) {
+        const userForums = await storage.getForumsByUser(user.id);
+        if (userForums.length > 0) {
+          forumId = userForums[0].id;
+        }
+      }
+    }
     
     if (!forumId) {
-      return res.status(400).json({ message: "Forum ID is required" });
+      return res.status(400).json({ message: "Forum ID is required or no forums found" });
     }
     
     // Calculate date range based on period
@@ -141,10 +152,21 @@ export async function getDashboardStats(req: Request, res: Response) {
 export async function getTrafficData(req: Request, res: Response) {
   try {
     const period = req.params.period || "30d";
-    const forumId = req.query.forumId ? parseInt(req.query.forumId as string) : undefined;
+    let forumId = req.query.forumId ? parseInt(req.query.forumId as string) : undefined;
+    
+    // If no forumId provided, try to get user's first forum
+    if (!forumId && req.auth?.userId) {
+      const user = await storage.getUserByClerkId(req.auth.userId);
+      if (user) {
+        const userForums = await storage.getForumsByUser(user.id);
+        if (userForums.length > 0) {
+          forumId = userForums[0].id;
+        }
+      }
+    }
     
     if (!forumId) {
-      return res.status(400).json({ message: "Forum ID is required" });
+      return res.status(400).json({ message: "Forum ID is required or no forums found" });
     }
     
     // Calculate date range based on period
@@ -274,10 +296,21 @@ export async function getTrafficData(req: Request, res: Response) {
 export async function getDailyTrafficData(req: Request, res: Response) {
   try {
     const period = req.query.period || "30d";
-    const forumId = req.query.forumId ? parseInt(req.query.forumId as string) : undefined;
+    let forumId = req.query.forumId ? parseInt(req.query.forumId as string) : undefined;
+    
+    // If no forumId provided, try to get user's first forum
+    if (!forumId && req.auth?.userId) {
+      const user = await storage.getUserByClerkId(req.auth.userId);
+      if (user) {
+        const userForums = await storage.getForumsByUser(user.id);
+        if (userForums.length > 0) {
+          forumId = userForums[0].id;
+        }
+      }
+    }
     
     if (!forumId) {
-      return res.status(400).json({ message: "Forum ID is required" });
+      return res.status(400).json({ message: "Forum ID is required or no forums found" });
     }
     
     // Calculate date range based on period
@@ -1010,11 +1043,22 @@ export async function getLeadCaptureStats(req: Request, res: Response) {
 export async function getAiActivity(req: Request, res: Response) {
   try {
     const period = req.query.period || "30d";
-    const forumId = req.query.forumId ? parseInt(req.query.forumId as string) : undefined;
+    let forumId = req.query.forumId ? parseInt(req.query.forumId as string) : undefined;
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
     
+    // If no forumId provided, try to get user's first forum
+    if (!forumId && req.auth?.userId) {
+      const user = await storage.getUserByClerkId(req.auth.userId);
+      if (user) {
+        const userForums = await storage.getForumsByUser(user.id);
+        if (userForums.length > 0) {
+          forumId = userForums[0].id;
+        }
+      }
+    }
+    
     if (!forumId) {
-      return res.status(400).json({ message: "Forum ID is required" });
+      return res.status(400).json({ message: "Forum ID is required or no forums found" });
     }
     
     // Calculate date range based on period

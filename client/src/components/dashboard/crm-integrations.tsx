@@ -34,6 +34,9 @@ import { useClerk } from "@clerk/clerk-react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, ArrowUpRight, Clipboard, RefreshCw, CheckCircle2, Database, ListFilter } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 
 const integrationSchema = z.object({
   provider: z.string().min(1, "Provider is required"),
@@ -47,6 +50,7 @@ const integrationSchema = z.object({
 
 export default function CRMIntegrations() {
   const { user } = useClerk();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("integrations");
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null);
   
@@ -74,9 +78,37 @@ export default function CRMIntegrations() {
     },
   });
 
-  const onSubmit = (values: z.infer<typeof integrationSchema>) => {
-    console.log(values);
-    // Here we would save the integration to the database
+  const onSubmit = async (values: z.infer<typeof integrationSchema>) => {
+    try {
+      // For now, use the first available forum - in a real app, let user select forum
+      const response = await apiRequest("/api/forums/1/crm-integrations", {
+        method: "POST",
+        body: JSON.stringify(values),
+      });
+
+      if (response.ok) {
+        const integration = await response.json();
+        toast({
+          title: "Integration saved",
+          description: `${values.provider} integration has been successfully configured.`,
+        });
+        
+        // Reset form
+        form.reset();
+        
+        // Refetch integrations list
+        queryClient.invalidateQueries({ queryKey: ["/api/crm-integrations"] });
+      } else {
+        throw new Error("Failed to save integration");
+      }
+    } catch (error) {
+      console.error("Error saving CRM integration:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save CRM integration. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Simplified mock CRM providers for the demo

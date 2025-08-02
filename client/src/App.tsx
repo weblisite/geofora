@@ -24,6 +24,8 @@ import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { initAnalytics, trackPageView } from "@/lib/analytics-tracker";
 import React from "react";
+import { useUserSync } from "@/hooks/use-user-sync";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Placeholder page components for site sections
 const PartnersPage = () => <div className="min-h-screen p-8"><h1 className="text-3xl font-bold mb-6">Partners</h1><p>Coming soon!</p></div>;
@@ -38,6 +40,9 @@ function App() {
   const analyticsInitialized = React.useRef(false);
   // Use a basic loading state instead of useClerkAuth at the top level
   const [initializing, setInitializing] = useState(true);
+  
+  // Automatically sync Clerk users to database
+  useUserSync();
 
   // Initialize analytics only once after component mounts
   useEffect(() => {
@@ -78,7 +83,7 @@ function App() {
   }
 
   return (
-    <>
+    <ErrorBoundary>
       <Switch>
         <Route path="/" component={HomePage} />
         <Route path="/forum" component={ForumPage} />
@@ -122,7 +127,7 @@ function App() {
         <Route component={NotFound} />
       </Switch>
       <Toaster />
-    </>
+    </ErrorBoundary>
   );
 }
 

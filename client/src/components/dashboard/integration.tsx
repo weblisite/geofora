@@ -233,7 +233,7 @@ export default function Integration() {
                   <CardHeader>
                     <CardTitle>Embed Your Forum</CardTitle>
                     <CardDescription>
-                      Add your ForumAI forum to any website with a simple script
+                      Add your GeoFora forum to any website with a simple script
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -493,14 +493,14 @@ export default function Integration() {
                       API Documentation
                     </CardTitle>
                     <CardDescription>
-                      Use our API to integrate ForumAI data into your applications
+                      Use our API to integrate GeoFora data into your applications
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div>
                       <h3 className="text-lg font-medium mb-2">Authentication</h3>
                       <p className="text-sm text-muted-foreground mb-3">
-                        To use the ForumAI API, you need to include your API key in the Authorization header:
+                        To use the GeoFora API, you need to include your API key in the Authorization header:
                       </p>
                       <div className="bg-dark-200 p-3 rounded-md font-mono text-sm">
                         {apiResources?.apiKey ? 
@@ -778,7 +778,7 @@ export default function Integration() {
                           </Button>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Use this secret to verify webhook requests are from ForumAI
+                          Use this secret to verify webhook requests are from GeoFora
                         </p>
                       </div>
                     </div>
@@ -900,8 +900,8 @@ export default function Integration() {
                     <div className="space-y-2">
                       <h3 className="font-medium">Verifying Webhooks</h3>
                       <p className="text-sm text-muted-foreground">
-                        Each webhook request includes a signature in the <code>X-ForumAI-Signature</code> header.
-                        You should verify this signature to ensure the request is from ForumAI.
+                        Each webhook request includes a signature in the <code>X-GeoFora-Signature</code> header.
+                        You should verify this signature to ensure the request is from GeoFora.
                       </p>
                     </div>
 
@@ -934,7 +934,7 @@ function verifyWebhook(payload, signature, secret) {
                 <CardHeader>
                   <CardTitle>Domain Verification</CardTitle>
                   <CardDescription>
-                    Verify ownership of domains to use with ForumAI embeds
+                    Verify ownership of domains to use with GeoFora embeds
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">

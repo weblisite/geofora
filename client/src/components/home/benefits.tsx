@@ -13,7 +13,7 @@ export default function Benefits() {
       <div className="container relative z-10 px-4 mx-auto">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-3xl font-bold mb-4">
-            Why Choose <GradientText>ForumAI</GradientText>
+            Why Choose <GradientText>GeoFora</GradientText>
           </h2>
           <p className="text-gray-400">
             Our platform delivers unparalleled benefits that transform your SEO strategy and boost your bottom line.

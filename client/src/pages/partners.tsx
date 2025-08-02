@@ -9,7 +9,7 @@ export default function Partners() {
         <h1 className="text-4xl font-bold text-white mb-8">Partners</h1>
         <div className="prose prose-invert max-w-none">
           <p className="text-gray-300">
-            Discover partnership opportunities with ForumAI and join our growing ecosystem of technology partners.
+            Discover partnership opportunities with GeoFora and join our growing ecosystem of technology partners.
           </p>
         </div>
       </main>

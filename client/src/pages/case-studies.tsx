@@ -10,7 +10,7 @@ export default function CaseStudies() {
         <div className="grid gap-8 md:grid-cols-2">
           <div className="bg-gray-800 p-6 rounded-lg">
             <h2 className="text-2xl font-bold text-white mb-4">Tech Startup Success Story</h2>
-            <p className="text-gray-300">How a tech startup increased organic traffic by 300% using ForumAI.</p>
+            <p className="text-gray-300">How a tech startup increased organic traffic by 300% using GeoFora.</p>
           </div>
           <div className="bg-gray-800 p-6 rounded-lg">
             <h2 className="text-2xl font-bold text-white mb-4">E-commerce Growth Study</h2>

@@ -9,7 +9,7 @@ export default function About() {
         <h1 className="text-4xl font-bold text-white mb-8">About Us</h1>
         <div className="prose prose-invert max-w-none">
           <p className="text-gray-300">
-            ForumAI is revolutionizing how businesses engage with their communities through AI-powered forums.
+            GeoFora is revolutionizing how businesses engage with their communities through AI-powered forums.
             Founded by industry experts, we're committed to helping companies boost their SEO and create meaningful discussions.
           </p>
         </div>

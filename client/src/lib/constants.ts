@@ -1,4 +1,4 @@
-export const SITE_NAME = "ForumAI";
+export const SITE_NAME = "GeoFora";
 export const SITE_DESCRIPTION = "AI-Powered Q&A Forums for Maximizing SEO and Traffic";
 
 export const PERSONA_TYPES = {

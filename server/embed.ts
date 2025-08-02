@@ -18,7 +18,7 @@ export function registerEmbedRoutes(app: Express) {
   app.get('/api/embed/version', (req, res) => {
     res.json({
       version: '1.0.0',
-      api: 'ForumAI Embed API',
+      api: 'GeoFora Embed API',
       timestamp: new Date().toISOString()
     });
   });
@@ -688,7 +688,7 @@ export function registerEmbedRoutes(app: Express) {
               <a href="${targetUrl}" target="_blank" class="button" id="redirect-btn">Continue to Forum</a>
             </div>
             <div class="powered-by">
-              Powered by <a href="https://formai.repl.app" target="_blank">ForumAI</a>
+              Powered by <a href="https://geofora.ai" target="_blank">GeoFora</a>
             </div>
             <script>
               // Auto-click the button after a short delay

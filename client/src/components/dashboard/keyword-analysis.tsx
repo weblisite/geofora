@@ -219,11 +219,11 @@ export default function KeywordAnalysis({ forumId, mainWebsiteUrl }: KeywordAnal
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {analysisResult.primaryKeywords.map((keyword, index) => (
+                  {analysisResult.primaryKeywords?.map((keyword, index) => (
                     <Badge key={index} variant="outline" className="py-1 px-2 border">
                       {keyword}
                     </Badge>
-                  ))}
+                  )) || <p className="text-muted-foreground">No primary keywords found</p>}
                 </div>
               </CardContent>
             </Card>
@@ -237,11 +237,11 @@ export default function KeywordAnalysis({ forumId, mainWebsiteUrl }: KeywordAnal
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {analysisResult.secondaryKeywords.map((keyword, index) => (
+                  {analysisResult.secondaryKeywords?.map((keyword, index) => (
                     <Badge key={index} variant="outline" className="py-1 px-2 border-dashed border">
                       {keyword}
                     </Badge>
-                  ))}
+                  )) || <p className="text-muted-foreground">No secondary keywords found</p>}
                 </div>
               </CardContent>
             </Card>
@@ -255,8 +255,9 @@ export default function KeywordAnalysis({ forumId, mainWebsiteUrl }: KeywordAnal
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Accordion type="multiple" className="w-full">
-                {analysisResult.questions.map((question, index) => (
+              {analysisResult.questions?.length > 0 ? (
+                <Accordion type="multiple" className="w-full">
+                  {analysisResult.questions.map((question, index) => (
                   <AccordionItem key={index} value={`question-${index}`}>
                     <AccordionTrigger className="text-left hover:no-underline">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2 pr-4 w-full">
@@ -292,8 +293,11 @@ export default function KeywordAnalysis({ forumId, mainWebsiteUrl }: KeywordAnal
                       </div>
                     </AccordionContent>
                   </AccordionItem>
-                ))}
-              </Accordion>
+                  ))}
+                </Accordion>
+              ) : (
+                <p className="text-muted-foreground">No questions generated</p>
+              )}
             </CardContent>
           </Card>
           
@@ -306,14 +310,18 @@ export default function KeywordAnalysis({ forumId, mainWebsiteUrl }: KeywordAnal
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2">
-                  {analysisResult.topicsToTarget.map((topic, index) => (
-                    <li key={index} className="flex items-start">
-                      <ArrowRight className="h-4 w-4 mr-2 mt-1 text-primary" />
-                      <span className="text-sm">{topic}</span>
-                    </li>
-                  ))}
-                </ul>
+                {analysisResult.topicsToTarget?.length > 0 ? (
+                  <ul className="space-y-2">
+                    {analysisResult.topicsToTarget.map((topic, index) => (
+                      <li key={index} className="flex items-start">
+                        <ArrowRight className="h-4 w-4 mr-2 mt-1 text-primary" />
+                        <span className="text-sm">{topic}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-muted-foreground">No topics identified</p>
+                )}
               </CardContent>
             </Card>
             
@@ -325,14 +333,18 @@ export default function KeywordAnalysis({ forumId, mainWebsiteUrl }: KeywordAnal
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2">
-                  {analysisResult.contentGaps.map((gap, index) => (
-                    <li key={index} className="flex items-start">
-                      <Lightbulb className="h-4 w-4 mr-2 mt-1 text-amber-500" />
-                      <span className="text-sm">{gap}</span>
-                    </li>
-                  ))}
-                </ul>
+                {analysisResult.contentGaps?.length > 0 ? (
+                  <ul className="space-y-2">
+                    {analysisResult.contentGaps.map((gap, index) => (
+                      <li key={index} className="flex items-start">
+                        <Lightbulb className="h-4 w-4 mr-2 mt-1 text-amber-500" />
+                        <span className="text-sm">{gap}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-muted-foreground">No content gaps identified</p>
+                )}
               </CardContent>
             </Card>
             
@@ -344,14 +356,18 @@ export default function KeywordAnalysis({ forumId, mainWebsiteUrl }: KeywordAnal
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2">
-                  {analysisResult.competitorInsights.map((insight, index) => (
-                    <li key={index} className="flex items-start">
-                      <Search className="h-4 w-4 mr-2 mt-1 text-blue-500" />
-                      <span className="text-sm">{insight}</span>
-                    </li>
-                  ))}
-                </ul>
+                {analysisResult.competitorInsights?.length > 0 ? (
+                  <ul className="space-y-2">
+                    {analysisResult.competitorInsights.map((insight, index) => (
+                      <li key={index} className="flex items-start">
+                        <Search className="h-4 w-4 mr-2 mt-1 text-blue-500" />
+                        <span className="text-sm">{insight}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-muted-foreground">No competitor insights available</p>
+                )}
               </CardContent>
             </Card>
           </div>

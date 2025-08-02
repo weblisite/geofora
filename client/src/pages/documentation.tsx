@@ -10,7 +10,7 @@ export default function Documentation() {
         <div className="prose prose-invert max-w-none">
           <h2 className="text-2xl">Getting Started</h2>
           <p className="text-gray-300">
-            Welcome to ForumAI's comprehensive documentation. Learn how to leverage our AI-powered forum platform to boost your SEO and engage your community.
+            Welcome to GeoFora's comprehensive documentation. Learn how to leverage our AI-powered forum platform to boost your SEO and engage your community.
           </p>
           <h2 className="text-2xl mt-8">Platform Features</h2>
           <ul className="list-disc pl-6 text-gray-300">

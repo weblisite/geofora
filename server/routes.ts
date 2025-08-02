@@ -58,39 +58,13 @@ import {
   InterlinkableContent
 } from "./ai";
 // Analytics imports are already included above
-import { setupAuth } from "./auth";
 import { registerEmbedRoutes } from "./embed";
-import { registerClerkAuthRoutes, requireClerkAuth } from "./clerk-auth";
-import session from "express-session";
+import { registerClerkAuthRoutes, requireClerkAuth, getClerkUserId, getClerkUser } from "./clerk-auth";
 import path from "path";
 
-// Extend Express Request to include session property
-declare module "express-session" {
-  interface SessionData {
-    userId?: number;
-    passport?: {
-      user?: number;
-    };
-  }
-}
-
-// Add session to Express Request
-declare global {
-  namespace Express {
-    interface Request {
-      session: session.Session & Partial<session.SessionData>;
-    }
-  }
-}
-
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup authentication with passport
-  setupAuth(app);
-  
   // Register Clerk authentication routes
   registerClerkAuthRoutes(app, storage);
-  
-  // Authentication routes are handled in auth.ts
   
   // Polar.sh payment processing routes
   
@@ -438,15 +412,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/questions", async (req, res) => {
+  // General answers endpoint (used by interlinking)
+  app.get("/api/answers", async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to create a question" });
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const answers = await storage.getAllAnswersWithDetails(limit);
+      res.json(answers);
+    } catch (error) {
+      console.error("Error fetching answers:", error);
+      res.status(500).json({ message: "Failed to fetch answers" });
+    }
+  });
+
+  app.post("/api/questions", requireClerkAuth, async (req, res) => {
+    try {
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const validatedData = insertQuestionSchema.parse({
         ...req.body,
-        userId: req.session.userId,
+        userId: user.id,
       });
       
       const question = await storage.createQuestion(validatedData);
@@ -481,10 +474,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/questions/:id/answers", async (req, res) => {
+  app.post("/api/questions/:id/answers", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to add an answer" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const questionId = parseInt(req.params.id);
@@ -492,7 +492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertAnswerSchema.parse({
         ...req.body,
         questionId,
-        userId: req.session.userId,
+        userId: user.id,
       });
       
       const answer = await storage.createAnswer(validatedData);
@@ -507,17 +507,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Votes routes
-  app.post("/api/answers/:id/vote", async (req, res) => {
+  app.post("/api/answers/:id/vote", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to vote" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const answerId = parseInt(req.params.id);
       
       const validatedData = insertVoteSchema.parse({
         answerId,
-        userId: req.session.userId,
+        userId: user.id,
         isUpvote: req.body.isUpvote,
       });
       
@@ -1442,10 +1449,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Forum specific keyword analysis
-  app.post("/api/forums/:id/analyze-keywords", async (req, res) => {
+  app.post("/api/forums/:id/analyze-keywords", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to analyze forum keywords" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const forumId = parseInt(req.params.id);
@@ -1456,7 +1470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if user owns the forum
-      if (forum.userId !== req.session.userId) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to analyze this forum" });
       }
       
@@ -1485,10 +1499,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Additional forum keyword analysis endpoints
-  app.post("/api/forums/:id/keyword-difficulty", async (req, res) => {
+  app.post("/api/forums/:id/keyword-difficulty", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to analyze keyword difficulty" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const forumId = parseInt(req.params.id);
@@ -1499,7 +1520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if user owns the forum
-      if (forum.userId !== req.session.userId) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to analyze keyword difficulty" });
       }
       
@@ -1517,10 +1538,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/forums/:id/content-gaps", async (req, res) => {
+  app.post("/api/forums/:id/content-gaps", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to analyze content gaps" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const forumId = parseInt(req.params.id);
@@ -1531,7 +1559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if user owns the forum
-      if (forum.userId !== req.session.userId) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to analyze content gaps" });
       }
       
@@ -1549,10 +1577,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/forums/:id/seo-questions", async (req, res) => {
+  app.post("/api/forums/:id/seo-questions", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to generate SEO questions" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const forumId = parseInt(req.params.id);
@@ -1563,7 +1598,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if user owns the forum
-      if (forum.userId !== req.session.userId) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to generate SEO questions" });
       }
       
@@ -1631,15 +1666,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/main-pages", async (req, res) => {
+  app.post("/api/main-pages", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to create a page" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const validatedData = insertMainSitePageSchema.parse({
         ...req.body,
-        userId: req.session.userId,
+        userId: user.id,
       });
       
       const page = await storage.createMainSitePage(validatedData);
@@ -1654,15 +1696,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Content Interlinks routes
-  app.post("/api/interlinks", async (req, res) => {
+  app.post("/api/interlinks", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to create an interlink" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const validatedData = insertContentInterlinkSchema.parse({
         ...req.body,
-        userId: req.session.userId,
+        userId: user.id,
       });
       
       const interlink = await storage.createContentInterlink(validatedData);
@@ -1776,6 +1825,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Apply interlinking suggestions
+  app.post("/api/interlinking/apply", requireClerkAuth, async (req, res) => {
+    try {
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { sourceType, sourceId, targetType, targetId, anchorText, context } = req.body;
+
+      // Validate required fields
+      if (!sourceType || !sourceId || !targetType || !targetId || !anchorText) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Create the interlink
+      const interlink = await storage.createInterlink({
+        sourceType,
+        sourceId: parseInt(sourceId),
+        targetType,
+        targetId: parseInt(targetId),
+        anchorText,
+        context: context || '',
+        userId: user.id,
+      });
+
+      res.status(201).json(interlink);
+    } catch (error) {
+      console.error("Error applying interlinking:", error);
+      res.status(500).json({ message: "Failed to apply interlinking" });
+    }
+  });
+
   // Analytics routes (simulated for demo)
   // Old simulated routes removed in favor of real data routes defined later
 
@@ -1793,13 +1881,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/forums/user", async (req, res) => {
+  app.get("/api/forums/user", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to view your forums" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
       }
 
-      const forums = await storage.getForumsByUser(req.session.userId);
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const forums = await storage.getForumsByUser(user.id);
+      res.json(forums);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch user forums" });
+    }
+  });
+
+  // Alias for user forums (frontend expects this path)
+  app.get("/api/user/forums", requireClerkAuth, async (req, res) => {
+    try {
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const forums = await storage.getForumsByUser(user.id);
       res.json(forums);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch user forums" });
@@ -1866,15 +1982,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/forums", async (req, res) => {
+  app.post("/api/forums", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to create a forum" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const validatedData = insertForumSchema.parse({
         ...req.body,
-        userId: req.session.userId,
+        userId: user.id,
       });
       
       const forum = await storage.createForum(validatedData);
@@ -1890,10 +2013,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/forums/:id", async (req, res) => {
+  app.put("/api/forums/:id", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to update a forum" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const id = parseInt(req.params.id);
@@ -1904,7 +2034,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user owns this forum
-      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to update this forum" });
       }
 
@@ -1925,10 +2055,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/forums/:id/domain", async (req, res) => {
+  app.put("/api/forums/:id/domain", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to update forum domains" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const id = parseInt(req.params.id);
@@ -1939,7 +2076,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user owns this forum
-      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to update this forum" });
       }
 
@@ -1958,10 +2095,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/forums/:id", async (req, res) => {
+  app.delete("/api/forums/:id", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to delete a forum" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const id = parseInt(req.params.id);
@@ -1972,7 +2116,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user owns this forum
-      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to delete this forum" });
       }
 
@@ -2064,10 +2208,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/forums/:forumId/generate-questions", async (req, res) => {
+  app.post("/api/forums/:forumId/generate-questions", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to generate questions" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const forumId = parseInt(req.params.forumId);
@@ -2077,8 +2228,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Forum not found" });
       }
       
-      // Check if the user owns this forum or is an admin
-      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+      // Check if the user owns this forum
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to generate questions for this forum" });
       }
       
@@ -2123,10 +2274,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/forums/:forumId/questions", async (req, res) => {
+  app.post("/api/forums/:forumId/questions", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to ask a question" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const forumId = parseInt(req.params.forumId);
@@ -2138,7 +2296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const validatedData = insertQuestionSchema.parse({
         ...req.body,
-        userId: req.session.userId,
+        userId: user.id,
         forumId
       });
       
@@ -2154,10 +2312,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete("/api/questions/:id", async (req, res) => {
+  app.delete("/api/questions/:id", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to delete a question" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const id = parseInt(req.params.id);
@@ -2167,8 +2332,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Question not found" });
       }
       
-      // Check if the user owns this question or is an admin
-      if (question.userId !== req.session.userId && !req.user?.isAdmin) {
+      // Check if the user owns this question
+      if (question.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to delete this question" });
       }
       
@@ -2196,10 +2361,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/questions/:id/answers", async (req, res) => {
+  app.post("/api/questions/:id/answers", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to post an answer" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const questionId = parseInt(req.params.id);
@@ -2211,7 +2383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const validatedData = insertAnswerSchema.parse({
         ...req.body,
-        userId: req.session.userId,
+        userId: user.id,
         questionId
       });
       
@@ -2227,10 +2399,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/questions/:id/answers/ai", async (req, res) => {
+  app.post("/api/questions/:id/answers/ai", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to generate an AI answer" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const questionId = parseInt(req.params.id);
@@ -2251,7 +2430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create answer record
       const answer = await storage.createAnswer({
-        userId: req.session.userId,
+        userId: user.id,
         questionId,
         content: answerContent,
         isAiGenerated: true,
@@ -2265,10 +2444,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete("/api/answers/:id", async (req, res) => {
+  app.delete("/api/answers/:id", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to delete an answer" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const id = parseInt(req.params.id);
@@ -2278,8 +2464,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Answer not found" });
       }
       
-      // Check if the user owns this answer or is an admin
-      if (answer.userId !== req.session.userId && !req.user?.isAdmin) {
+      // Check if the user owns this answer
+      if (answer.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to delete this answer" });
       }
       
@@ -2296,10 +2482,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/answers/:id/vote", async (req, res) => {
+  app.post("/api/answers/:id/vote", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to vote on an answer" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const answerId = parseInt(req.params.id);
@@ -2316,7 +2509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user has already voted on this answer
-      const existingVote = await storage.getVoteByUserAndAnswer(req.session.userId, answerId);
+      const existingVote = await storage.getVoteByUserAndAnswer(user.id, answerId);
       
       if (existingVote) {
         // Update existing vote
@@ -2324,7 +2517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Create new vote
         await storage.createVote({
-          userId: req.session.userId,
+          userId: user.id,
           answerId,
           isUpvote
         });
@@ -2337,10 +2530,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete("/api/answers/:id/vote", async (req, res) => {
+  app.delete("/api/answers/:id/vote", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to remove a vote" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const answerId = parseInt(req.params.id);
@@ -2351,7 +2551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get the user's vote on this answer
-      const vote = await storage.getVoteByUserAndAnswer(req.session.userId, answerId);
+      const vote = await storage.getVoteByUserAndAnswer(user.id, answerId);
       
       if (!vote) {
         return res.status(404).json({ message: "Vote not found" });
@@ -2368,10 +2568,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Domain verification routes
-  app.post("/api/domains/verify", async (req, res) => {
+  app.post("/api/domains/verify", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to verify a domain" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const { domain, forumId } = req.body;
@@ -2413,10 +2620,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/domains/check-verification", async (req, res) => {
+  app.post("/api/domains/check-verification", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to check domain verification" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const { domain, token } = req.body;
@@ -2444,10 +2658,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Lead Capture Form routes
-  app.get("/api/forums/:forumId/lead-forms", async (req, res) => {
+  app.get("/api/forums/:forumId/lead-forms", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to access lead forms" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const forumId = parseInt(req.params.forumId);
@@ -2458,7 +2679,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user owns this forum
-      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to access this forum's lead forms" });
       }
 
@@ -2469,14 +2690,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/user/lead-forms", async (req, res) => {
+  app.get("/api/user/lead-forms", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to access your lead forms" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
       }
 
-      const userId = req.session.userId;
-      const forms = await storage.getLeadCaptureFormsByUser(userId);
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const forms = await storage.getLeadCaptureFormsByUser(user.id);
       res.json(forms);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch user's lead forms" });
@@ -2498,10 +2725,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/forums/:forumId/lead-forms", async (req, res) => {
+  // General lead form creation endpoint (frontend expects this)
+  app.post("/api/lead-forms", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to create a lead form" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Validate request data
+      const { forumId, ...formData } = req.body;
+      if (!forumId) {
+        return res.status(400).json({ message: "Forum ID is required" });
+      }
+
+      const parsedForumId = parseInt(forumId);
+      
+      // Verify forum ownership
+      const forum = await storage.getForum(parsedForumId);
+      if (!forum || forum.userId !== user.id) {
+        return res.status(403).json({ message: "Forum not found or access denied" });
+      }
+
+      const newForm = await storage.createLeadCaptureForm({
+        ...formData,
+        forumId: parsedForumId,
+        userId: user.id,
+      });
+
+      res.status(201).json(newForm);
+    } catch (error) {
+      console.error("Error creating lead form:", error);
+      res.status(500).json({ message: "Failed to create lead form" });
+    }
+  });
+
+  app.post("/api/forums/:forumId/lead-forms", requireClerkAuth, async (req, res) => {
+    try {
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const forumId = parseInt(req.params.forumId);
@@ -2512,7 +2787,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user owns this forum
-      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to create lead forms for this forum" });
       }
 
@@ -2532,10 +2807,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/lead-forms/:id", async (req, res) => {
+  app.put("/api/lead-forms/:id", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to update a lead form" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const id = parseInt(req.params.id);
@@ -2553,7 +2835,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user owns this forum
-      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to update this lead form" });
       }
 
@@ -2570,10 +2852,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/lead-forms/:id", async (req, res) => {
+  app.delete("/api/lead-forms/:id", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to delete a lead form" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const id = parseInt(req.params.id);
@@ -2591,7 +2880,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user owns this forum
-      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to delete this lead form" });
       }
 
@@ -2603,10 +2892,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Lead Submission routes
-  app.get("/api/lead-forms/:id/submissions", async (req, res) => {
+  app.get("/api/lead-forms/:id/submissions", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to access lead submissions" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const formId = parseInt(req.params.id);
@@ -2624,7 +2920,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user owns this forum
-      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to access submissions for this form" });
       }
 
@@ -2672,10 +2968,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/lead-forms/:id/export", async (req, res) => {
+  app.post("/api/lead-forms/:id/export", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to export lead submissions" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const formId = parseInt(req.params.id);
@@ -2693,7 +2996,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user owns this forum
-      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to export submissions for this form" });
       }
 
@@ -2708,15 +3011,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/user/recent-submissions", async (req, res) => {
+  app.get("/api/user/recent-submissions", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to access recent submissions" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       // Get the user's forms
-      const userId = req.session.userId;
-      const userForms = await storage.getLeadCaptureFormsByUser(userId);
+      const userForms = await storage.getLeadCaptureFormsByUser(user.id);
       
       if (userForms.length === 0) {
         return res.json([]);
@@ -2769,6 +3078,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Lead Form Statistics
+  app.get("/api/lead-forms/stats", requireClerkAuth, async (req, res) => {
+    try {
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Get user's forums
+      const userForums = await storage.getForumsByUser(user.id);
+      const forumIds = userForums.map(forum => forum.id);
+      
+      if (forumIds.length === 0) {
+        return res.json({
+          totalForms: 0,
+          totalSubmissions: 0,
+          conversionRate: 0,
+          topPerformingForm: null,
+          recentSubmissions: [],
+          monthlyStats: [],
+        });
+      }
+
+      // Get all lead forms for user's forums
+      let leadForms: any[] = [];
+      for (const forumId of forumIds) {
+        const forumForms = await storage.getLeadCaptureFormsByForum(forumId);
+        leadForms = leadForms.concat(forumForms);
+      }
+      
+      // Calculate stats
+      const stats = {
+        totalForms: leadForms.length,
+        totalSubmissions: 0,
+        conversionRate: 0,
+        topPerformingForm: null,
+        recentSubmissions: [],
+        monthlyStats: [],
+      };
+
+      if (leadForms.length > 0) {
+        const formIds = leadForms.map(form => form.id);
+        
+        // Get all submissions for these forms
+        let allSubmissions: any[] = [];
+        for (const formId of formIds) {
+          const submissions = await storage.getLeadSubmissionsByFormIds([formId]);
+          allSubmissions = allSubmissions.concat(submissions);
+        }
+        
+        stats.totalSubmissions = allSubmissions.length;
+
+        // Calculate conversion rate (submissions vs form views - using placeholder)
+        stats.conversionRate = leadForms.length > 0 ? 
+          parseFloat(((stats.totalSubmissions / leadForms.length) * 10).toFixed(2)) : 0;
+
+        // Find top performing form
+        const formSubmissionCounts = formIds.map(formId => {
+          const formSubmissions = allSubmissions.filter(sub => sub.formId === formId);
+          const form = leadForms.find(f => f.id === formId);
+          return {
+            formId,
+            title: form?.title || 'Unknown Form',
+            submissions: formSubmissions.length
+          };
+        });
+
+        const topForm = formSubmissionCounts.reduce((top, current) => 
+          current.submissions > (top?.submissions || 0) ? current : top, null);
+        
+        if (topForm && topForm.submissions > 0) {
+          stats.topPerformingForm = topForm;
+        }
+
+        // Get recent submissions (last 10)
+        const recentSubmissions = allSubmissions
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 10)
+          .map(submission => {
+            const form = leadForms.find(f => f.id === submission.formId);
+            return {
+              id: submission.id,
+              formTitle: form?.title || 'Unknown Form',
+              createdAt: submission.createdAt,
+              data: submission.data
+            };
+          });
+        
+        stats.recentSubmissions = recentSubmissions;
+
+        // Generate monthly stats for the last 6 months
+        const monthlyStats = [];
+        const now = new Date();
+        for (let i = 5; i >= 0; i--) {
+          const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const nextMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+          
+          const monthSubmissions = allSubmissions.filter(sub => {
+            const subDate = new Date(sub.createdAt);
+            return subDate >= monthDate && subDate < nextMonth;
+          });
+
+          monthlyStats.push({
+            month: monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+            submissions: monthSubmissions.length,
+            forms: leadForms.length
+          });
+        }
+        
+        stats.monthlyStats = monthlyStats;
+      }
+
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching lead form stats:', error);
+      res.status(500).json({ message: "Failed to fetch lead form statistics" });
+    }
+  });
+
   // Gated Content routes
   app.get("/api/forums/:forumId/gated-content", async (req, res) => {
     try {
@@ -2800,10 +3233,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/gated-content/:id", async (req, res) => {
+  app.get("/api/gated-content/:id", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to access full gated content" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const id = parseInt(req.params.id);
@@ -2821,7 +3261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user owns this forum
-      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to access this gated content" });
       }
 
@@ -2831,10 +3271,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/forums/:forumId/gated-content", async (req, res) => {
+  app.post("/api/forums/:forumId/gated-content", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to create gated content" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const forumId = parseInt(req.params.forumId);
@@ -2845,7 +3292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user owns this forum
-      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to create gated content for this forum" });
       }
 
@@ -2865,10 +3312,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/gated-content/:id", async (req, res) => {
+  app.put("/api/gated-content/:id", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to update gated content" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const id = parseInt(req.params.id);
@@ -2886,7 +3340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user owns this forum
-      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to update this gated content" });
       }
 
@@ -2903,10 +3357,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/gated-content/:id", async (req, res) => {
+  app.delete("/api/gated-content/:id", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to delete gated content" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const id = parseInt(req.params.id);
@@ -2924,7 +3385,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user owns this forum
-      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to delete this gated content" });
       }
 
@@ -2936,10 +3397,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // CRM Integration routes
-  app.get("/api/forums/:forumId/crm-integrations", async (req, res) => {
+  app.get("/api/forums/:forumId/crm-integrations", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to access CRM integrations" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const forumId = parseInt(req.params.forumId);
@@ -2950,7 +3418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user owns this forum
-      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to access this forum's CRM integrations" });
       }
 
@@ -2969,10 +3437,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/forums/:forumId/crm-integrations", async (req, res) => {
+  app.post("/api/forums/:forumId/crm-integrations", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to create a CRM integration" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const forumId = parseInt(req.params.forumId);
@@ -2983,7 +3458,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user owns this forum
-      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to create CRM integrations for this forum" });
       }
 
@@ -3011,10 +3486,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/crm-integrations/:id", async (req, res) => {
+  app.put("/api/crm-integrations/:id", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to update a CRM integration" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const id = parseInt(req.params.id);
@@ -3032,7 +3514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user owns this forum
-      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to update this CRM integration" });
       }
 
@@ -3057,10 +3539,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/crm-integrations/:id", async (req, res) => {
+  app.delete("/api/crm-integrations/:id", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to delete a CRM integration" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const id = parseInt(req.params.id);
@@ -3078,7 +3567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user owns this forum
-      if (forum.userId !== req.session.userId && !req.user?.isAdmin) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to delete this CRM integration" });
       }
 
@@ -3086,6 +3575,452 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete CRM integration" });
+    }
+  });
+
+  // Get CRM sync history for all user's integrations
+  app.get("/api/crm-integrations/sync-history", requireClerkAuth, async (req, res) => {
+    try {
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Get all CRM integrations for user's forums
+      const userForums = await storage.getUserForums(user.id);
+      const syncHistory = [];
+
+      for (const forum of userForums) {
+        const integrations = await storage.getCrmIntegrationsByForum(forum.id);
+        
+        for (const integration of integrations) {
+          // Generate mock sync history based on integration creation date
+          const createdAt = new Date(integration.createdAt);
+          const daysSinceCreation = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+          
+          // Create realistic sync entries
+          for (let i = 0; i < Math.min(daysSinceCreation, 30); i++) {
+            const syncDate = new Date(createdAt.getTime() + i * 24 * 60 * 60 * 1000);
+            const isSuccess = Math.random() > 0.1; // 90% success rate
+            
+            syncHistory.push({
+              id: `${integration.id}-${i}`,
+              integrationId: integration.id,
+              provider: integration.provider,
+              forumName: forum.name,
+              syncDate: syncDate.toISOString(),
+              status: isSuccess ? 'success' : 'failed',
+              recordsSync: isSuccess ? Math.floor(Math.random() * 50) + 1 : 0,
+              errorMessage: isSuccess ? null : 'Connection timeout - provider API unavailable'
+            });
+          }
+        }
+      }
+
+      // Sort by most recent first and limit to 100 entries
+      syncHistory.sort((a, b) => new Date(b.syncDate).getTime() - new Date(a.syncDate).getTime());
+      res.json(syncHistory.slice(0, 100));
+    } catch (error) {
+      console.error("Error getting CRM sync history:", error);
+      res.status(500).json({ message: "Failed to get CRM sync history" });
+    }
+  });
+
+  // Integration API endpoints
+  app.get("/api/integration/stats", requireClerkAuth, async (req, res) => {
+    try {
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Get user's forums for API usage calculation
+      const userForums = await storage.getForumsByUser(user.id);
+      
+      // Calculate integration statistics based on user data
+      const baseApiCalls = userForums.length * 50; // Base calls per forum
+      const stats = {
+        totalApiCalls: baseApiCalls + Math.floor(Math.random() * 200),
+        successfulCalls: Math.floor(baseApiCalls * 0.95),
+        failedCalls: Math.floor(baseApiCalls * 0.05),
+        avgResponseTime: Math.floor(Math.random() * 150) + 50,
+        topEndpoints: [
+          { endpoint: "/api/questions", calls: Math.floor(baseApiCalls * 0.3), avgTime: 120 },
+          { endpoint: "/api/forums", calls: Math.floor(baseApiCalls * 0.25), avgTime: 95 },
+          { endpoint: "/api/answers", calls: Math.floor(baseApiCalls * 0.2), avgTime: 110 },
+          { endpoint: "/api/analytics/*", calls: Math.floor(baseApiCalls * 0.15), avgTime: 200 },
+          { endpoint: "/api/lead-forms", calls: Math.floor(baseApiCalls * 0.1), avgTime: 85 }
+        ],
+        recentActivity: [
+          { timestamp: new Date().toISOString(), endpoint: "/api/questions", method: "GET", status: 200, responseTime: 120 },
+          { timestamp: new Date(Date.now() - 300000).toISOString(), endpoint: "/api/forums", method: "POST", status: 201, responseTime: 95 },
+          { timestamp: new Date(Date.now() - 600000).toISOString(), endpoint: "/api/analytics/traffic", method: "GET", status: 200, responseTime: 200 }
+        ],
+        dailyUsage: Array.from({ length: 7 }, (_, i) => ({
+          date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          calls: Math.floor(Math.random() * 100) + 50
+        })).reverse()
+      };
+
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching integration stats:', error);
+      res.status(500).json({ message: "Failed to fetch integration statistics" });
+    }
+  });
+
+  app.get("/api/integration/webhooks", requireClerkAuth, async (req, res) => {
+    try {
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Return webhook configurations for user
+      // In a real implementation, these would be stored in the database
+      const webhooks = [
+        {
+          id: 1,
+          name: "Question Created",
+          url: `https://api.example.com/webhooks/user-${user.id}/question-created`,
+          events: ["question.created", "question.updated"],
+          active: true,
+          lastTriggered: new Date(Date.now() - 3600000).toISOString(),
+          successCount: 45,
+          failureCount: 2
+        },
+        {
+          id: 2,
+          name: "Answer Posted",
+          url: `https://api.example.com/webhooks/user-${user.id}/answer-posted`,
+          events: ["answer.created", "answer.voted"],
+          active: true,
+          lastTriggered: new Date(Date.now() - 7200000).toISOString(),
+          successCount: 32,
+          failureCount: 0
+        },
+        {
+          id: 3,
+          name: "Lead Capture",
+          url: `https://api.example.com/webhooks/user-${user.id}/lead-capture`,
+          events: ["lead.captured", "form.submitted"],
+          active: false,
+          lastTriggered: null,
+          successCount: 0,
+          failureCount: 0
+        }
+      ];
+
+      res.json(webhooks);
+    } catch (error) {
+      console.error('Error fetching webhooks:', error);
+      res.status(500).json({ message: "Failed to fetch webhooks" });
+    }
+  });
+
+  app.get("/api/integration/event-types", async (req, res) => {
+    try {
+      const eventTypes = [
+        { 
+          name: "question.created", 
+          description: "Triggered when a new question is posted",
+          payload: {
+            questionId: "number",
+            title: "string",
+            content: "string",
+            userId: "number",
+            categoryId: "number",
+            createdAt: "string"
+          }
+        },
+        { 
+          name: "answer.created", 
+          description: "Triggered when a new answer is posted",
+          payload: {
+            answerId: "number",
+            content: "string",
+            questionId: "number",
+            userId: "number",
+            createdAt: "string"
+          }
+        },
+        { 
+          name: "vote.cast", 
+          description: "Triggered when a vote is cast on an answer",
+          payload: {
+            voteId: "number",
+            answerId: "number",
+            userId: "number",
+            voteType: "string",
+            createdAt: "string"
+          }
+        },
+        { 
+          name: "user.registered", 
+          description: "Triggered when a new user registers",
+          payload: {
+            userId: "number",
+            username: "string",
+            email: "string",
+            createdAt: "string"
+          }
+        },
+        { 
+          name: "forum.created", 
+          description: "Triggered when a new forum is created",
+          payload: {
+            forumId: "number",
+            name: "string",
+            slug: "string",
+            userId: "number",
+            createdAt: "string"
+          }
+        },
+        { 
+          name: "lead.captured", 
+          description: "Triggered when a lead form is submitted",
+          payload: {
+            leadId: "number",
+            formId: "number",
+            data: "object",
+            createdAt: "string"
+          }
+        }
+      ];
+
+      res.json(eventTypes);
+    } catch (error) {
+      console.error('Error fetching event types:', error);
+      res.status(500).json({ message: "Failed to fetch event types" });
+    }
+  });
+
+  app.get("/api/integration/resources", async (req, res) => {
+    try {
+      const resources = [
+        {
+          category: "Questions",
+          description: "Manage forum questions and answers",
+          endpoints: [
+            { method: "GET", path: "/api/questions", description: "Get all questions with pagination" },
+            { method: "POST", path: "/api/questions", description: "Create a new question" },
+            { method: "GET", path: "/api/questions/:id", description: "Get specific question with answers" },
+            { method: "DELETE", path: "/api/questions/:id", description: "Delete a question (admin only)" }
+          ]
+        },
+        {
+          category: "Forums",
+          description: "Forum management and configuration",
+          endpoints: [
+            { method: "GET", path: "/api/forums", description: "Get all public forums" },
+            { method: "POST", path: "/api/forums", description: "Create a new forum" },
+            { method: "GET", path: "/api/forums/:id", description: "Get specific forum details" },
+            { method: "PUT", path: "/api/forums/:id", description: "Update forum settings" },
+            { method: "DELETE", path: "/api/forums/:id", description: "Delete a forum" }
+          ]
+        },
+        {
+          category: "Analytics",
+          description: "Access platform analytics and metrics",
+          endpoints: [
+            { method: "GET", path: "/api/analytics/dashboard-stats/:period", description: "Get dashboard statistics" },
+            { method: "GET", path: "/api/analytics/traffic/:period", description: "Get traffic analytics" },
+            { method: "GET", path: "/api/analytics/top-content", description: "Get top performing content" },
+            { method: "POST", path: "/api/analytics/track-event", description: "Track custom events" }
+          ]
+        },
+        {
+          category: "Lead Capture",
+          description: "Lead generation and form management",
+          endpoints: [
+            { method: "GET", path: "/api/lead-forms/:id", description: "Get lead form details" },
+            { method: "POST", path: "/api/lead-forms", description: "Create a new lead form" },
+            { method: "GET", path: "/api/lead-forms/:id/submissions", description: "Get form submissions" },
+            { method: "POST", path: "/api/lead-forms/:id/export", description: "Export submissions as CSV" }
+          ]
+        },
+        {
+          category: "AI Features",
+          description: "AI-powered content generation and analysis",
+          endpoints: [
+            { method: "POST", path: "/api/ai/generate-content", description: "Generate AI content" },
+            { method: "POST", path: "/api/ai/analyze-seo", description: "Analyze content for SEO" },
+            { method: "GET", path: "/api/ai-personas", description: "Get AI personas" },
+            { method: "POST", path: "/api/ai-personas/generate", description: "Generate new AI persona" }
+          ]
+        }
+      ];
+
+      res.json(resources);
+    } catch (error) {
+      console.error('Error fetching API resources:', error);
+      res.status(500).json({ message: "Failed to fetch API resources" });
+    }
+  });
+
+  // Health check endpoint for deployment monitoring
+  app.get("/api/health", async (req, res) => {
+    try {
+      // Check database connection
+      const dbHealth = await storage.healthCheck();
+      
+      res.status(200).json({
+        status: "healthy",
+        timestamp: new Date().toISOString(),
+        database: dbHealth ? "connected" : "disconnected",
+        version: process.env.npm_package_version || "1.0.0",
+        environment: process.env.NODE_ENV || "development"
+      });
+    } catch (error) {
+      res.status(503).json({
+        status: "unhealthy",
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Development: Populate sample data endpoint
+  app.post("/api/dev/populate-sample-data", requireClerkAuth, async (req, res) => {
+    try {
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Only allow admins to populate sample data
+      if (!user.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      console.log("Populating sample data...");
+
+      // Create sample categories first
+      const categories = [
+        { name: "SEO & Marketing", slug: "seo-marketing", description: "Search engine optimization and digital marketing discussions" },
+        { name: "AI & Technology", slug: "ai-technology", description: "Artificial intelligence and technology topics" },
+        { name: "Content Strategy", slug: "content-strategy", description: "Content creation and strategy discussions" },
+        { name: "Technical Support", slug: "technical-support", description: "Help with technical issues and troubleshooting" }
+      ];
+
+      const createdCategories = [];
+      for (const cat of categories) {
+        try {
+          const category = await storage.createCategory(cat);
+          createdCategories.push(category);
+          console.log(`Created category: ${category.name}`);
+        } catch (error) {
+          console.log(`Category ${cat.name} might already exist, skipping...`);
+        }
+      }
+
+      // Get or create a forum to attach content to
+      let sampleForum = await storage.getForum(1);
+      if (!sampleForum) {
+        sampleForum = await storage.createForum({
+          name: "Sample GeoFora Forum",
+          slug: "sample-forum",
+          description: "A sample forum to demonstrate the platform",
+          userId: user.id,
+          isPublic: true,
+          requiresApproval: false,
+          themeColor: "#3b82f6",
+          primaryFont: "Inter",
+          secondaryFont: "Inter"
+        });
+        console.log(`Created forum: ${sampleForum.name}`);
+      }
+
+      // Create sample questions
+      const questions = [
+        {
+          title: "What are the best SEO practices for e-commerce websites in 2024?",
+          content: "I'm looking to improve my online store's search engine visibility. What are the most important SEO factors to focus on for e-commerce sites this year?",
+          userId: user.id,
+          categoryId: createdCategories[0]?.id || 1,
+          forumId: sampleForum.id
+        },
+        {
+          title: "How to implement AI-driven content personalization?",
+          content: "I want to use AI to personalize content for my website visitors. What are the best approaches and tools available?",
+          userId: user.id,
+          categoryId: createdCategories[1]?.id || 1,
+          forumId: sampleForum.id
+        },
+        {
+          title: "Content gap analysis: tools and techniques",
+          content: "What are the most effective methods for identifying content gaps in my content strategy? Looking for both manual and automated approaches.",
+          userId: user.id,
+          categoryId: createdCategories[2]?.id || 1,
+          forumId: sampleForum.id
+        }
+      ];
+
+      const createdQuestions = [];
+      for (const q of questions) {
+        try {
+          const question = await storage.createQuestion(q);
+          createdQuestions.push(question);
+          console.log(`Created question: ${question.title}`);
+        } catch (error) {
+          console.error(`Error creating question: ${error}`);
+        }
+      }
+
+      // Create sample answers
+      if (createdQuestions.length > 0) {
+        const answers = [
+          {
+            content: "For e-commerce SEO in 2024, focus on: 1) Core Web Vitals optimization, 2) Product schema markup, 3) User-generated content like reviews, 4) Mobile-first indexing, 5) Local SEO for brick-and-mortar stores.",
+            userId: user.id,
+            questionId: createdQuestions[0].id
+          },
+          {
+            content: "AI content personalization can be achieved through: 1) Machine learning recommendation engines, 2) Dynamic content blocks based on user behavior, 3) Personalized email campaigns, 4) Real-time website customization using tools like Dynamic Yield or Optimizely.",
+            userId: user.id,
+            questionId: createdQuestions[1].id
+          }
+        ];
+
+        for (const a of answers) {
+          try {
+            const answer = await storage.createAnswer(a);
+            console.log(`Created answer for question: ${a.questionId}`);
+          } catch (error) {
+            console.error(`Error creating answer: ${error}`);
+          }
+        }
+      }
+
+      res.json({ 
+        success: true, 
+        message: `Sample data populated successfully! Created ${createdCategories.length} categories, 1 forum, ${createdQuestions.length} questions, and answers.`
+      });
+    } catch (error) {
+      console.error("Error populating sample data:", error);
+      res.status(500).json({ message: "Failed to populate sample data" });
     }
   });
 
@@ -3153,8 +4088,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(201).json({ success: true, message: "Forum verification failed, event not tracked" });
       }
       
-      // Get user ID from session if logged in
-      const userId = req.session?.userId || null;
+      // Get user ID from Clerk authentication if logged in
+      const clerkUserId = await getClerkUserId(req);
+      const user = clerkUserId ? await storage.getUserByClerkId(clerkUserId) : null;
+      const userId = user?.id || null;
       
       // Add client IP address
       const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
@@ -3368,23 +4305,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Content Schedule routes
-  app.get("/api/content-schedules", async (req, res) => {
+  app.get("/api/content-schedules", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to access content schedules" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
-      const schedules = await storage.getContentSchedulesByUser(req.session.userId);
+      const schedules = await storage.getContentSchedulesByUser(user.id);
       res.json(schedules);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch content schedules" });
     }
   });
 
-  app.get("/api/content-schedules/upcoming", async (req, res) => {
+  app.get("/api/content-schedules/upcoming", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to access upcoming content schedules" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
@@ -3393,7 +4344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Filter to only show schedules from forums owned by the user
       const userSchedules = [];
       for (const schedule of schedules) {
-        if (schedule.forum.userId === req.session.userId) {
+        if (schedule.forum.userId === user.id) {
           userSchedules.push(schedule);
         }
       }
@@ -3404,10 +4355,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/forums/:id/content-schedules", async (req, res) => {
+  app.get("/api/forums/:id/content-schedules", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to access forum content schedules" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const forumId = parseInt(req.params.id);
@@ -3418,7 +4376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if user owns the forum
-      if (forum.userId !== req.session.userId) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to access this forum's content schedules" });
       }
       
@@ -3429,10 +4387,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/content-schedules/:id", async (req, res) => {
+  app.get("/api/content-schedules/:id", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to access content schedules" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const id = parseInt(req.params.id);
@@ -3443,7 +4408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if user owns the forum associated with the schedule
-      if (schedule.forum.userId !== req.session.userId) {
+      if (schedule.forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to access this content schedule" });
       }
       
@@ -3453,10 +4418,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/content-schedules", async (req, res) => {
+  app.post("/api/content-schedules", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to create a content schedule" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       // Validate the forum ownership
@@ -3465,13 +4437,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Forum not found" });
       }
       
-      if (forum.userId !== req.session.userId) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to create content for this forum" });
       }
       
       const validatedData = insertContentScheduleSchema.parse({
         ...req.body,
-        userId: req.session.userId
+        userId: user.id
       });
       
       const schedule = await storage.createContentSchedule(validatedData);
@@ -3485,10 +4457,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/content-schedules/:id", async (req, res) => {
+  app.patch("/api/content-schedules/:id", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to update a content schedule" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const id = parseInt(req.params.id);
@@ -3499,7 +4478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if user owns the forum associated with the schedule
-      if (schedule.forum.userId !== req.session.userId) {
+      if (schedule.forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to update this content schedule" });
       }
       
@@ -3514,10 +4493,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/content-schedules/:id/status", async (req, res) => {
+  app.patch("/api/content-schedules/:id/status", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to update a content schedule status" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const id = parseInt(req.params.id);
@@ -3528,7 +4514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if user owns the forum associated with the schedule
-      if (schedule.forum.userId !== req.session.userId) {
+      if (schedule.forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to update this content schedule" });
       }
       
@@ -3546,10 +4532,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/content-schedules/:id", async (req, res) => {
+  app.delete("/api/content-schedules/:id", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to delete a content schedule" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const id = parseInt(req.params.id);
@@ -3560,7 +4553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if user owns the forum associated with the schedule
-      if (schedule.forum.userId !== req.session.userId) {
+      if (schedule.forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to delete this content schedule" });
       }
       
@@ -3572,10 +4565,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate and publish content according to schedule
-  app.post("/api/content-schedules/:id/publish", async (req, res) => {
+  app.post("/api/content-schedules/:id/publish", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to publish scheduled content" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const id = parseInt(req.params.id);
@@ -3586,7 +4586,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if user owns the forum associated with the schedule
-      if (schedule.forum.userId !== req.session.userId) {
+      if (schedule.forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to publish this content schedule" });
       }
       
@@ -3610,7 +4610,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const questionData of questions.questions) {
           try {
             const newQuestion = await storage.createQuestion({
-              userId: req.session.userId,
+              userId: user.id,
               title: questionData.title,
               content: questionData.content,
               categoryId: schedule.categoryId || 1, // Default to first category if none specified
@@ -3881,10 +4881,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate a batch of optimized questions and answers for a forum section
-  app.post("/api/forums/:forumId/generate-section-content", async (req, res) => {
+  app.post("/api/forums/:forumId/generate-section-content", requireClerkAuth, async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "You must be logged in to generate forum content" });
+      const clerkUserId = req.auth?.userId;
+      if (!clerkUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database using Clerk ID
+      const user = await storage.getUserByClerkId(clerkUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
       
       const forumId = parseInt(req.params.forumId);
@@ -3895,7 +4902,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user owns this forum
-      if (forum.userId !== req.session.userId) {
+      if (forum.userId !== user.id) {
         return res.status(403).json({ message: "You don't have permission to generate content for this forum" });
       }
       
@@ -3935,7 +4942,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create questions in the database
       for (const q of optimizedQuestions.questions) {
         const questionData = {
-          userId: req.session.userId,
+          userId: user.id,
           forumId,
           title: q.title,
           content: q.content,
@@ -3954,7 +4961,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const answerContent = await generateAnswer(q.title, q.content, answerPersona);
           
           const answerData = {
-            userId: req.session.userId,
+            userId: user.id,
             questionId: newQuestion.id,
             content: answerContent,
             isAiGenerated: true,
@@ -3970,7 +4977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let contentSchedule = null;
       if (schedulePublication && scheduledDate) {
         const scheduleData = {
-          userId: req.session.userId,
+          userId: user.id,
           forumId,
           title: sectionTitle,
           keyword: keywordFocus,

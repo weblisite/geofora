@@ -33,5 +33,31 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
+    // Production optimizations
+    minify: true,
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split vendor code for better caching
+          vendor: ['react', 'react-dom'],
+          clerk: ['@clerk/clerk-react'],
+          tanstack: ['@tanstack/react-query'],
+        }
+      }
+    },
+    // Increase chunk size warning limit
+    chunkSizeWarningLimit: 1000,
+  },
+  // Performance optimizations
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      '@clerk/clerk-react',
+      '@tanstack/react-query',
+      'wouter',
+      'react-hook-form'
+    ]
   },
 });

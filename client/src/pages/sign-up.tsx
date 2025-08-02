@@ -37,7 +37,7 @@ export default function SignUpPage() {
               Create an account
             </CardTitle>
             <CardDescription className="text-center">
-              Fill in your details to get started with ForumAI
+              Fill in your details to get started with GeoFora
             </CardDescription>
           </CardHeader>
           <CardContent>

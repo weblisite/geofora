@@ -64,32 +64,8 @@ export async function initDatabase(): Promise<void> {
     // Instead of using the drizzle-kit push command, we'll return early and let the ORM handle the tables
     // This is a simpler approach for development and avoids issues with child processes
     
-    // Create a default forum if none exists - only attempt if DATABASE_URL is available
-    if (process.env.DATABASE_URL) {
-      try {
-        const defaultForum = await db.select().from(schema.forums).limit(1);
-        if (!defaultForum.length) {
-          await db.insert(schema.forums).values({
-            name: 'Default Forum',
-            slug: 'default',
-            description: 'The default forum',
-            userId: 1, // Default admin user
-            themeColor: '#3B82F6',
-            primaryFont: 'Inter',
-            secondaryFont: 'Roboto',
-            headingFontSize: '1.5rem',
-            bodyFontSize: '1rem',
-            isPublic: true,
-            requiresApproval: false,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          });
-          log('Default forum created');
-        }
-      } catch (error: any) {
-        log(`Error creating default forum: ${error.message}`);
-      }
-    }
+    // Skip automatic default forum creation since we're using Clerk authentication
+    // Users will create their own forums when they sign up and access the platform
     
     log('Database initialized - tables will be managed by Drizzle ORM');
     return;

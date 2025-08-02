@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -25,26 +25,45 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { useClerk } from "@clerk/clerk-react";
+import { useClerkAuth } from "@/hooks/use-clerk-auth";
 
 const Analytics = () => {
-  const { user } = useClerk();
+  const { user } = useClerkAuth();
   const userId = user?.id;
   const { toast } = useToast();
   const [dateRange, setDateRange] = useState("30d");
   const [activeTab, setActiveTab] = useState("overview");
+  const [selectedForumId, setSelectedForumId] = useState<number | null>(null);
+
+  // Query for forums to select from
+  const { data: forums } = useQuery({
+    queryKey: ["/api/user/forums"],
+    queryFn: async () => {
+      const res = await apiRequest("/api/user/forums", { method: "GET" });
+      return await res.json();
+    },
+    enabled: !!userId,
+  });
+
+  // Auto-select first forum when forums are loaded
+  useEffect(() => {
+    if (forums && forums.length > 0 && !selectedForumId) {
+      setSelectedForumId(forums[0].id);
+    }
+  }, [forums, selectedForumId]);
 
   // Fetch traffic data
   const { data: trafficData, isLoading: trafficLoading } = useQuery({
-    queryKey: [`/api/analytics/traffic`],
+    queryKey: [`/api/analytics/traffic`, dateRange, selectedForumId],
     queryFn: async () => {
-      const response = await fetch(`/api/analytics/traffic?period=${dateRange}`);
+      const forumParam = selectedForumId ? `?forumId=${selectedForumId}` : "";
+      const response = await fetch(`/api/analytics/traffic/${dateRange}${forumParam}`);
       if (!response.ok) {
         throw new Error('Failed to fetch traffic data');
       }
       return await response.json();
     },
-    enabled: !!userId,
+    enabled: !!userId && !!selectedForumId,
   });
 
   // Fetch daily traffic data
@@ -504,12 +523,12 @@ const Analytics = () => {
                 <TableBody>
                   {displayTopContentData.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.title}</TableCell>
-                      <TableCell className="text-right">{item.views.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">{item.sessions.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">{item.conversions.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">{item.bounceRate}</TableCell>
-                      <TableCell className="text-right">{item.avgTimeOnPage}</TableCell>
+                      <TableCell className="font-medium">{item.title || 'N/A'}</TableCell>
+                      <TableCell className="text-right">{item.views?.toLocaleString() || '0'}</TableCell>
+                      <TableCell className="text-right">{item.sessions?.toLocaleString() || '0'}</TableCell>
+                      <TableCell className="text-right">{item.conversions?.toLocaleString() || '0'}</TableCell>
+                      <TableCell className="text-right">{item.bounceRate || '0%'}</TableCell>
+                      <TableCell className="text-right">{item.avgTimeOnPage || '0s'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
