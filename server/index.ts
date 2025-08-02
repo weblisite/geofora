@@ -74,12 +74,6 @@ app.use((req, res, next) => {
   
   const server = await registerRoutes(app);
 
-  // Add 404 handler for unknown routes
-  app.use(notFoundHandler);
-  
-  // Add comprehensive error handler
-  app.use(errorHandler);
-
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
@@ -88,6 +82,12 @@ app.use((req, res, next) => {
   } else {
     serveStatic(app);
   }
+
+  // Add 404 handler for unknown routes (AFTER static serving)
+  app.use(notFoundHandler);
+  
+  // Add comprehensive error handler
+  app.use(errorHandler);
 
   // Production-ready server configuration
   const port = process.env.PORT || 4000;
