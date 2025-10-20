@@ -6,6 +6,9 @@ import * as crypto from "crypto";
 import { generateAnswer, generateSeoQuestions, analyzeQuestionSeo, generateInterlinkingSuggestions } from "./ai";
 import prdEndpoints from "./routes/prd-endpoints";
 import additionalEndpoints from "./routes/additional-endpoints";
+import accessibilityEndpoints from "./routes/accessibility-endpoints";
+import interlinkingEndpoints from "./routes/interlinking-endpoints";
+import missingEndpoints from "./routes/missing-endpoints";
 import { clerkClient } from '@clerk/clerk-sdk-node';
 import { errorHandlingSystem } from './middleware/error-handler';
 import { performanceOptimizationSystem } from './performance/optimization';
@@ -5254,6 +5257,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register additional endpoints for frontend components
   app.use(additionalEndpoints);
+  
+  // Register accessibility endpoints
+  app.use(accessibilityEndpoints);
+  
+  // Register interlinking endpoints
+  app.use(interlinkingEndpoints);
+  
+  // Register missing endpoints
+  app.use(missingEndpoints);
 
   // User subscription plans
   app.post("/api/users/select-plan", requireClerkAuth, async (req, res) => {
