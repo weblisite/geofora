@@ -13,6 +13,7 @@ import analyticsEndpoints from "./routes/analytics-endpoints";
 import seoReportingEndpoints from "./routes/seo-reporting-endpoints";
 import competitorAnalysisEndpoints from "./routes/competitor-analysis-endpoints";
 import contentGapAnalysisEndpoints from "./routes/content-gap-analysis-endpoints";
+import googleSearchConsoleEndpoints from "./routes/google-search-console-endpoints";
 import { clerkClient } from '@clerk/clerk-sdk-node';
 import { errorHandlingSystem } from './middleware/error-handler';
 import { performanceOptimizationSystem } from './performance/optimization';
@@ -5282,6 +5283,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register content gap analysis endpoints
   app.use(contentGapAnalysisEndpoints);
+  
+  // Register Google Search Console endpoints
+  app.use(googleSearchConsoleEndpoints);
 
   // User subscription plans
   app.post("/api/users/select-plan", requireClerkAuth, async (req, res) => {

@@ -49,6 +49,7 @@ const RealTimeAnalyticsDashboard = lazy(() => import("@/components/dashboard/rea
 const SEOReportingDashboard = lazy(() => import("@/components/dashboard/seo-reporting"));
 const CompetitorAnalysisDashboard = lazy(() => import("@/components/dashboard/competitor-analysis"));
 const ContentGapAnalysisDashboard = lazy(() => import("@/components/dashboard/content-gap-analysis"));
+const GoogleSearchConsoleDashboard = lazy(() => import("@/components/dashboard/google-search-console"));
 const BrandVoiceDashboard = lazy(() => import("@/components/dashboard/brand-voice"));
 
 // Define the stats type
@@ -165,6 +166,8 @@ export default function DashboardPage() {
           return ['/api/competitor-analysis', '/api/competitors', '/api/competitor-insights'];
         case 'content-gap-analysis':
           return ['/api/content-gaps/analysis', '/api/content-gaps', '/api/content-gaps/export'];
+        case 'google-search-console':
+          return ['/api/gsc/status', '/api/gsc/properties', '/api/gsc/performance', '/api/gsc/queries', '/api/gsc/pages', '/api/gsc/issues', '/api/gsc/overview'];
         case 'brand-voice':
           return ['/api/brand-voice', '/api/brand-voice/config'];
       default:
@@ -422,6 +425,14 @@ export default function DashboardPage() {
             <div className="p-6">
               <Suspense fallback={<LoadingComponent />}>
                 <ContentGapAnalysisDashboard />
+              </Suspense>
+            </div>
+          );
+        } else if (location === "/dashboard/google-search-console") {
+          return (
+            <div className="p-6">
+              <Suspense fallback={<LoadingComponent />}>
+                <GoogleSearchConsoleDashboard />
               </Suspense>
             </div>
           );
