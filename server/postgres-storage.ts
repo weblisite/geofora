@@ -2,7 +2,7 @@ import { eq, and, sql, desc, asc, like, or, gte, lte, inArray } from 'drizzle-or
 import { db } from './db';
 import { 
   roles, permissions, rolePermissions, users, userForumRoles,
-  categories, questions, answers, votes, aiPersonas,
+  categories, questions, answers, votes, aiAgents,
   mainSitePages, contentInterlinks, forums, domainVerifications,
   leadCaptureForms, leadSubmissions, gatedContents, crmIntegrations,
   leadFormViews, contentSchedules, seoKeywords, seoPositions,
@@ -700,80 +700,80 @@ export class PostgresStorage implements IStorage {
     }
   }
 
-  // AI Persona methods
-  async getAiPersona(id: number): Promise<AiPersona | undefined> {
-    const result = await db.select().from(aiPersonas).where(eq(aiPersonas.id, id));
+  // AI Agent methods
+  async getAiAgent(id: number): Promise<AiAgent | undefined> {
+    const result = await db.select().from(aiAgents).where(eq(aiAgents.id, id));
     return result[0];
   }
 
-  async getAiPersonaByType(type: string): Promise<AiPersona | undefined> {
-    const result = await db.select().from(aiPersonas).where(eq(aiPersonas.type, type));
+  async getAiAgentByType(type: string): Promise<AiAgent | undefined> {
+    const result = await db.select().from(aiAgents).where(eq(aiAgents.type, type));
     return result[0];
   }
 
-  async getAllAiPersonas(): Promise<AiPersona[]> {
-    return await db.select().from(aiPersonas);
+  async getAllAiAgents(): Promise<AiAgent[]> {
+    return await db.select().from(aiAgents);
   }
   
-  async getAiPersonasByUserId(userId: number): Promise<AiPersona[]> {
+  async getAiAgentsByUserId(userId: number): Promise<AiAgent[]> {
     return await db.select()
-      .from(aiPersonas)
-      .where(eq(aiPersonas.userId, userId));
+      .from(aiAgents)
+      .where(eq(aiAgents.userId, userId));
   }
   
-  async getActiveAiPersonasByUserId(userId: number): Promise<AiPersona[]> {
+  async getActiveAiAgentsByUserId(userId: number): Promise<AiAgent[]> {
     return await db.select()
-      .from(aiPersonas)
+      .from(aiAgents)
       .where(and(
-        eq(aiPersonas.userId, userId),
-        eq(aiPersonas.active, true)
+        eq(aiAgents.userId, userId),
+        eq(aiAgents.active, true)
       ));
   }
 
-  async createAiPersona(persona: InsertAiPersona): Promise<AiPersona> {
-    const result = await db.insert(aiPersonas).values(persona).returning();
+  async createAiAgent(agent: InsertAiAgent): Promise<AiAgent> {
+    const result = await db.insert(aiAgents).values(agent).returning();
     return result[0];
   }
 
-  async updateAiPersona(id: number, data: Partial<InsertAiPersona>): Promise<AiPersona> {
-    const result = await db.update(aiPersonas).set(data).where(eq(aiPersonas.id, id)).returning();
+  async updateAiAgent(id: number, data: Partial<InsertAiAgent>): Promise<AiAgent> {
+    const result = await db.update(aiAgents).set(data).where(eq(aiAgents.id, id)).returning();
     return result[0];
   }
   
-  async incrementAiPersonaUsage(id: number): Promise<AiPersona> {
+  async incrementAiAgentUsage(id: number): Promise<AiAgent> {
     // First get the current count
-    const persona = await this.getAiPersona(id);
-    if (!persona) {
-      throw new Error(`AI Persona with ID ${id} not found`);
+    const agent = await this.getAiAgent(id);
+    if (!agent) {
+      throw new Error(`AI Agent with ID ${id} not found`);
     }
     
     // Increment the count
-    const usageCount = (persona.usageCount || 0) + 1;
+    const usageCount = (agent.usageCount || 0) + 1;
     
-    // Update the persona
-    const result = await db.update(aiPersonas)
+    // Update the agent
+    const result = await db.update(aiAgents)
       .set({ usageCount })
-      .where(eq(aiPersonas.id, id))
+      .where(eq(aiAgents.id, id))
       .returning();
       
     return result[0];
   }
   
-  async updateAiPersonaMetrics(id: number, metrics: { 
+  async updateAiAgentMetrics(id: number, metrics: { 
     rating?: number; 
     responseTime?: number; 
     completionRate?: number;
-  }): Promise<AiPersona> {
-    const result = await db.update(aiPersonas)
+  }): Promise<AiAgent> {
+    const result = await db.update(aiAgents)
       .set(metrics)
-      .where(eq(aiPersonas.id, id))
+      .where(eq(aiAgents.id, id))
       .returning();
       
     return result[0];
   }
 
-  async deleteAiPersona(id: number): Promise<void> {
-    await db.delete(aiPersonas).where(eq(aiPersonas.id, id));
+  async deleteAiAgent(id: number): Promise<void> {
+    await db.delete(aiAgents).where(eq(aiAgents.id, id));
   }
   
   async getUserSubscription(userId: number): Promise<{ 

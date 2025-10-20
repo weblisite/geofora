@@ -821,20 +821,7 @@ export default function LeadCapturePage() {
                   </Tabs>
                 </CardContent>
               </Card>
-            ) : (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center p-12">
-                  <BarChart2 className="h-16 w-16 text-gray-400 opacity-20 mb-4" />
-                  <h3 className="text-xl font-medium mb-2">Select a Lead Form</h3>
-                  <p className="text-gray-400 text-center mb-4">
-                    Choose a lead form from the list to view details and submissions
-                  </p>
-                  <Button onClick={() => setIsCreateModalOpen(true)} disabled={!selectedForumId}>
-                    <Plus className="mr-2 h-4 w-4" /> Create Lead Form
-                  </Button>
-                </CardContent>
-              </Card>
-            )
+            )}
           </div>
         </div>
 

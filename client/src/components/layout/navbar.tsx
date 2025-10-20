@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { GradientText } from "@/components/ui/gradient-text";
 import { useClerkAuth } from "@/hooks/use-clerk-auth";
-import { UserButton } from "@clerk/clerk-react";
+import { UserButton, SignInButton, SignUpButton } from "@clerk/clerk-react";
 
 export default function Navbar() {
   const [location] = useLocation();
@@ -41,16 +41,22 @@ export default function Navbar() {
 
         <div className="hidden md:flex items-center space-x-8">
           <Link
+            href="/#why"
+            className="text-gray-300 hover:text-white transition-colors"
+          >
+            Why Geofora
+          </Link>
+          <Link
+            href="/#how"
+            className="text-gray-300 hover:text-white transition-colors"
+          >
+            How It Works
+          </Link>
+          <Link
             href="/#features"
             className="text-gray-300 hover:text-white transition-colors"
           >
             Features
-          </Link>
-          <Link
-            href="/#how-it-works"
-            className="text-gray-300 hover:text-white transition-colors"
-          >
-            How It Works
           </Link>
           <Link
             href="/#benefits"
@@ -82,19 +88,17 @@ export default function Navbar() {
             </div>
           ) : (
             <>
-              <Link
-                href="/sign-in"
-                className="hidden md:inline-block px-4 py-2 text-sm font-medium text-white transition-all border border-primary-500 rounded-lg hover:bg-primary-500/20"
-              >
-                Log In
-              </Link>
-              <Link
-                href="/#pricing"
-                className="hidden md:inline-flex items-center px-6 py-2 text-sm font-medium text-white transition-all rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 shadow-glow"
-              >
-                <span>Launch Now</span>
-                <span className="ml-2 material-icons text-sm">arrow_forward</span>
-              </Link>
+              <SignInButton mode="modal">
+                <button className="hidden md:inline-block px-4 py-2 text-sm font-medium text-white transition-all border border-white rounded-lg hover:bg-white/10">
+                  Sign In
+                </button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <button className="hidden md:inline-flex items-center px-6 py-2 text-sm font-medium text-white transition-all rounded-lg bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 shadow-glow">
+                  <span>Get Started Free</span>
+                  <span className="ml-2 material-icons text-sm">arrow_forward</span>
+                </button>
+              </SignUpButton>
             </>
           )}
         </div>
@@ -154,16 +158,30 @@ export default function Navbar() {
               </span>
             </Link>
             {!user && (
-              <Link
-                href="/sign-in"
-                className="text-gray-300 hover:text-white transition-colors py-3 px-2 rounded-lg hover:bg-dark-200"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <span className="flex items-center">
-                  <span className="material-icons mr-2 text-primary-400">login</span>
-                  Log In
-                </span>
-              </Link>
+              <>
+                <SignInButton mode="modal">
+                  <button
+                    className="text-gray-300 hover:text-white transition-colors py-3 px-2 rounded-lg hover:bg-dark-200 w-full text-left"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <span className="flex items-center">
+                      <span className="material-icons mr-2 text-primary-400">login</span>
+                      Log In
+                    </span>
+                  </button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <button
+                    className="text-white bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 transition-all py-3 px-2 rounded-lg w-full text-left shadow-glow"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <span className="flex items-center">
+                      <span className="material-icons mr-2">arrow_forward</span>
+                      Get Started Free
+                    </span>
+                  </button>
+                </SignUpButton>
+              </>
             )}
             {user && (
               <Link

@@ -626,17 +626,27 @@ export default function Settings() {
           <TabsContent value="billing" className="pt-4">
             {/* Add query for subscription data */}
             {(() => {
-              const { userId } = useAuth();
+              const userId = user?.id;
               
               // Query subscription data from our API
               const { data: subscription, isLoading: isLoadingSubscription, error: subscriptionError } = useQuery({
                 queryKey: ['/api/users/subscription'],
+                queryFn: async () => {
+                  const res = await apiRequest('/api/users/subscription', { method: 'GET' });
+                  const data = await res.json();
+                  return data.data;
+                },
                 enabled: !!userId
               });
               
               // Query billing history from our API
               const { data: billingHistory, isLoading: isLoadingBilling, error: billingError } = useQuery({
                 queryKey: ['/api/users/billing-history'],
+                queryFn: async () => {
+                  const res = await apiRequest('/api/users/billing-history', { method: 'GET' });
+                  const data = await res.json();
+                  return data.data;
+                },
                 enabled: !!userId
               });
               
@@ -674,13 +684,13 @@ export default function Settings() {
                   let checkoutUrl;
                   switch(planType) {
                     case 'starter':
-                      checkoutUrl = "https://buy.polar.sh/polar_cl_saQVhkF5OgG3xuhn3eZm5G3gQUA0rAx17BHB43INwPN";
+                      checkoutUrl = POLAR_CHECKOUT_LINKS.starter;
                       break;
                     case 'professional':
-                      checkoutUrl = "https://buy.polar.sh/polar_cl_oCymEewojyAWOZOHjZJRC1PQGo0ES0Tu2eeVh1S3N6Y";
+                      checkoutUrl = POLAR_CHECKOUT_LINKS.professional;
                       break;
                     case 'enterprise':
-                      checkoutUrl = "https://buy.polar.sh/polar_cl_bXNvmdougqf83av9fFAH1DA6y3ghNMzf5Kzwy38RLVX";
+                      checkoutUrl = POLAR_CHECKOUT_LINKS.enterprise;
                       break;
                     default:
                       throw new Error("Invalid plan type");
@@ -793,7 +803,7 @@ export default function Settings() {
                               <div className="space-y-3">
                                 <div>
                                   <div className="flex justify-between mb-1 text-sm">
-                                    <span>AI Personas</span>
+                                    <span>AI Agents</span>
                                     <span>{subscription?.plan === 'starter' ? '0 / 20' : 
                                           subscription?.plan === 'professional' ? '0 / 100' : 
                                           '0 / Unlimited'}</span>
@@ -892,9 +902,14 @@ export default function Settings() {
                                 {billingHistory?.map((invoice, i) => (
                                   <tr key={i} className="border-b border-dark-300">
                                     <td className="p-3">
-                                      {formatDate(invoice.created_at || invoice.timestamp)}
+                                      {formatDate(invoice.date || invoice.created_at || invoice.timestamp)}
                                     </td>
                                     <td className="p-3">
+                                      {invoice.description && (
+                                        <div className="text-sm text-muted-foreground mb-1">
+                                          {invoice.description}
+                                        </div>
+                                      )}
                                       {invoice.amount_formatted || `$${invoice.amount ? (invoice.amount / 100).toFixed(2) : "0.00"}`}
                                     </td>
                                     <td className="p-3">
@@ -916,12 +931,12 @@ export default function Settings() {
                                       </Badge>
                                     </td>
                                     <td className="p-3">
-                                      {invoice.hosted_url || invoice.receipt_url || invoice.invoice_url ? (
+                                      {invoice.invoiceUrl || invoice.hosted_url || invoice.receipt_url || invoice.invoice_url ? (
                                         <Button 
                                           variant="ghost" 
                                           size="sm"
                                           onClick={() => window.open(
-                                            invoice.hosted_url || invoice.receipt_url || invoice.invoice_url, 
+                                            invoice.invoiceUrl || invoice.hosted_url || invoice.receipt_url || invoice.invoice_url, 
                                             '_blank'
                                           )}
                                         >
@@ -1000,11 +1015,11 @@ export default function Settings() {
                                     // Direct Polar.sh checkout links
                                     let checkoutUrl;
                                     if (planId === 'starter' || planId === POLAR_PLAN_IDS.starter) {
-                                      checkoutUrl = "https://buy.polar.sh/polar_cl_saQVhkF5OgG3xuhn3eZm5G3gQUA0rAx17BHB43INwPN";
+                                      checkoutUrl = POLAR_CHECKOUT_LINKS.starter;
                                     } else if (planId === 'professional' || planId === POLAR_PLAN_IDS.professional) {
-                                      checkoutUrl = "https://buy.polar.sh/polar_cl_oCymEewojyAWOZOHjZJRC1PQGo0ES0Tu2eeVh1S3N6Y";
+                                      checkoutUrl = POLAR_CHECKOUT_LINKS.professional;
                                     } else if (planId === 'enterprise' || planId === POLAR_PLAN_IDS.enterprise) {
-                                      checkoutUrl = "https://buy.polar.sh/polar_cl_bXNvmdougqf83av9fFAH1DA6y3ghNMzf5Kzwy38RLVX";
+                                      checkoutUrl = POLAR_CHECKOUT_LINKS.enterprise;
                                     }
                                     
                                     // Open checkout in new tab
@@ -1035,7 +1050,7 @@ export default function Settings() {
                         <Button 
                           variant="outline" 
                           className="w-full"
-                          onClick={() => window.location.href = "mailto:support@cmofy.com"}
+                          onClick={() => window.location.href = "mailto:support@geofora.ai"}
                         >
                           Contact Support
                         </Button>
@@ -1243,9 +1258,9 @@ export default function Settings() {
                     <div className="space-y-2">
                       <Label>Custom Domain</Label>
                       <Input placeholder="forum.yourdomain.com" />
-                      <FormDescription>
+                      <p className="text-sm text-muted-foreground">
                         Enter your custom domain to use for your forum
-                      </FormDescription>
+                      </p>
                     </div>
 
                     <Button className="w-full">

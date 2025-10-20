@@ -128,7 +128,7 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <a href="mailto:support@cmofy.com" className="text-gray-400 hover:text-primary-400 transition-colors">
+                <a href="mailto:support@geofora.ai" className="text-gray-400 hover:text-primary-400 transition-colors">
                   Contact
                 </a>
               </li>

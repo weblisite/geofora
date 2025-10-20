@@ -19,6 +19,7 @@ import VerifyPage from "@/pages/verify";
 import EmailVerificationPage from "@/pages/email-verification";
 import UIShowcasePage from "@/pages/ui-showcase";
 import DocumentationPage from "@/pages/documentation-page";
+import PitchDeckPage from "@/pages/pitchdeck";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -91,7 +92,7 @@ function App() {
         <Route path="/forum/:id" component={QuestionDetailPage} />
         <ProtectedRoute path="/dashboard" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/forum" component={DashboardPage} />
-        <ProtectedRoute path="/dashboard/personas" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/agents" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/analytics" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/keyword-analysis" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/interlinking" component={DashboardPage} />
@@ -102,6 +103,12 @@ function App() {
         <ProtectedRoute path="/dashboard/settings" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/traffic-analysis" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/conversions" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/ai-personas" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/data-export" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/setup-fee" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/business-analysis" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/industry-detection" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/brand-voice" component={DashboardPage} />
         <Route path="/sign-in" component={SignInPage} />
         <Route path="/sign-up" component={SignUpPage} />
         <Route path="/sign-up/verify" component={VerifyPage} />
@@ -118,6 +125,7 @@ function App() {
         </Route>
         <Route path="/ui-showcase" component={UIShowcasePage} />
         <Route path="/documentation" component={DocumentationPage} />
+        <Route path="/pitchdeck" component={PitchDeckPage} />
         <Route path="/partners" component={PartnersPage} />
         <Route path="/about" component={AboutPage} />
         <Route path="/press" component={PressPage} />

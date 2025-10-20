@@ -5,6 +5,17 @@
       "args": [
         "@browsermcp/mcp@latest"
       ]
+    },
+    "Neon": {
+      "command": "npx",
+      "args": ["-y", "@neondatabase/mcp-server-neon", "start", "napi_cdq3s7kery29x9xjrxec97s53c0dfrehat09v6sgomcpc0vx515ljn54cnemdh8x"]
+    },
+    "Polar": {
+      "command": "npx",
+      "args": ["-y", "--package", "@polar-sh/sdk", "--", "mcp", "start"],
+      "env": {
+        "POLAR_ACCESS_TOKEN": "polar_oat_0EihvUQHjwJ2Hm7F4kAET0IrlF67m3YkRYkkj2VAkv4"
+      }
     }
   }
 }

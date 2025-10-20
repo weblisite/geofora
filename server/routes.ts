@@ -4,7 +4,10 @@ import { storage } from "./storage";
 import { z } from "zod";
 import * as crypto from "crypto";
 import { generateAnswer, generateSeoQuestions, analyzeQuestionSeo, generateInterlinkingSuggestions } from "./ai";
+import prdEndpoints from "./routes/prd-endpoints";
 import { clerkClient } from '@clerk/clerk-sdk-node';
+import { errorHandlingSystem } from './middleware/error-handler';
+import { performanceOptimizationSystem } from './performance/optimization';
 import { 
   insertUserSchema, 
   insertQuestionSchema, 
@@ -63,6 +66,12 @@ import { registerClerkAuthRoutes, requireClerkAuth, getClerkUserId, getClerkUser
 import path from "path";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Add performance monitoring middleware
+  app.use(performanceOptimizationSystem.performanceMiddleware);
+  
+  // Add global error handler
+  app.use(errorHandlingSystem.globalErrorHandler);
+
   // Register Clerk authentication routes
   registerClerkAuthRoutes(app, storage);
   
@@ -539,8 +548,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI Personas routes
-  app.get("/api/ai-personas", requireClerkAuth, async (req, res) => {
+  // AI Agents routes
+  app.get("/api/ai-agents", requireClerkAuth, async (req, res) => {
     try {
       const clerkId = req.auth.userId;
       
@@ -555,17 +564,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      // Get all personas that belong to this user
-      const personas = await storage.getAiPersonasByUserId(user.id);
-      res.json(personas);
+      // Get all agents that belong to this user
+      const agents = await storage.getAiAgentsByUserId(user.id);
+      res.json(agents);
     } catch (error) {
-      console.error("Error fetching user's AI personas:", error);
-      res.status(500).json({ message: "Failed to fetch AI personas" });
+      console.error("Error fetching user's AI agents:", error);
+      res.status(500).json({ message: "Failed to fetch AI agents" });
     }
   });
 
-  // Create a new AI persona
-  app.post("/api/ai-personas", requireClerkAuth, async (req, res) => {
+  // Create a new AI agent
+  app.post("/api/ai-agents", requireClerkAuth, async (req, res) => {
     try {
       const clerkId = req.auth.userId;
       
@@ -582,23 +591,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check user's subscription and persona limit
       const subscription = await storage.getUserSubscription(user.id);
-      const existingPersonas = await storage.getAiPersonasByUserId(user.id);
+      const existingAgents = await storage.getAiAgentsByUserId(user.id);
       
-      let personaLimit = 20; // Default to Starter plan
+      let agentLimit = 20; // Default to Starter plan
       if (subscription?.plan === "professional") {
-        personaLimit = 100;
+        agentLimit = 100;
       } else if (subscription?.plan === "enterprise") {
-        personaLimit = Number.MAX_SAFE_INTEGER; // Unlimited
+        agentLimit = Number.MAX_SAFE_INTEGER; // Unlimited
       }
       
-      if (existingPersonas.length >= personaLimit) {
+      if (existingPersonas.length >= agentLimit) {
         return res.status(403).json({ 
-          message: `You've reached your plan's limit of ${personaLimit} AI personas. Upgrade your plan to create more.` 
+          message: `You've reached your plan's limit of ${agentLimit} AI agents. Upgrade your plan to create more.` 
         });
       }
       
       // Create the new persona
-      const newPersona = {
+      const newAgent = {
         userId: user.id,
         name: req.body.name,
         description: req.body.description,
@@ -615,16 +624,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         completionRate: 100.0, // Default initial completion rate percentage
       };
       
-      const createdPersona = await storage.createAiPersona(newPersona);
+      const createdPersona = await storage.createAiAgent(newAgent);
       res.status(201).json(createdPersona);
     } catch (error) {
-      console.error("Error creating AI persona:", error);
-      res.status(500).json({ message: "Failed to create AI persona" });
+      console.error("Error creating AI agent:", error);
+      res.status(500).json({ message: "Failed to create AI agent" });
     }
   });
   
-  // Generate AI personas from website content
-  app.post("/api/ai-personas/generate", requireClerkAuth, async (req, res) => {
+  // Generate AI agents from website content
+  app.post("/api/ai-agents/generate", requireClerkAuth, async (req, res) => {
     try {
       const { websiteUrl, count } = req.body;
       
@@ -647,24 +656,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check user's subscription and persona limit
       const subscription = await storage.getUserSubscription(user.id);
-      const existingPersonas = await storage.getAiPersonasByUserId(user.id);
+      const existingAgents = await storage.getAiAgentsByUserId(user.id);
       
-      let personaLimit = 20; // Default to Starter plan
+      let agentLimit = 20; // Default to Starter plan
       if (subscription?.plan === "professional") {
-        personaLimit = 100;
+        agentLimit = 100;
       } else if (subscription?.plan === "enterprise") {
-        personaLimit = Number.MAX_SAFE_INTEGER; // Unlimited
+        agentLimit = Number.MAX_SAFE_INTEGER; // Unlimited
       }
       
-      if (existingPersonas.length >= personaLimit) {
+      if (existingPersonas.length >= agentLimit) {
         return res.status(403).json({ 
-          message: `You've reached your plan's limit of ${personaLimit} AI personas. Upgrade your plan to create more.` 
+          message: `You've reached your plan's limit of ${agentLimit} AI agents. Upgrade your plan to create more.` 
         });
       }
 
       // Determine how many personas to generate
       const requestedCount = count ? parseInt(count.toString(), 10) : 5; // Default to 5 if not specified
-      const maxAllowed = personaLimit - existingPersonas.length;
+      const maxAllowed = agentLimit - existingPersonas.length;
       const personaCount = Math.min(requestedCount, maxAllowed);
       
       // Use AI to analyze the website and extract keywords
@@ -687,7 +696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Save the personas to the database
       const createdPersonas = [];
       for (const persona of personas) {
-        const createdPersona = await storage.createAiPersona({
+        const createdPersona = await storage.createAiAgent({
           ...persona,
           type: persona.expertise || "intermediate" // Ensure type field is present
         });
@@ -696,13 +705,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json(createdPersonas);
     } catch (error) {
-      console.error("Error generating AI personas:", error);
-      res.status(500).json({ message: "Failed to generate AI personas" });
+      console.error("Error generating AI agents:", error);
+      res.status(500).json({ message: "Failed to generate AI agents" });
     }
   });
   
   // Get persona stats (usage data)
-  app.get("/api/ai-personas/stats", requireClerkAuth, async (req, res) => {
+  app.get("/api/ai-agents/stats", requireClerkAuth, async (req, res) => {
     try {
       const clerkId = req.auth.userId;
       
@@ -718,7 +727,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get persona stats
-      const personas = await storage.getAiPersonasByUserId(user.id);
+      const agents = await storage.getAiAgentsByUserId(user.id);
       
       // For now, we just return the personas with their built-in stats
       // In the future, we could aggregate additional stats from other tables
@@ -729,8 +738,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Create a new AI persona
-  app.post("/api/ai-personas", requireClerkAuth, async (req, res) => {
+  // Create a new AI agent
+  app.post("/api/ai-agents", requireClerkAuth, async (req, res) => {
     try {
       const clerkId = req.auth.userId;
       
@@ -747,45 +756,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check user's subscription plan and persona limit
       const subscription = await storage.getUserSubscription(user.id);
-      let personaLimit: number | null = null;
+      let agentLimit: number | null = null;
       
       if (subscription?.plan === 'starter') {
-        personaLimit = 20;
+        agentLimit = 20;
       } else if (subscription?.plan === 'professional') {
-        personaLimit = 100;
+        agentLimit = 100;
       }
       
       // If there's a limit, check if it's been reached
-      if (personaLimit !== null) {
-        const currentPersonas = await storage.getAiPersonasByUserId(user.id);
+      if (agentLimit !== null) {
+        const currentAgents = await storage.getAiAgentsByUserId(user.id);
         
-        if (currentPersonas.length >= personaLimit) {
+        if (currentPersonas.length >= agentLimit) {
           return res.status(403).json({ 
-            message: `Your plan allows a maximum of ${personaLimit} AI personas. Please upgrade your plan to create more.`,
+            message: `Your plan allows a maximum of ${agentLimit} AI agents. Please upgrade your plan to create more.`,
             currentCount: currentPersonas.length,
-            limit: personaLimit
+            limit: agentLimit
           });
         }
       }
       
       // Create the new persona
-      const newPersona = await storage.createAiPersona({
+      const newAgent = await storage.createAiAgent({
         ...req.body,
         userId: user.id
       });
       
-      res.status(201).json(newPersona);
+      res.status(201).json(newAgent);
     } catch (error) {
-      console.error("Error creating AI persona:", error);
-      res.status(500).json({ message: "Failed to create AI persona" });
+      console.error("Error creating AI agent:", error);
+      res.status(500).json({ message: "Failed to create AI agent" });
     }
   });
   
-  // Update an AI persona
-  app.patch("/api/ai-personas/:id", requireClerkAuth, async (req, res) => {
+  // Update an AI agent
+  app.patch("/api/ai-agents/:id", requireClerkAuth, async (req, res) => {
     try {
       const clerkId = req.auth.userId;
-      const personaId = parseInt(req.params.id);
+      const agentId = parseInt(req.params.id);
       
       if (!clerkId) {
         return res.status(401).json({ message: "Authentication required" });
@@ -799,31 +808,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if persona exists and belongs to this user
-      const persona = await storage.getAiPersona(personaId);
+      const persona = await storage.getAiAgent(agentId);
       
       if (!persona) {
-        return res.status(404).json({ message: "AI persona not found" });
+        return res.status(404).json({ message: "AI agent not found" });
       }
       
       if (persona.userId !== user.id) {
-        return res.status(403).json({ message: "You don't have permission to update this AI persona" });
+        return res.status(403).json({ message: "You don't have permission to update this AI agent" });
       }
       
       // Update the persona
-      const updatedPersona = await storage.updateAiPersona(personaId, req.body);
+      const updatedPersona = await storage.updateAiAgent(agentId, req.body);
       
       res.json(updatedPersona);
     } catch (error) {
-      console.error("Error updating AI persona:", error);
-      res.status(500).json({ message: "Failed to update AI persona" });
+      console.error("Error updating AI agent:", error);
+      res.status(500).json({ message: "Failed to update AI agent" });
     }
   });
   
-  // Delete an AI persona
-  app.delete("/api/ai-personas/:id", requireClerkAuth, async (req, res) => {
+  // Delete an AI agent
+  app.delete("/api/ai-agents/:id", requireClerkAuth, async (req, res) => {
     try {
       const clerkId = req.auth.userId;
-      const personaId = parseInt(req.params.id);
+      const agentId = parseInt(req.params.id);
       
       if (!clerkId) {
         return res.status(401).json({ message: "Authentication required" });
@@ -837,28 +846,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if persona exists and belongs to this user
-      const persona = await storage.getAiPersona(personaId);
+      const persona = await storage.getAiAgent(agentId);
       
       if (!persona) {
-        return res.status(404).json({ message: "AI persona not found" });
+        return res.status(404).json({ message: "AI agent not found" });
       }
       
       if (persona.userId !== user.id) {
-        return res.status(403).json({ message: "You don't have permission to delete this AI persona" });
+        return res.status(403).json({ message: "You don't have permission to delete this AI agent" });
       }
       
       // Delete the persona
-      await storage.deleteAiPersona(personaId);
+      await storage.deleteAiAgent(agentId);
       
       res.json({ success: true });
     } catch (error) {
-      console.error("Error deleting AI persona:", error);
-      res.status(500).json({ message: "Failed to delete AI persona" });
+      console.error("Error deleting AI agent:", error);
+      res.status(500).json({ message: "Failed to delete AI agent" });
     }
   });
   
-  // Generate AI personas from website keywords
-  app.post("/api/ai-personas/generate-from-website", requireClerkAuth, async (req, res) => {
+  // Generate AI agents from website keywords
+  app.post("/api/ai-agents/generate-from-website", requireClerkAuth, async (req, res) => {
     try {
       const clerkId = req.auth.userId;
       const { websiteUrl, count = 10 } = req.body;
@@ -880,25 +889,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check user's subscription plan and persona limit
       const subscription = await storage.getUserSubscription(user.id);
-      let personaLimit: number | null = null;
+      let agentLimit: number | null = null;
       let requestedCount = Math.min(count, 20); // Cap the initial request at 20
       
       if (subscription?.plan === 'starter') {
-        personaLimit = 20;
+        agentLimit = 20;
       } else if (subscription?.plan === 'professional') {
-        personaLimit = 100;
+        agentLimit = 100;
       }
       
       // If there's a limit, check how many personas can still be created
-      if (personaLimit !== null) {
-        const currentPersonas = await storage.getAiPersonasByUserId(user.id);
-        const remainingSlots = personaLimit - currentPersonas.length;
+      if (agentLimit !== null) {
+        const currentAgents = await storage.getAiAgentsByUserId(user.id);
+        const remainingSlots = agentLimit - currentPersonas.length;
         
         if (remainingSlots <= 0) {
           return res.status(403).json({ 
-            message: `Your plan allows a maximum of ${personaLimit} AI personas. Please upgrade your plan to create more.`,
+            message: `Your plan allows a maximum of ${agentLimit} AI agents. Please upgrade your plan to create more.`,
             currentCount: currentPersonas.length,
-            limit: personaLimit
+            limit: agentLimit
           });
         }
         
@@ -913,7 +922,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ message: "Failed to extract keywords from the website" });
       }
       
-      // Step 2: Generate AI personas based on the keywords
+      // Step 2: Generate AI agents based on the keywords
       const personalityOptions = [
         "Friendly", "Professional", "Analytical", "Creative", "Engaging",
         "Humorous", "Empathetic", "Direct", "Detailed", "Supportive"
@@ -924,7 +933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "Educational", "Persuasive", "Informative", "Conversational", "Technical"
       ];
       
-      const expertiseLevels = ["beginner", "intermediate", "expert"];
+      const expertiseLevels = ["beginner", "intermediate", "expert", "smart", "genius", "intelligent"];
       
       // Name generation function
       const generatePersonaName = (keyword: string, expertise: string) => {
@@ -971,10 +980,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         const name = generatePersonaName(keyword, expertise);
-        const description = `${personality} AI persona with ${expertise}-level expertise in ${personaKeywords.join(', ')}. Uses a ${tone.toLowerCase()} tone.`;
+        const description = `${personality} AI agent with ${expertise}-level expertise in ${personaKeywords.join(', ')}. Uses a ${tone.toLowerCase()} tone.`;
         
         // Create the persona in the database
-        const newPersona = await storage.createAiPersona({
+        const newAgent = await storage.createAiAgent({
           userId: user.id,
           name,
           description,
@@ -987,16 +996,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           active: true
         });
         
-        createdPersonas.push(newPersona);
+        createdPersonas.push(newAgent);
       }
       
       res.status(201).json({
-        message: `Generated ${createdPersonas.length} AI personas based on your website keywords`,
+        message: `Generated ${createdPersonas.length} AI agents based on your website keywords`,
         personas: createdPersonas
       });
     } catch (error) {
-      console.error("Error generating AI personas from website:", error);
-      res.status(500).json({ message: "Failed to generate AI personas from website" });
+      console.error("Error generating AI agents from website:", error);
+      res.status(500).json({ message: "Failed to generate AI agents from website" });
     }
   });
 
@@ -1009,7 +1018,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Prompt is required" });
       }
       
-      if (!personaType || !["beginner", "intermediate", "expert", "moderator"].includes(personaType)) {
+      if (!personaType || !["beginner", "intermediate", "expert", "smart", "genius", "intelligent", "moderator"].includes(personaType)) {
         return res.status(400).json({ message: "Valid persona type is required" });
       }
       
@@ -1163,7 +1172,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Keyword is required" });
       }
       
-      if (!["beginner", "intermediate", "expert"].includes(difficulty)) {
+      if (!["beginner", "intermediate", "expert", "smart", "genius", "intelligent"].includes(difficulty)) {
         return res.status(400).json({ message: "Valid difficulty level is required: beginner, intermediate, or expert" });
       }
       
@@ -1296,7 +1305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const answersPerQuestion = Math.min(answerCount || 3, 5); // Cap at 5 answers per question
         
         for (let i = 0; i < answersPerQuestion; i++) {
-          const answerPersona = i === 0 ? personaType : ["beginner", "intermediate", "expert", "moderator"][Math.floor(Math.random() * 4)];
+          const answerPersona = i === 0 ? personaType : ["beginner", "intermediate", "expert", "smart", "genius", "intelligent", "moderator"][Math.floor(Math.random() * 7)];
           
           console.log(`Generating ${answerPersona} answer for question: ${question.title}`);
           const answerContent = await generateAnswer(
@@ -1395,7 +1404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           categoryId,
           userId: req.user.id,
           isAiGenerated: true,
-          aiPersonaType: question.difficulty
+          aiAgentType: question.difficulty
         });
         
         createdQuestions.push(newQuestion.id);
@@ -1411,7 +1420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             questionId: newQuestion.id,
             userId: req.user.id,
             isAiGenerated: true,
-            aiPersonaType: answer.personaType
+            aiAgentType: answer.agentType
           });
         }
       }
@@ -2421,7 +2430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { personaType } = req.body;
       
-      if (!personaType || !["beginner", "intermediate", "expert", "moderator"].includes(personaType)) {
+      if (!personaType || !["beginner", "intermediate", "expert", "smart", "genius", "intelligent", "moderator"].includes(personaType)) {
         return res.status(400).json({ message: "Invalid persona type. Must be beginner, intermediate, expert, or moderator" });
       }
       
@@ -2434,7 +2443,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         questionId,
         content: answerContent,
         isAiGenerated: true,
-        aiPersonaType: personaType
+        aiAgentType: agentType
       });
       
       res.status(201).json(answer);
@@ -3861,8 +3870,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           endpoints: [
             { method: "POST", path: "/api/ai/generate-content", description: "Generate AI content" },
             { method: "POST", path: "/api/ai/analyze-seo", description: "Analyze content for SEO" },
-            { method: "GET", path: "/api/ai-personas", description: "Get AI personas" },
-            { method: "POST", path: "/api/ai-personas/generate", description: "Generate new AI persona" }
+            { method: "GET", path: "/api/ai-agents", description: "Get AI agents" },
+            { method: "POST", path: "/api/ai-agents/generate", description: "Generate new AI agent" }
           ]
         }
       ];
@@ -4615,7 +4624,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               content: questionData.content,
               categoryId: schedule.categoryId || 1, // Default to first category if none specified
               isAiGenerated: true,
-              aiPersonaType: questionData.difficulty
+              aiAgentType: questionData.difficulty
             });
             
             createdQuestionIds.push(newQuestion.id);
@@ -4922,11 +4931,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check valid persona types
-      if (!["beginner", "intermediate", "expert", "moderator"].includes(questionPersona)) {
+      if (!["beginner", "intermediate", "expert", "smart", "genius", "intelligent", "moderator"].includes(questionPersona)) {
         return res.status(400).json({ message: "Invalid question persona type" });
       }
       
-      if (!["beginner", "intermediate", "expert", "moderator"].includes(answerPersona)) {
+      if (!["beginner", "intermediate", "expert", "smart", "genius", "intelligent", "moderator"].includes(answerPersona)) {
         return res.status(400).json({ message: "Invalid answer persona type" });
       }
       
@@ -4948,7 +4957,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           content: q.content,
           keywordTargets: q.targetKeywords.primary + "," + q.targetKeywords.secondary.join(","),
           isAiGenerated: true,
-          aiPersonaType: questionPersona,
+          aiAgentType: questionPersona,
           status: schedulePublication ? 'scheduled' : 'published',
           categoryId: null // Could be enhanced to match to existing categories
         };
@@ -4965,7 +4974,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             questionId: newQuestion.id,
             content: answerContent,
             isAiGenerated: true,
-            aiPersonaType: answerPersona
+            aiAgentType: answerPersona
           };
           
           const newAnswer = await storage.createAnswer(answerData);
@@ -5238,6 +5247,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register the embed routes for JavaScript integration
   registerEmbedRoutes(app);
+
+  // Register PRD endpoints
+  app.use('/api', prdEndpoints);
 
   // User subscription plans
   app.post("/api/users/select-plan", requireClerkAuth, async (req, res) => {

@@ -1081,21 +1081,21 @@ export async function getAiActivity(req: Request, res: Response) {
     const aiQuestions = await storage.getAiGeneratedQuestionsByForum(forumId, startDate.toISOString(), endDate.toISOString(), limit / 2);
     const aiAnswers = await storage.getAiGeneratedAnswersByForum(forumId, startDate.toISOString(), endDate.toISOString(), limit / 2);
     
-    // Get AI personas
-    const aiPersonas = await storage.getAllAiPersonas();
+    // Get AI agents
+    const aiAgents = await storage.getAllAiAgents();
     
     // Map questions and answers to activity format
     const questionsActivity = aiQuestions.map(q => {
-      const persona = aiPersonas.find(p => p.type === q.aiPersonaType) || { 
-        name: q.aiPersonaType?.charAt(0).toUpperCase() + q.aiPersonaType?.slice(1) || "AI",
-        type: q.aiPersonaType || "intermediate"
+      const agent = aiAgents.find(p => p.type === q.aiAgentType) || { 
+        name: q.aiAgentType?.charAt(0).toUpperCase() + q.aiAgentType?.slice(1) || "AI",
+        type: q.aiAgentType || "intermediate"
       };
       
       return {
         id: q.id,
         type: "question",
-        personaType: q.aiPersonaType || "intermediate",
-        personaName: `AI ${persona.name}`,
+        agentType: q.aiAgentType || "intermediate",
+        agentName: `AI ${agent.name}`,
         action: "asked a question about",
         subject: q.title,
         timestamp: q.createdAt?.toISOString() || new Date().toISOString()
@@ -1103,9 +1103,9 @@ export async function getAiActivity(req: Request, res: Response) {
     });
     
     const answersActivity = aiAnswers.map(a => {
-      const persona = aiPersonas.find(p => p.type === a.aiPersonaType) || {
-        name: a.aiPersonaType?.charAt(0).toUpperCase() + a.aiPersonaType?.slice(1) || "AI",
-        type: a.aiPersonaType || "intermediate"
+      const agent = aiAgents.find(p => p.type === a.aiAgentType) || {
+        name: a.aiAgentType?.charAt(0).toUpperCase() + a.aiAgentType?.slice(1) || "AI",
+        type: a.aiAgentType || "intermediate"
       };
       
       // Get the first 40 characters of the answer content as the subject
@@ -1114,8 +1114,8 @@ export async function getAiActivity(req: Request, res: Response) {
       return {
         id: a.id,
         type: "answer",
-        personaType: a.aiPersonaType || "intermediate",
-        personaName: `AI ${persona.name}`,
+        agentType: a.aiAgentType || "intermediate",
+        agentName: `AI ${agent.name}`,
         action: "answered a question with",
         subject: subject,
         timestamp: a.createdAt?.toISOString() || new Date().toISOString()

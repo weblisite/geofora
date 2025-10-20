@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-type PersonaType = "beginner" | "intermediate" | "expert" | "moderator";
+type AgentType = "beginner" | "intermediate" | "expert" | "smart" | "genius" | "intelligent" | "moderator";
 
 interface UseAIOptions {
   onSuccess?: (data: any) => void;
@@ -25,10 +25,10 @@ export function useAI(options?: UseAIOptions) {
 
   // Generate AI content based on prompt and persona
   const generateContent = useMutation({
-    mutationFn: async ({ prompt, personaType }: { prompt: string; personaType: PersonaType }) => {
+    mutationFn: async ({ prompt, agentType }: { prompt: string; agentType: AgentType }) => {
       const response = await apiRequest("/api/ai/generate-content", {
         method: "POST",
-        body: JSON.stringify({ prompt, personaType }),
+        body: JSON.stringify({ prompt, agentType }),
       }) as any;
       return response.content;
     },
@@ -41,15 +41,15 @@ export function useAI(options?: UseAIOptions) {
     mutationFn: async ({ 
       topic, 
       count = 5, 
-      personaType = "beginner" 
+      agentType = "beginner" 
     }: { 
       topic: string; 
       count?: number; 
-      personaType?: PersonaType 
+      agentType?: AgentType 
     }) => {
       const response = await apiRequest("/api/ai/generate-seo-questions", {
         method: "POST",
-        body: JSON.stringify({ topic, count, personaType }),
+        body: JSON.stringify({ topic, count, agentType }),
       }) as any;
       return response.questions;
     },
@@ -81,15 +81,15 @@ export function useAI(options?: UseAIOptions) {
     mutationFn: async ({ 
       questionTitle, 
       questionContent,
-      personaType = "expert" 
+      agentType = "expert" 
     }: { 
       questionTitle: string;
       questionContent: string;
-      personaType?: PersonaType 
+      agentType?: AgentType 
     }) => {
       const response = await apiRequest("/api/ai/generate-answer", {
         method: "POST",
-        body: JSON.stringify({ questionTitle, questionContent, personaType }),
+        body: JSON.stringify({ questionTitle, questionContent, agentType }),
       }) as any;
       return response;
     },

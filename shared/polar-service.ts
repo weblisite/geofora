@@ -2,18 +2,21 @@
  * Polar.sh API configurations with actual product IDs
  */
 export const POLAR_PLAN_IDS = {
-  starter: '9dbc8276-eb2a-4b8a-81ec-e3c7962ed314',
-  professional: 'cec301e0-e05e-4515-9bc3-297e6833496a',
-  enterprise: '5cea5e8b-dd39-4c28-bcb0-0912b17bfcba'
+  starter: 'd0730b9c-f150-47fb-b07c-8e523b246db8',
+  professional: '66a68545-b8ea-46ca-b508-fc39bf0a8c50',
+  enterprise: '80465f02-cc68-4791-a688-b6238dfdbd5c',
+  setupFee: '1038c474-8c95-4d7d-be31-f23edbbb2bae'
 };
 
 /**
  * Direct checkout links for Polar.sh
+ * These are the actual working checkout links from the Polar dashboard
  */
 export const POLAR_CHECKOUT_LINKS = {
-  starter: 'https://buy.polar.sh/polar_cl_saQVhkF5OgG3xuhn3eZm5G3gQUA0rAx17BHB43INwPN',
-  professional: 'https://buy.polar.sh/polar_cl_oCymEewojyAWOZOHjZJRC1PQGo0ES0Tu2eeVh1S3N6Y',
-  enterprise: 'https://buy.polar.sh/polar_cl_bXNvmdougqf83av9fFAH1DA6y3ghNMzf5Kzwy38RLVX'
+  starter: `https://buy.polar.sh/polar_cl_z9PxBnvvDTjfSb4IDOmOM30W2bfIwFaHt16bc4DiGaH`,
+  professional: `https://buy.polar.sh/polar_cl_nNegJ32BTcR5bIUglohIVHhs1LAeQWDadbzBd2ySeZe`,
+  enterprise: `https://buy.polar.sh/polar_cl_H7ppbjjjsOm32HWpElBG4Xt9BbPxm9hMrtNW81LfOyo`,
+  setupFee: `https://buy.polar.sh/polar_cl_T0pfP9bMQg3bsxRGp6WemJcviEfGcPXRs85nx3pd2Qh`
 };
 
 /**
@@ -129,50 +132,85 @@ export interface PlanInfo {
 }
 
 /**
- * Map of plan information by plan ID
+ * Map of plan information by plan ID - Updated for PRD
  */
 export const PLAN_INFO: Record<string, PlanInfo> = {
   [POLAR_PLAN_IDS.starter]: {
     id: POLAR_PLAN_IDS.starter,
     name: 'Starter',
-    price: '$99/month',
+    price: '$299/month',
     features: [
-      'Up to 500 AI-generated questions',
-      'Up to 10,000 AI-generated answers',
-      '20 AI personas',
-      'Basic keyword optimization',
-      'Lead capture forms',
-      'Standard analytics',
+      '1 AI Provider (OpenAI)',
+      '2 AI Personas (LegacyBot, Scholar)',
+      '30 questions per day',
+      '2 responses per question',
+      '60 AI conversations per day',
+      'Basic Business Analysis',
+      'Standard SEO Features',
+      'Email Support',
+      'Up to 900 Q&A pairs per month',
+      'Basic Analytics Dashboard',
+      'Data Anonymization Pipeline',
+      'Consent Management System'
     ]
   },
   [POLAR_PLAN_IDS.professional]: {
     id: POLAR_PLAN_IDS.professional,
-    name: 'Professional',
-    price: '$199/month',
+    name: 'Pro',
+    price: '$499/month',
     features: [
-      'Unlimited AI-generated questions',
-      'Up to 50,000 AI-generated answers',
-      '100 AI personas',
-      'Advanced keyword optimization',
-      'Premium lead capture system',
-      'Comprehensive analytics',
-      'Custom branding',
-      'Advanced interlinking',
+      '3 AI Providers (OpenAI, Anthropic, DeepSeek)',
+      '5 AI Personas (LegacyBot, Scholar, Sage, TechnicalExpert, MetaLlama)',
+      '100 questions per day',
+      '5 responses per question',
+      '500 AI conversations per day',
+      'Advanced Business Analysis',
+      'Advanced SEO Features',
+      'Priority Support',
+      'Up to 3,000 Q&A pairs per month',
+      'Advanced Analytics Dashboard',
+      'Brand Voice Integration',
+      'Industry Detection Algorithm',
+      'Sequential Response System',
+      'Context Awareness System',
+      'Personality Consistency System'
     ]
   },
   [POLAR_PLAN_IDS.enterprise]: {
     id: POLAR_PLAN_IDS.enterprise,
     name: 'Enterprise',
-    price: '$399/month',
+    price: '$999/month',
     features: [
-      'Everything in Professional',
-      'Unlimited AI-generated answers',
-      'Unlimited AI personas',
-      'Enterprise-grade security',
-      'Custom AI training',
-      'Advanced API access',
-      'Dedicated support team',
-      'Custom integrations',
+      'All 6 AI Providers (OpenAI, Anthropic, DeepSeek, Google, Meta, XAI)',
+      'All 8 AI Personas (LegacyBot, Scholar, Sage, TechnicalExpert, MetaLlama, Oracle, GlobalContext, GrokWit)',
+      '250 questions per day',
+      '8 responses per question',
+      '2,000 AI conversations per day',
+      'Complete Business Analysis Suite',
+      'Complete SEO Suite',
+      'Dedicated Support',
+      'Up to 7,500 Q&A pairs per month',
+      'Complete Analytics Suite',
+      'Complete Brand Voice Integration',
+      'Complete Industry Detection',
+      'Complete Sequential Responses',
+      'Context Awareness System',
+      'Personality Consistency System',
+      'Data Export Functionality',
+      'Privacy Controls & GDPR Compliance',
+      'Custom Integrations',
+      'SLA Guarantee',
+      'Custom AI Model Training ($2K-$10K per model)'
     ]
   }
 };
+
+/**
+ * Setup fee configuration for PRD
+ */
+export const SETUP_FEE_CONFIG = {
+  AMOUNT: 100000, // $1,000 in cents
+  CURRENCY: 'usd',
+  DESCRIPTION: 'One-time setup fee for GEOFORA platform access',
+  REQUIRED_FOR: ['starter', 'professional', 'enterprise'] as const
+} as const;

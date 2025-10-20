@@ -6,8 +6,8 @@ import { formatDate } from "@/lib/utils";
 interface AIActivity {
   id: number;
   type: "answer" | "question" | "moderation" | "response";
-  personaType: "beginner" | "intermediate" | "expert" | "moderator";
-  personaName: string;
+  agentType: "beginner" | "intermediate" | "expert" | "smart" | "genius" | "intelligent" | "moderator";
+  agentName: string;
   action: string;
   subject: string;
   timestamp: string;
@@ -19,12 +19,18 @@ export default function AIActivity() {
     queryKey: [`/api/analytics/ai-activity`],
   });
 
-  const getIconForPersonaType = (type: string) => {
+  const getIconForAgentType = (type: string) => {
     switch (type) {
       case "expert":
         return "psychology";
       case "beginner":
         return "help";
+      case "smart":
+        return "lightbulb";
+      case "genius":
+        return "auto_awesome";
+      case "intelligent":
+        return "school";
       case "moderator":
         return "psychology_alt";
       default:
@@ -32,12 +38,18 @@ export default function AIActivity() {
     }
   };
 
-  const getColorForPersonaType = (type: string) => {
+  const getColorForAgentType = (type: string) => {
     switch (type) {
       case "expert":
         return "primary";
       case "beginner":
         return "secondary";
+      case "smart":
+        return "blue";
+      case "genius":
+        return "purple";
+      case "intelligent":
+        return "green";
       case "moderator":
         return "accent";
       default:
@@ -73,14 +85,14 @@ export default function AIActivity() {
           {displayActivities.map((activity) => (
             <div key={activity.id} className="flex items-start">
               <div className="flex-shrink-0 mr-3">
-                <div className={`w-8 h-8 rounded-full bg-${getColorForPersonaType(activity.personaType)}-500/20 flex items-center justify-center text-${getColorForPersonaType(activity.personaType)}-400`}>
-                  <span className="material-icons text-sm">{getIconForPersonaType(activity.personaType)}</span>
+                                        <div className={`w-8 h-8 rounded-full bg-${getColorForAgentType(activity.agentType)}-500/20 flex items-center justify-center text-${getColorForAgentType(activity.agentType)}-400`}>
+                          <span className="material-icons text-sm">{getIconForAgentType(activity.agentType)}</span>
                 </div>
               </div>
               <div>
                 <p className="text-sm">
-                  <span className={`font-medium text-${getColorForPersonaType(activity.personaType)}-400`}>
-                    {activity.personaName}
+                  <span className={`font-medium text-${getColorForAgentType(activity.agentType)}-400`}>
+                    {activity.agentName}
                   </span>{" "}
                   {activity.action} "{activity.subject}"
                 </p>

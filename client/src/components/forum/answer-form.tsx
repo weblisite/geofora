@@ -27,7 +27,7 @@ interface AnswerFormProps {
 export default function AnswerForm({ questionId }: AnswerFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedPersona, setSelectedPersona] = useState<string>("expert");
+  const [selectedAgent, setSelectedAgent] = useState<string>("expert");
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   
   // Define interface for interlinking suggestions
@@ -51,7 +51,7 @@ export default function AnswerForm({ questionId }: AnswerFormProps) {
         setIsGeneratingAI(false);
         toast({
           title: "AI Answer Generated",
-          description: `A ${selectedPersona}-level answer has been generated.`,
+          description: `A ${selectedAgent}-level answer has been generated.`,
         });
       } else if (Array.isArray(data)) {
         // Handle interlinking suggestions success
@@ -129,7 +129,7 @@ export default function AnswerForm({ questionId }: AnswerFormProps) {
     generateAnswer.mutate({ 
       questionTitle: question.title, 
       questionContent: question.content,
-      personaType: selectedPersona as "beginner" | "intermediate" | "expert" | "moderator" 
+      agentType: selectedAgent as "beginner" | "intermediate" | "expert" | "smart" | "genius" | "intelligent" | "moderator" 
     });
   };
   
@@ -243,8 +243,8 @@ export default function AnswerForm({ questionId }: AnswerFormProps) {
           </div>
           <div className="flex items-center space-x-2">
             <Select
-              value={selectedPersona}
-              onValueChange={setSelectedPersona}
+                                      value={selectedAgent}
+                        onValueChange={setSelectedAgent}
               disabled={isGeneratingAI}
             >
               <SelectTrigger className="w-[140px] h-8 px-2 text-xs border border-dark-400 bg-dark-800">
@@ -254,6 +254,9 @@ export default function AnswerForm({ questionId }: AnswerFormProps) {
                 <SelectItem value="beginner" className="text-xs">Beginner</SelectItem>
                 <SelectItem value="intermediate" className="text-xs">Intermediate</SelectItem>
                 <SelectItem value="expert" className="text-xs">Expert</SelectItem>
+                <SelectItem value="smart" className="text-xs">Smart</SelectItem>
+                <SelectItem value="genius" className="text-xs">Genius</SelectItem>
+                <SelectItem value="intelligent" className="text-xs">Intelligent</SelectItem>
                 <SelectItem value="moderator" className="text-xs">Moderator</SelectItem>
               </SelectContent>
             </Select>

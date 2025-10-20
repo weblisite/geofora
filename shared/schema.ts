@@ -2,7 +2,7 @@ import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, real, 
 import { relations, type SQL } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import type { JSON as Json } from "drizzle-orm/pg-core";
+import type { json as Json } from "drizzle-orm/pg-core";
 
 // =============================================
 // TABLE DEFINITIONS - ALL TABLES DEFINED FIRST
@@ -110,7 +110,7 @@ export const questions = pgTable("questions", {
   categoryId: integer("category_id").notNull().references(() => categories.id),
   views: integer("views").default(0),
   isAiGenerated: boolean("is_ai_generated").default(false),
-  aiPersonaType: text("ai_persona_type"),
+  aiAgentType: text("ai_agent_type"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -121,7 +121,7 @@ export const answers = pgTable("answers", {
   userId: integer("user_id").notNull().references(() => users.id),
   questionId: integer("question_id").notNull().references(() => questions.id),
   isAiGenerated: boolean("is_ai_generated").default(false),
-  aiPersonaType: text("ai_persona_type"),
+  aiAgentType: text("ai_agent_type"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -133,21 +133,64 @@ export const votes = pgTable("votes", {
   isUpvote: boolean("is_upvote").default(true),
 });
 
-// AI personas configuration
+// AI providers configuration (as per PRD)
+export const aiProviders = pgTable("ai_providers", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(), // 'openai', 'anthropic', 'deepseek', etc.
+  displayName: text("display_name").notNull(),
+  apiKey: text("api_key").notNull(),
+  isActive: boolean("is_active").default(true),
+  rateLimits: jsonb("rate_limits"), // JSON with rate limit configuration
+  capabilities: jsonb("capabilities"), // JSON with provider capabilities
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// AI models/personas configuration (as per PRD)
+export const aiModels = pgTable("ai_models", {
+  id: serial("id").primaryKey(),
+  providerId: integer("provider_id").notNull().references(() => aiProviders.id),
+  name: text("name").notNull(), // Model name like 'gpt-4', 'claude-3-sonnet-20240229'
+  displayName: text("display_name").notNull(),
+  description: text("description"),
+  knowledgeCutoff: timestamp("knowledge_cutoff"),
+  isActive: boolean("is_active").default(true),
+  capabilities: jsonb("capabilities"), // JSON with model capabilities
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// PRD-specified AI personas
 export const aiPersonas = pgTable("ai_personas", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id), // Owner of the persona
+  name: text("name").notNull().unique(), // 'legacybot', 'scholar', 'sage', etc.
+  era: text("era").notNull(), // '2021-2022', '2023', '2024', '2025'
+  providerId: integer("provider_id").notNull().references(() => aiProviders.id),
+  modelId: integer("model_id").notNull().references(() => aiModels.id),
+  knowledgeLevel: text("knowledge_level").notNull(), // 'basic', 'intermediate', 'advanced', 'expert'
+  personality: text("personality").notNull(),
+  useCase: text("use_case").notNull(),
+  systemPrompt: text("system_prompt").notNull(),
+  temperature: real("temperature").default(0.7),
+  maxTokens: integer("max_tokens").default(1000),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// AI agents configuration (legacy - keeping for backward compatibility)
+export const aiAgents = pgTable("ai_agents", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id), // Owner of the agent
   name: text("name").notNull(),
-  type: text("type").notNull(), // 'beginner', 'intermediate', 'expert', 'moderator'
+  type: text("type").notNull(), // 'beginner', 'intermediate', 'expert', 'smart', 'genius', 'intelligent', 'moderator'
   personality: text("personality"), // Personality traits
   tone: text("tone"), // Communication tone
   responseLength: integer("response_length").default(3), // 1-5 scale
   avatar: text("avatar"),
   description: text("description"),
   expertise: text("expertise"), // Specific domain expertise based on keywords
-  keywords: text("keywords").array(), // Keywords this persona specializes in
+  keywords: text("keywords").array(), // Keywords this agent specializes in
   active: boolean("active").default(true),
-  usageCount: integer("usage_count").default(0), // Number of times this persona has been used
+  usageCount: integer("usage_count").default(0), // Number of times this agent has been used
   rating: real("rating").default(4.5), // Average user rating
   responseTime: real("response_time").default(2.0), // Average response time in seconds
   completionRate: integer("completion_rate").default(98), // Percentage of successful completions
@@ -322,6 +365,62 @@ export const contentPerformanceMetrics = pgTable("content_performance_metrics", 
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Data sharing consent (as per PRD)
+export const dataSharingConsent = pgTable("data_sharing_consent", {
+  id: serial("id").primaryKey(),
+  organizationId: integer("organization_id").notNull().references(() => forums.id), // Using forums as organizations
+  providerId: integer("provider_id").notNull().references(() => aiProviders.id),
+  hasConsent: boolean("has_consent").default(false),
+  consentDate: timestamp("consent_date"),
+  consentVersion: text("consent_version").notNull(),
+  dataScope: jsonb("data_scope"), // JSON defining what data can be shared
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Anonymized data for AI training (as per PRD)
+export const anonymizedData = pgTable("anonymized_data", {
+  id: serial("id").primaryKey(),
+  organizationId: integer("organization_id").notNull().references(() => forums.id),
+  threadId: integer("thread_id").notNull().references(() => questions.id),
+  postId: integer("post_id").notNull().references(() => answers.id),
+  anonymizedContent: text("anonymized_content").notNull(),
+  dataType: text("data_type").notNull(), // 'question', 'answer', 'conversation'
+  aiProvider: text("ai_provider").notNull(),
+  aiModel: text("ai_model").notNull(),
+  consentVersion: text("consent_version").notNull(),
+  exported: boolean("exported").default(false),
+  exportedAt: timestamp("exported_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Usage tracking for billing (as per PRD)
+export const usageLogs = pgTable("usage_logs", {
+  id: serial("id").primaryKey(),
+  organizationId: integer("organization_id").notNull().references(() => forums.id),
+  date: timestamp("date").notNull(),
+  questionsGenerated: integer("questions_generated").default(0),
+  responsesGenerated: integer("responses_generated").default(0),
+  apiCalls: integer("api_calls").default(0),
+  tokensUsed: integer("tokens_used").default(0),
+  costEstimate: real("cost_estimate").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Setup fees (as per PRD)
+export const setupFees = pgTable("setup_fees", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  amount: integer("amount").notNull(), // Amount in cents
+  currency: text("currency").notNull().default("usd"),
+  status: text("status").notNull().default("pending"), // 'pending', 'paid', 'failed', 'refunded'
+  paymentIntentId: text("payment_intent_id"), // Stripe payment intent ID
+  stripeSessionId: text("stripe_session_id"), // Stripe session ID
+  polarOrderId: text("polar_order_id"), // Polar order ID
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Analytics events for tracking user behavior
 export const analyticsEvents = pgTable("analytics_events", {
   id: serial("id").primaryKey(),
@@ -467,7 +566,7 @@ export const contentSchedules = pgTable("content_schedules", {
   scheduledFor: timestamp("scheduled_for").notNull(),
   publishedAt: timestamp("published_at"),
   status: text("status").default("scheduled"), // 'scheduled', 'published', 'failed'
-  aiPersonaType: text("ai_persona_type"), // Type of AI persona to use if AI-generated
+  aiAgentType: text("ai_agent_type"), // Type of AI agent to use if AI-generated
   qualitySettings: jsonb("quality_settings"), // JSON of quality settings
   targetWordCount: integer("target_word_count"),
   numberOfAnswers: integer("number_of_answers").default(1), // How many AI answers to generate
@@ -530,7 +629,7 @@ export const insertQuestionSchema = createInsertSchema(questions).pick({
   userId: true,
   categoryId: true,
   isAiGenerated: true,
-  aiPersonaType: true,
+  aiAgentType: true,
 });
 
 export const insertAnswerSchema = createInsertSchema(answers).pick({
@@ -538,7 +637,7 @@ export const insertAnswerSchema = createInsertSchema(answers).pick({
   userId: true,
   questionId: true,
   isAiGenerated: true,
-  aiPersonaType: true,
+  aiAgentType: true,
 });
 
 export const insertVoteSchema = createInsertSchema(votes).pick({
@@ -547,7 +646,7 @@ export const insertVoteSchema = createInsertSchema(votes).pick({
   isUpvote: true,
 });
 
-export const insertAiPersonaSchema = createInsertSchema(aiPersonas).pick({
+export const insertAiAgentSchema = createInsertSchema(aiAgents).pick({
   userId: true,
   name: true,
   type: true,
@@ -675,7 +774,7 @@ export const insertContentScheduleSchema = createInsertSchema(contentSchedules).
   content: true,
   scheduledFor: true,
   status: true,
-  aiPersonaType: true,
+  aiAgentType: true,
   qualitySettings: true,
   targetWordCount: true,
   numberOfAnswers: true,
@@ -867,8 +966,8 @@ export type InsertAnswer = z.infer<typeof insertAnswerSchema>;
 export type Vote = typeof votes.$inferSelect;
 export type InsertVote = z.infer<typeof insertVoteSchema>;
 
-export type AiPersona = typeof aiPersonas.$inferSelect;
-export type InsertAiPersona = z.infer<typeof insertAiPersonaSchema>;
+export type AiAgent = typeof aiAgents.$inferSelect;
+export type InsertAiAgent = z.infer<typeof insertAiAgentSchema>;
 
 export type MainSitePage = typeof mainSitePages.$inferSelect;
 export type InsertMainSitePage = z.infer<typeof insertMainSitePageSchema>;
@@ -1009,10 +1108,10 @@ export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => 
   }),
 }));
 
-// AI Persona relations
-export const aiPersonasRelations = relations(aiPersonas, ({ one }) => ({
+// AI Agent relations
+export const aiAgentsRelations = relations(aiAgents, ({ one }) => ({
   user: one(users, {
-    fields: [aiPersonas.userId],
+    fields: [aiAgents.userId],
     references: [users.id],
   }),
 }));
@@ -1030,7 +1129,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   userForumRoles: many(userForumRoles),
   contentInterlinks: many(contentInterlinks, { relationName: "createdByUser" }),
   contentSchedules: many(contentSchedules),
-  aiPersonas: many(aiPersonas),
+  aiAgents: many(aiAgents),
 }));
 
 // User-Forum-Role relations

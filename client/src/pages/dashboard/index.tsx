@@ -10,6 +10,7 @@ import MobileNav from "@/components/dashboard/mobile-nav";
 import TrafficAnalysis from "@/components/dashboard/traffic-analysis";
 import Conversions from "@/components/dashboard/conversions";
 import { Button } from "@/components/ui/button";
+import { GradientText } from "@/components/ui/gradient-text";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,9 +25,17 @@ const Interlinking = lazy(() => import("@/components/dashboard/interlinking"));
 const Analytics = lazy(() => import("@/components/dashboard/analytics"));
 const LeadCapture = lazy(() => import("@/components/dashboard/lead-capture"));
 const CRMIntegrations = lazy(() => import("@/components/dashboard/crm-integrations"));
-const AIPersonas = lazy(() => import("@/components/dashboard/ai-personas"));
+const AIAgents = lazy(() => import("@/components/dashboard/ai-agents"));
 const Integration = lazy(() => import("@/components/dashboard/integration"));
 const Settings = lazy(() => import("@/components/dashboard/settings"));
+
+// New PRD components
+const AIPersonasDashboard = lazy(() => import("@/components/dashboard/ai-personas"));
+const DataExportDashboard = lazy(() => import("@/components/dashboard/data-export"));
+const SetupFeeManagement = lazy(() => import("@/components/dashboard/setup-fee"));
+const BusinessAnalysisDashboard = lazy(() => import("@/components/dashboard/business-analysis"));
+const IndustryDetectionDashboard = lazy(() => import("@/components/dashboard/industry-detection"));
+const BrandVoiceDashboard = lazy(() => import("@/components/dashboard/brand-voice"));
 
 // Define the stats type
 interface DashboardStats {
@@ -106,8 +115,8 @@ export default function DashboardPage() {
         return ['/api/analytics/traffic', '/api/analytics/daily-traffic', '/api/analytics/sources', '/api/analytics/devices', '/api/analytics/geographic'];
       case 'integration':
         return ['/api/integration/stats', '/api/integration/webhooks', '/api/integration/event-types', '/api/integration/api-resources'];
-      case 'personas':
-        return ['/api/personas', '/api/personas/stats'];
+      case 'agents':
+        return ['/api/ai-agents', '/api/ai-agents/stats'];
       case 'settings':
         return ['/api/settings', '/api/user/profile'];
       default:
@@ -168,11 +177,11 @@ export default function DashboardPage() {
           </Suspense>
         </div>
       );
-    } else if (location === "/dashboard/personas") {
+    } else if (location === "/dashboard/agents") {
       return (
         <div className="p-6">
           <Suspense fallback={<LoadingComponent />}>
-            <AIPersonas />
+            <AIAgents />
           </Suspense>
         </div>
       );
@@ -216,6 +225,54 @@ export default function DashboardPage() {
           </Suspense>
         </div>
       );
+    } else if (location === "/dashboard/ai-personas") {
+      return (
+        <div className="p-6">
+          <Suspense fallback={<LoadingComponent />}>
+            <AIPersonasDashboard />
+          </Suspense>
+        </div>
+      );
+    } else if (location === "/dashboard/data-export") {
+      return (
+        <div className="p-6">
+          <Suspense fallback={<LoadingComponent />}>
+            <DataExportDashboard />
+          </Suspense>
+        </div>
+      );
+    } else if (location === "/dashboard/setup-fee") {
+      return (
+        <div className="p-6">
+          <Suspense fallback={<LoadingComponent />}>
+            <SetupFeeManagement />
+          </Suspense>
+        </div>
+      );
+    } else if (location === "/dashboard/business-analysis") {
+      return (
+        <div className="p-6">
+          <Suspense fallback={<LoadingComponent />}>
+            <BusinessAnalysisDashboard />
+          </Suspense>
+        </div>
+      );
+    } else if (location === "/dashboard/industry-detection") {
+      return (
+        <div className="p-6">
+          <Suspense fallback={<LoadingComponent />}>
+            <IndustryDetectionDashboard />
+          </Suspense>
+        </div>
+      );
+    } else if (location === "/dashboard/brand-voice") {
+      return (
+        <div className="p-6">
+          <Suspense fallback={<LoadingComponent />}>
+            <BrandVoiceDashboard />
+          </Suspense>
+        </div>
+      );
     }
     
     // Overview page (main dashboard)
@@ -255,15 +312,15 @@ export default function DashboardPage() {
                 </TabsTrigger>
                 <TabsTrigger value="ai" className="flex items-center">
                   <Lightbulb className="w-4 h-4 mr-1" />
-                  AI Tools
+                  Multi-Model AI
                 </TabsTrigger>
                 <TabsTrigger value="traffic" className="flex items-center">
                   <LineChart className="w-4 h-4 mr-1" />
-                  Traffic Analysis
+                  GEO Analytics
                 </TabsTrigger>
                 <TabsTrigger value="conversions" className="flex items-center">
                   <MousePointerClick className="w-4 h-4 mr-1" />
-                  Conversions
+                  Data Export
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -320,15 +377,15 @@ export default function DashboardPage() {
               </TabsTrigger>
               <TabsTrigger value="ai" className="flex flex-col items-center py-2">
                 <Lightbulb className="w-4 h-4 mb-1" />
-                <span className="text-xs">AI Tools</span>
+                <span className="text-xs">Multi-Model AI</span>
               </TabsTrigger>
               <TabsTrigger value="traffic" className="flex flex-col items-center py-2">
                 <LineChart className="w-4 h-4 mb-1" />
-                <span className="text-xs">Traffic</span>
+                <span className="text-xs">GEO Analytics</span>
               </TabsTrigger>
               <TabsTrigger value="conversions" className="flex flex-col items-center py-2">
                 <MousePointerClick className="w-4 h-4 mb-1" />
-                <span className="text-xs">Conversions</span>
+                <span className="text-xs">Data Export</span>
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -362,46 +419,46 @@ export default function DashboardPage() {
                  displayStats.conversions ? (
                 <>
                   <StatsCard
-                    title="Total Questions"
+                    title="AI Providers Active"
                     value={displayStats.questions.total.toLocaleString()}
                     trend={{
                       value: displayStats.questions.trend,
                       positive: displayStats.questions.trendPositive,
                     }}
-                    icon="help"
+                    icon="psychology"
                     color="primary"
                   />
                   
                   <StatsCard
-                    title="Total Answers"
+                    title="AI Personas Deployed"
                     value={displayStats.answers.total.toLocaleString()}
                     trend={{
                       value: displayStats.answers.trend,
                       positive: displayStats.answers.trendPositive,
                     }}
-                    icon="question_answer"
+                    icon="smart_toy"
                     color="secondary"
                   />
                   
                   <StatsCard
-                    title="Forum Traffic"
+                    title="Data Exports Generated"
                     value={displayStats.traffic.total.toLocaleString()}
                     trend={{
                       value: displayStats.traffic.trend,
                       positive: displayStats.traffic.trendPositive,
                     }}
-                    icon="visibility"
+                    icon="cloud_download"
                     color="accent"
                   />
                   
                   <StatsCard
-                    title="Lead Conversions"
+                    title="GEO Influence Score"
                     value={displayStats.conversions.total.toLocaleString()}
                     trend={{
                       value: displayStats.conversions.trend,
                       positive: displayStats.conversions.trendPositive,
                     }}
-                    icon="person_add"
+                    icon="trending_up"
                     color="primary"
                   />
                 </>
@@ -410,6 +467,52 @@ export default function DashboardPage() {
                   <p className="text-muted-foreground">No dashboard statistics available. Please check your database connection.</p>
                 </div>
               )}
+            </div>
+            
+            {/* GEOFORA Overview Section */}
+            <div className="mb-8">
+              <div className="bg-gradient-to-r from-primary-600/20 to-secondary-600/20 rounded-lg p-6 border border-primary-500/30">
+                <div className="flex items-center mb-4">
+                  <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center mr-3">
+                    <span className="material-icons text-white text-sm">psychology</span>
+                  </div>
+                  <h2 className="text-xl font-bold">
+                    <GradientText>Generative Engine Optimization</GradientText>
+                  </h2>
+                </div>
+                <p className="text-gray-300 mb-4">
+                  Influence AI training datasets for long-term discovery. Your content shapes how future AI models understand your industry.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center">
+                      <span className="material-icons text-white text-xs">smart_toy</span>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium">8 AI Personas</div>
+                      <div className="text-xs text-gray-400">Temporal dialogues across eras</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-6 h-6 bg-secondary-500 rounded-full flex items-center justify-center">
+                      <span className="material-icons text-white text-xs">psychology</span>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium">6 AI Providers</div>
+                      <div className="text-xs text-gray-400">Multi-model intelligence</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-6 h-6 bg-accent-500 rounded-full flex items-center justify-center">
+                      <span className="material-icons text-white text-xs">cloud_download</span>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium">Data Export</div>
+                      <div className="text-xs text-gray-400">Anonymized AI training data</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
             
             {/* Chart and AI Activity */}

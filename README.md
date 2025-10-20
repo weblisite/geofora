@@ -20,7 +20,7 @@ GeoFora is a comprehensive platform that combines forum functionality with AI-po
 - AI-generated questions and answers
 - Smart content suggestions
 - SEO-optimized content creation
-- Multiple AI personas
+- Multiple AI agents
 
 ### 📊 **Analytics & SEO**
 - Comprehensive traffic analytics

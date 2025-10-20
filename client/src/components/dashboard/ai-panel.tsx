@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { GradientText } from "@/components/ui/gradient-text";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PERSONA_TYPES } from "@/lib/constants";
-import { AlertCircle, FileCheck, Lightbulb, LinkIcon, Scale, SearchIcon, Sparkles, Zap } from "lucide-react";
+import { AGENT_TYPES } from "@/lib/constants";
+import { AlertCircle, FileCheck, Lightbulb, LinkIcon, Scale, SearchIcon, Sparkles, Zap, Brain, Gem, Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AIPanel() {
@@ -14,7 +14,7 @@ export default function AIPanel() {
   const [prompt, setPrompt] = useState("");
   const [topic, setTopic] = useState("");
   const [questionCount, setQuestionCount] = useState(5);
-  const [selectedPersona, setSelectedPersona] = useState<"beginner" | "intermediate" | "expert" | "moderator">("expert");
+  const [selectedAgent, setSelectedAgent] = useState<"beginner" | "intermediate" | "expert" | "smart" | "genius" | "intelligent" | "moderator">("expert");
   const [content, setContent] = useState("");
   const [seoTitle, setSeoTitle] = useState("");
   const [seoContent, setSeoContent] = useState("");
@@ -48,7 +48,7 @@ export default function AIPanel() {
 
     const result = await generateContent.mutateAsync({
       prompt,
-      personaType: selectedPersona,
+              agentType: selectedAgent,
     });
 
     setContent(result);
@@ -67,7 +67,7 @@ export default function AIPanel() {
     const result = await generateSeoQuestions.mutateAsync({
       topic,
       count: questionCount,
-      personaType: selectedPersona,
+              agentType: selectedAgent,
     });
 
     setContent(result.join("\n\n"));
@@ -168,30 +168,33 @@ export default function AIPanel() {
             <div>
               <label className="block text-sm mb-2">Select AI Persona</label>
               <div className="flex flex-wrap gap-2">
-                {Object.entries(PERSONA_TYPES).map(([key, persona]) => (
+                {Object.entries(AGENT_TYPES).map(([key, agent]) => (
                   <Button
                     key={key}
-                    variant={selectedPersona === key ? "default" : "outline"}
+                    variant={selectedAgent === key ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setSelectedPersona(key as any)}
+                    onClick={() => setSelectedAgent(key as any)}
                     className="flex items-center gap-1"
                   >
                     {key === "expert" && <Sparkles className="w-4 h-4" />}
                     {key === "beginner" && <AlertCircle className="w-4 h-4" />}
                     {key === "intermediate" && <Zap className="w-4 h-4" />}
+                    {key === "smart" && <Lightbulb className="w-4 h-4" />}
+                    {key === "genius" && <Trophy className="w-4 h-4" />}
+                    {key === "intelligent" && <Brain className="w-4 h-4" />}
                     {key === "moderator" && <Scale className="w-4 h-4" />}
-                    {persona.name}
+                    {agent.name}
                   </Button>
                 ))}
               </div>
             </div>
             
             <div>
-              <label className="block text-sm mb-2">Prompt</label>
+              <label className="block text-sm mb-2">Dialogue Prompt</label>
               <Textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Enter a prompt for content generation..."
+                placeholder="Enter a prompt for temporal dialogue generation..."
                 className="min-h-[100px]"
               />
             </div>
@@ -206,7 +209,7 @@ export default function AIPanel() {
               ) : (
                 <Sparkles className="w-4 h-4 mr-2" />
               )}
-              Generate Content
+              Generate Temporal Dialogue
             </Button>
           </div>
         );
@@ -215,17 +218,17 @@ export default function AIPanel() {
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm mb-2">Topic</label>
+              <label className="block text-sm mb-2">Business Topic</label>
               <Textarea
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                placeholder="Enter a topic or keyword for question generation..."
+                placeholder="Enter your business topic or industry for analysis..."
                 className="min-h-[80px]"
               />
             </div>
             
             <div className="flex items-center justify-between">
-              <label className="block text-sm">Number of Questions</label>
+              <label className="block text-sm">Analysis Depth</label>
               <div className="flex items-center">
                 <Button
                   variant="outline"
@@ -250,14 +253,14 @@ export default function AIPanel() {
             <div>
               <label className="block text-sm mb-2">AI Persona Level</label>
               <div className="flex flex-wrap gap-2">
-                {Object.entries(PERSONA_TYPES).map(([key, persona]) => (
+                {Object.entries(AGENT_TYPES).map(([key, agent]) => (
                   <Button
                     key={key}
-                    variant={selectedPersona === key ? "default" : "outline"}
+                    variant={selectedAgent === key ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setSelectedPersona(key as any)}
+                    onClick={() => setSelectedAgent(key as any)}
                   >
-                    {persona.name}
+                    {agent.name}
                   </Button>
                 ))}
               </div>
@@ -273,7 +276,7 @@ export default function AIPanel() {
               ) : (
                 <SearchIcon className="w-4 h-4 mr-2" />
               )}
-              Generate SEO Questions
+              Analyze Business Context
             </Button>
           </div>
         );
@@ -282,21 +285,21 @@ export default function AIPanel() {
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm mb-2">Title</label>
+              <label className="block text-sm mb-2">Brand Voice Title</label>
               <Textarea
                 value={seoTitle}
                 onChange={(e) => setSeoTitle(e.target.value)}
-                placeholder="Enter your question or content title..."
+                placeholder="Enter your brand voice title or description..."
                 className="min-h-[50px]"
               />
             </div>
             
             <div>
-              <label className="block text-sm mb-2">Content</label>
+              <label className="block text-sm mb-2">Content to Analyze</label>
               <Textarea
                 value={seoContent}
                 onChange={(e) => setSeoContent(e.target.value)}
-                placeholder="Enter your content for SEO analysis..."
+                placeholder="Enter content to analyze for brand voice consistency..."
                 className="min-h-[100px]"
               />
             </div>
@@ -311,7 +314,7 @@ export default function AIPanel() {
               ) : (
                 <FileCheck className="w-4 h-4 mr-2" />
               )}
-              Analyze SEO
+              Analyze Brand Voice
             </Button>
           </div>
         );
@@ -320,11 +323,11 @@ export default function AIPanel() {
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm mb-2">Content for Interlinking Analysis</label>
+              <label className="block text-sm mb-2">Content for Export</label>
               <Textarea
                 value={interlinkContent}
                 onChange={(e) => setInterlinkContent(e.target.value)}
-                placeholder="Enter your content to generate interlinking suggestions..."
+                placeholder="Enter content to prepare for AI training dataset export..."
                 className="min-h-[150px]"
               />
             </div>
@@ -339,7 +342,7 @@ export default function AIPanel() {
               ) : (
                 <LinkIcon className="w-4 h-4 mr-2" />
               )}
-              Generate Interlinking Suggestions
+              Prepare Data Export
             </Button>
           </div>
         );
@@ -355,10 +358,10 @@ export default function AIPanel() {
         <div className="p-4 border-b border-dark-400">
           <div className="flex items-center mb-2">
             <Lightbulb className="w-5 h-5 mr-2 text-primary-400" />
-            <GradientText className="text-lg font-medium">AI Assistant Panel</GradientText>
+            <GradientText className="text-lg font-medium">Multi-Model AI Intelligence</GradientText>
           </div>
           <p className="text-sm text-gray-400">
-            Use AI to generate content, analyze SEO, and enhance your forum's performance.
+            Leverage 6 AI providers and 8 specialized personas for Generative Engine Optimization.
           </p>
         </div>
         
@@ -366,12 +369,12 @@ export default function AIPanel() {
           <div className="w-full md:w-1/2 p-4 border-b md:border-b-0 md:border-r border-dark-400">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="w-full grid grid-cols-2 mb-4">
-                <TabsTrigger value="content">Content</TabsTrigger>
-                <TabsTrigger value="seo-questions">SEO Questions</TabsTrigger>
+                <TabsTrigger value="content">Temporal Dialogue</TabsTrigger>
+                <TabsTrigger value="seo-questions">Business Analysis</TabsTrigger>
               </TabsList>
               <TabsList className="w-full grid grid-cols-2">
-                <TabsTrigger value="seo-analysis">SEO Analysis</TabsTrigger>
-                <TabsTrigger value="interlinking">Interlinking</TabsTrigger>
+                <TabsTrigger value="seo-analysis">Brand Voice</TabsTrigger>
+                <TabsTrigger value="interlinking">Data Export</TabsTrigger>
               </TabsList>
               
               <TabsContent value={activeTab} className="mt-4">

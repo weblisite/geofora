@@ -42,8 +42,26 @@ const FormField = <
 const useFormField = () => {
   const fieldContext = React.useContext(FormFieldContext)
   const itemContext = React.useContext(FormItemContext)
-  const { getFieldState, formState } = useFormContext()
+  const formContext = useFormContext()
+  
+  // Safety check for form context
+  if (!formContext) {
+    console.warn("useFormField was used outside of FormProvider context")
+    return {
+      error: null,
+      formItemId: '',
+      formDescriptionId: '',
+      formMessageId: '',
+      id: '',
+      name: '',
+      value: '',
+      onChange: () => {},
+      onBlur: () => {},
+      ref: () => {}
+    }
+  }
 
+  const { getFieldState, formState } = formContext
   const fieldState = getFieldState(fieldContext.name, formState)
 
   if (!fieldContext) {

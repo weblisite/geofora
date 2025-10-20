@@ -49,7 +49,7 @@ interface ContentSchedule {
   keyword: string;
   categoryId: number | null;
   category?: Category;
-  personaType: string | null;
+  agentType: string | null;
   contentType: string;
   questionCount: number | null;
   scheduledFor: string;
@@ -72,7 +72,7 @@ const scheduleSchema = z.object({
   categoryId: z.coerce.number().optional(),
   keyword: z.string().min(2, "Keyword must be at least 2 characters"),
   contentType: z.string().default("questions"),
-  personaType: z.string().default("intermediate"),
+  agentType: z.string().default("intermediate"),
   questionCount: z.coerce.number().min(1).max(20).default(5),
   scheduledFor: z.date({
     required_error: "Please select a date to schedule"
@@ -130,7 +130,7 @@ export default function ContentSchedulingPage() {
   // Default form values
   const defaultValues: Partial<ScheduleFormValues> = {
     contentType: "questions",
-    personaType: "intermediate",
+    agentType: "intermediate",
     questionCount: 5,
     status: "scheduled",
     scheduledFor: new Date(Date.now() + 86400000) // Tomorrow
@@ -159,7 +159,7 @@ export default function ContentSchedulingPage() {
         scheduledFor: new Date(selectedSchedule.scheduledFor),
         questionCount: selectedSchedule.questionCount || 5,
         status: selectedSchedule.status || "scheduled",
-        personaType: selectedSchedule.personaType || "intermediate",
+        agentType: selectedSchedule.agentType || "intermediate",
         description: selectedSchedule.description || ""
       });
     }
@@ -329,7 +329,7 @@ export default function ContentSchedulingPage() {
     publishMutation.mutate({
       id,
       count: schedule?.questionCount || 5,
-      difficulty: schedule?.personaType || "intermediate"
+              difficulty: schedule?.agentType || "intermediate"
     });
   };
 
@@ -496,10 +496,10 @@ export default function ContentSchedulingPage() {
                   
                   <FormField
                     control={form.control}
-                    name="personaType"
+                    name="agentType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>AI Persona</FormLabel>
+                        <FormLabel>AI Agent</FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           defaultValue={field.value || "intermediate"}
@@ -507,13 +507,17 @@ export default function ContentSchedulingPage() {
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select AI persona" />
+                              <SelectValue placeholder="Select AI agent" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="beginner">Beginner</SelectItem>
                             <SelectItem value="intermediate">Intermediate</SelectItem>
                             <SelectItem value="expert">Expert</SelectItem>
+                            <SelectItem value="smart">Smart</SelectItem>
+                            <SelectItem value="genius">Genius</SelectItem>
+                            <SelectItem value="intelligent">Intelligent</SelectItem>
+                            <SelectItem value="moderator">Moderator</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />

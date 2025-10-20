@@ -30,7 +30,7 @@ export default function MobileNav() {
     { name: "Lead Capture", path: "/dashboard/lead-capture", icon: "contact_page", isDashboardItem: true },
     { name: "Gated Content", path: "/dashboard/gated-content", icon: "lock", isDashboardItem: true },
     { name: "CRM Integrations", path: "/dashboard/crm", icon: "sync", isDashboardItem: true },
-    { name: "AI Personas", path: "/dashboard/personas", icon: "psychology", isDashboardItem: true },
+    { name: "AI Agents", path: "/dashboard/agents", icon: "psychology", isDashboardItem: true },
     { name: "Analytics", path: "/dashboard/analytics", icon: "analytics", isDashboardItem: true },
     { name: "Integration", path: "/dashboard/integration", icon: "integration_instructions", isDashboardItem: true },
     { name: "Settings", path: "/dashboard/settings", icon: "settings", isDashboardItem: true },

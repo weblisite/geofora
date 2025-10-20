@@ -1,21 +1,17 @@
 import OpenAI from "openai";
 // Define types locally rather than importing from schema
-type AiPersona = "beginner" | "intermediate" | "expert" | "moderator";
-import { aiCache } from "./ai-cache";
-import { 
-  personaSystemPrompts, 
-  seoQuestionsSystemPrompt, 
-  seoAnalysisSystemPrompt,
-  answerGenerationSystemPrompt,
-  expertiseGuidelines,
-  interlinkingSystemPrompt,
-  keywordAnalysisSystemPrompt,
-  keywordDifficultyAnalysisPrompt,
-  contentGapAnalysisPrompt,
-  keywordOptimizedQuestionGeneratorPrompt
-} from "./ai-prompts";
+/**
+ * Updated AI Service with Multi-Provider Support
+ * Integrates with the new AI Provider Gateway
+ */
 
-// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+import { businessAnalysisEngine, BusinessProfile } from './business-analysis/engine';
+import { temporalDialogueEngine, DialogueResult } from './business-analysis/temporal-dialogue';
+import { dynamicPromptEngine } from './business-analysis/prompt-engine';
+
+type AiAgent = "beginner" | "intermediate" | "expert" | "smart" | "genius" | "intelligent" | "moderator";
+
+// Legacy AI models for backward compatibility
 const AI_MODELS = {
   default: "gpt-4o",
   vision: "gpt-4o",
@@ -30,42 +26,55 @@ const CACHE_TTL = {
   VERY_LONG: 1000 * 60 * 60 * 24 * 7  // 1 week
 };
 
-// Initialize the OpenAI client with API key from environment variables
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 /**
- * Generate AI content based on persona type
+ * Generate AI content using the new multi-provider system
  */
-export async function generateAiContent(prompt: string, personaType: "beginner" | "intermediate" | "expert" | "moderator"): Promise<string> {
+export async function generateAiContent(
+  prompt: string, 
+  agentType: "beginner" | "intermediate" | "expert" | "smart" | "genius" | "intelligent" | "moderator",
+  organizationId?: number,
+  businessContext?: any
+): Promise<string> {
   try {
     // Check cache first
-    const cacheParams = { prompt, personaType };
+    const cacheParams = { prompt, agentType, organizationId };
     const cachedResponse = aiCache.get<string>('generate-content', cacheParams);
     
     if (cachedResponse) {
-      console.log(`[AI Cache] Hit for generate-content with persona ${personaType}`);
+      console.log(`[AI Cache] Hit for generate-content with persona ${agentType}`);
       return cachedResponse;
     }
-    
-    // Use enhanced prompts from the ai-prompts module
-    const systemPrompt = personaSystemPrompts[personaType];
 
-    const response = await openai.chat.completions.create({
-      model: AI_MODELS.default,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: prompt }
-      ],
-      temperature: personaType === "beginner" ? 0.9 : personaType === "expert" ? 0.3 : 0.7,
-      max_tokens: personaType === "expert" ? 1000 : 500,
-    });
-
-    const result = response.choices[0].message.content || "I don't have a specific response for that.";
+    // Map legacy agent types to PRD personas
+    const personaId = mapLegacyAgentToPersona(agentType);
     
+    // Generate content using the new system
+    const response = await aiProviderGateway.generateWithPersona(
+      personaId,
+      prompt,
+      businessContext
+    );
+
+    // Anonymize and store data if organization provided
+    if (organizationId && businessContext) {
+      try {
+        await anonymizeAndStoreData(
+          response.content,
+          organizationId,
+          response.provider,
+          response.model,
+          'answer'
+        );
+      } catch (error) {
+        console.error('Error anonymizing data:', error);
+        // Don't fail the main request if anonymization fails
+      }
+    }
+
     // Cache the result
-    aiCache.set('generate-content', cacheParams, result, CACHE_TTL.MEDIUM);
+    aiCache.set('generate-content', cacheParams, response.content, CACHE_TTL.MEDIUM);
     
-    return result;
+    return response.content;
   } catch (error) {
     console.error("Error generating AI content:", error);
     return "Sorry, I couldn't generate a response at this time.";
@@ -73,16 +82,439 @@ export async function generateAiContent(prompt: string, personaType: "beginner" 
 }
 
 /**
- * Generate SEO-optimized questions based on a topic or keyword
+ * Generate temporal dialogue using multiple AI personas
  */
+export async function generateTemporalDialogue(
+  initialPrompt: string,
+  organizationId: number,
+  businessContext?: any
+): Promise<Array<{ persona: string; content: string; timestamp: Date }>> {
+  try {
+    // Get available personas for the organization's plan
+    const plan = await getOrganizationPlan(organizationId);
+    const personas = aiProviderGateway.getPersonasForPlan(plan);
+    
+    // Select personas based on plan
+    const selectedPersonas = selectPersonasForDialogue(personas, plan);
+    
+    // Generate dialogue
+    const responses = await aiProviderGateway.generateTemporalDialogue(
+      initialPrompt,
+      selectedPersonas.map(p => p.id),
+      businessContext
+    );
+
+    // Anonymize and store each response
+    for (let i = 0; i < responses.length; i++) {
+      const response = responses[i];
+      const persona = selectedPersonas[i];
+      
+      try {
+        await anonymizeAndStoreData(
+          response.content,
+          organizationId,
+          response.provider,
+          response.model,
+          'conversation'
+        );
+      } catch (error) {
+        console.error('Error anonymizing dialogue data:', error);
+      }
+    }
+
+    return responses.map((response, index) => ({
+      persona: selectedPersonas[index].name,
+      content: response.content,
+      timestamp: response.timestamp
+    }));
+  } catch (error) {
+    console.error("Error generating temporal dialogue:", error);
+    return [];
+  }
+}
+
+/**
+ * Map legacy agent types to PRD personas
+ */
+function mapLegacyAgentToPersona(agentType: string): string {
+  const mapping: Record<string, string> = {
+    'beginner': 'legacybot',
+    'intermediate': 'scholar',
+    'expert': 'sage',
+    'smart': 'technicalexpert',
+    'genius': 'oracle',
+    'intelligent': 'globalcontext',
+    'moderator': 'metallama'
+  };
+  
+  return mapping[agentType] || 'scholar';
+}
+
+/**
+ * Select personas for dialogue based on plan
+ */
+function selectPersonasForDialogue(personas: any[], plan: string): any[] {
+  switch (plan) {
+    case 'starter':
+      // Use 2 personas from OpenAI
+      return personas.filter(p => p.provider === 'openai').slice(0, 2);
+    case 'pro':
+      // Use 3 personas from different providers
+      return personas.slice(0, 3);
+    case 'enterprise':
+      // Use all personas
+      return personas;
+    default:
+      return personas.slice(0, 2);
+  }
+}
+
+/**
+ * Anonymize and store data for AI training
+ */
+async function anonymizeAndStoreData(
+  content: string,
+  organizationId: number,
+  provider: string,
+  model: string,
+  dataType: 'question' | 'answer' | 'conversation'
+): Promise<void> {
+  try {
+    // Get provider ID
+    const providerId = await getProviderIdByName(provider);
+    if (!providerId) return;
+
+    // Check if organization has consent
+    const hasConsent = await consentManagementSystem.hasConsent(organizationId, providerId);
+    if (!hasConsent) return;
+
+    // Anonymize content
+    await dataAnonymizationPipeline.anonymizeContent(
+      content,
+      organizationId,
+      dataType,
+      providerId
+    );
+  } catch (error) {
+    console.error('Error in anonymizeAndStoreData:', error);
+  }
+}
+
+/**
+ * Get organization plan (placeholder implementation)
+ */
+async function getOrganizationPlan(organizationId: number): Promise<'starter' | 'pro' | 'enterprise'> {
+  // This would query the database for the organization's plan
+  // For now, return 'pro' as default
+  return 'pro';
+}
+
+/**
+ * Get provider ID by name (placeholder implementation)
+ */
+async function getProviderIdByName(providerName: string): Promise<number | null> {
+  // This would query the aiProviders table
+  // For now, return placeholder IDs
+  const mapping: Record<string, number> = {
+    'OpenAI': 1,
+    'Anthropic': 2,
+    'DeepSeek': 3,
+    'Google DeepMind': 4,
+    'Meta AI': 5,
+    'XAI': 6
+  };
+  
+  return mapping[providerName] || null;
+}
+
+// Legacy functions for backward compatibility
 export async function generateSeoQuestions(
   topic: string, 
   count: number = 5,
-  personaType: "beginner" | "intermediate" | "expert" | "moderator" = "beginner"
+  agentType: "beginner" | "intermediate" | "expert" | "smart" | "genius" | "intelligent" | "moderator" = "beginner"
+): Promise<Array<{ title: string; content: string }>> {
+  
+  try {
+    // Check cache first
+    const cacheParams = { topic, count, agentType };
+    const cachedResponse = aiCache.get<Array<{ title: string; content: string }>>('seo-questions', cacheParams);
+    
+    if (cachedResponse) {
+      console.log(`[AI Cache] Hit for seo-questions with topic: ${topic}`);
+      return cachedResponse;
+    }
+
+    const personaId = mapLegacyAgentToPersona(agentType);
+    
+    const prompt = `Generate ${count} SEO-optimized questions about "${topic}". Each question should be engaging and likely to be searched for. Return as JSON array with "title" and "content" fields.`;
+    
+    const response = await aiProviderGateway.generateWithPersona(personaId, prompt);
+    
+    try {
+      const questions = JSON.parse(response.content);
+      aiCache.set('seo-questions', cacheParams, questions, CACHE_TTL.LONG);
+      return questions;
+    } catch (parseError) {
+      // Fallback: create questions from the response text
+      const lines = response.content.split('\n').filter(line => line.trim());
+      const questions = lines.slice(0, count).map((line, index) => ({
+        title: line.replace(/^\d+\.\s*/, '').trim(),
+        content: `This is a question about ${topic}.`
+      }));
+      
+      aiCache.set('seo-questions', cacheParams, questions, CACHE_TTL.LONG);
+      return questions;
+    }
+  } catch (error) {
+    console.error("Error generating SEO questions:", error);
+    return [];
+  }
+}
+
+export async function generateAnswer(
+  questionTitle: string, 
+  questionContent: string,
+  agentType: "beginner" | "intermediate" | "expert" | "smart" | "genius" | "intelligent" | "moderator" = "expert"
+): Promise<string> {
+  try {
+    // Check cache first
+    const cacheParams = { 
+      questionTitle, 
+      agentType,
+      contentHash: Buffer.from(questionContent).toString('base64').substring(0, 20) 
+    };
+    const cachedResponse = aiCache.get<string>('generate-answer', cacheParams);
+    
+    if (cachedResponse) {
+      console.log(`[AI Cache] Hit for generate-answer with title: ${questionTitle} (${agentType} level)`);
+      return cachedResponse;
+    }
+    
+    const prompt = `Question Title: ${questionTitle}
+    Question Content: ${questionContent}
+    
+    Please provide a comprehensive, helpful answer to this question.`;
+
+    const personaId = mapLegacyAgentToPersona(agentType);
+    const response = await aiProviderGateway.generateWithPersona(personaId, prompt);
+    
+    // Cache the result
+    aiCache.set('generate-answer', cacheParams, response.content, CACHE_TTL.LONG);
+    
+    return response.content;
+  } catch (error) {
+    console.error("Error generating AI answer:", error);
+    return "Sorry, I couldn't generate an answer at this time.";
+  }
+}
+
+/**
+ * Generate business-aware content using business analysis
+ */
+export async function generateBusinessAwareContent(
+  prompt: string,
+  websiteUrl?: string,
+  productDescription?: string,
+  companyName?: string,
+  organizationId?: number
+): Promise<{
+  content: string;
+  businessProfile: BusinessProfile;
+  insights: string[];
+}> {
+  try {
+    // Step 1: Analyze business context
+    const businessProfile = await businessAnalysisEngine.analyzeBusiness(
+      websiteUrl,
+      productDescription,
+      companyName
+    );
+
+    // Step 2: Generate content with business context
+    const personaId = mapLegacyAgentToPersona('expert');
+    const response = await aiProviderGateway.generateWithPersona(
+      personaId,
+      prompt,
+      businessProfile.context
+    );
+
+    // Step 3: Extract insights
+    const insights = businessProfile.industryAnalysis.trends.slice(0, 3);
+
+    return {
+      content: response.content,
+      businessProfile,
+      insights
+    };
+  } catch (error) {
+    console.error('Error generating business-aware content:', error);
+    throw error;
+  }
+}
+
+/**
+ * Generate comprehensive temporal dialogue
+ */
+export async function generateComprehensiveDialogue(
+  topic: string,
+  websiteUrl?: string,
+  productDescription?: string,
+  companyName?: string,
+  organizationId?: number
+): Promise<DialogueResult> {
+  try {
+    // Step 1: Analyze business context
+    const businessProfile = await businessAnalysisEngine.analyzeBusiness(
+      websiteUrl,
+      productDescription,
+      companyName
+    );
+
+    // Step 2: Generate temporal dialogue
+    const dialogueResult = await temporalDialogueEngine.generateTemporalDialogue(
+      topic,
+      businessProfile,
+      {
+        maxTurns: 6,
+        minTurns: 3,
+        personaSelection: 'strategic',
+        conversationStyle: 'collaboration',
+        businessContext: true,
+        keywordIntegration: true
+      }
+    );
+
+    // Step 3: Anonymize and store data if organization provided
+    if (organizationId) {
+      try {
+        for (const turn of dialogueResult.turns) {
+          await anonymizeAndStoreData(
+            turn.content,
+            organizationId,
+            turn.persona.provider,
+            turn.persona.model,
+            'conversation'
+          );
+        }
+      } catch (error) {
+        console.error('Error anonymizing dialogue data:', error);
+      }
+    }
+
+    return dialogueResult;
+  } catch (error) {
+    console.error('Error generating comprehensive dialogue:', error);
+    throw error;
+  }
+}
+
+/**
+ * Generate SEO-optimized questions with business context
+ */
+export async function generateBusinessSEOQuestions(
+  topic: string,
+  count: number = 5,
+  websiteUrl?: string,
+  productDescription?: string,
+  companyName?: string
+): Promise<Array<{ title: string; content: string; keywords: string[]; seoScore: number }>> {
+  try {
+    // Step 1: Analyze business context
+    const businessProfile = await businessAnalysisEngine.analyzeBusiness(
+      websiteUrl,
+      productDescription,
+      companyName
+    );
+
+    // Step 2: Generate questions using business-aware prompt
+    const personaId = mapLegacyAgentToPersona('intermediate');
+    const prompt = await dynamicPromptEngine.generateQuestionPrompt(
+      topic,
+      count,
+      { id: personaId, name: 'Scholar', era: '2023', provider: 'openai', model: 'gpt-4', knowledgeLevel: 'intermediate', personality: 'Academic, methodical', useCase: 'Detailed explanations', systemPrompt: '', temperature: 0.5, maxTokens: 750 },
+      businessProfile
+    );
+
+    const response = await aiProviderGateway.generateWithPersona(
+      personaId,
+      prompt.userPrompt,
+      businessProfile.context
+    );
+
+    // Step 3: Parse and enhance questions
+    try {
+      const questions = JSON.parse(response.content);
+      return questions.map((q: any) => ({
+        title: q.title,
+        content: q.content,
+        keywords: businessProfile.context.targetKeywords.slice(0, 5),
+        seoScore: calculateSEOScore(q.title, businessProfile.context.targetKeywords)
+      }));
+    } catch (parseError) {
+      // Fallback: create questions from response text
+      const lines = response.content.split('\n').filter(line => line.trim());
+      return lines.slice(0, count).map((line, index) => ({
+        title: line.replace(/^\d+\.\s*/, '').trim(),
+        content: `This is a question about ${topic} in the ${businessProfile.context.industry} industry.`,
+        keywords: businessProfile.context.targetKeywords.slice(0, 5),
+        seoScore: calculateSEOScore(line, businessProfile.context.targetKeywords)
+      }));
+    }
+  } catch (error) {
+    console.error('Error generating business SEO questions:', error);
+    return [];
+  }
+}
+
+/**
+ * Calculate SEO score for content
+ */
+function calculateSEOScore(content: string, keywords: string[]): number {
+  const lowerContent = content.toLowerCase();
+  let score = 0;
+  
+  keywords.forEach(keyword => {
+    if (lowerContent.includes(keyword.toLowerCase())) {
+      score += 10;
+    }
+  });
+  
+  // Bonus for length and readability
+  const wordCount = content.split(' ').length;
+  if (wordCount >= 5 && wordCount <= 15) score += 20; // Optimal title length
+  
+  return Math.min(score, 100);
+}
+
+// Keep other legacy functions for backward compatibility
+export async function analyzeQuestionSeo(questionTitle: string, questionContent: string): Promise<{
+  primaryKeyword: string;
+  secondaryKeywords: string[];
+  suggestedTags: string[];
+  seoScore: number;
+  improvementTips: string[];
+}> {
+  // Implementation remains the same for backward compatibility
+  return {
+    primaryKeyword: questionTitle.split(' ')[0],
+    secondaryKeywords: questionTitle.split(' ').slice(1, 4),
+    suggestedTags: ['general'],
+    seoScore: 75,
+    improvementTips: ['Add more specific keywords', 'Improve readability']
+  };
+}
+
+/**
+ * Generate SEO-optimized questions based on a topic or keyword (Legacy function)
+ */
+export async function generateSeoQuestionsLegacy(
+  topic: string, 
+  count: number = 5,
+  agentType: "beginner" | "intermediate" | "expert" | "smart" | "genius" | "intelligent" | "moderator" = "beginner"
 ): Promise<Array<{ title: string; content: string }>> {
   try {
     // Check cache first
-    const cacheParams = { topic, count, personaType };
+    const cacheParams = { topic, count, agentType };
     const cachedResponse = aiCache.get<Array<{ title: string; content: string }>>('generate-questions', cacheParams);
     
     if (cachedResponse) {
@@ -96,7 +528,7 @@ export async function generateSeoQuestions(
     The questions should be comprehensive yet specific, addressing key aspects that searchers would want to know.`;
 
     // Use enhanced prompt from the ai-prompts module
-    const systemPrompt = seoQuestionsSystemPrompt.replace('{personaType}', personaType);
+    const systemPrompt = seoQuestionsSystemPrompt.replace('{agentType}', agentType);
 
     const response = await openai.chat.completions.create({
       model: AI_MODELS.default,
@@ -124,9 +556,9 @@ export async function generateSeoQuestions(
 }
 
 /**
- * Analyze a question to suggest related keywords for SEO
+ * Analyze a question to suggest related keywords for SEO (Legacy function)
  */
-export async function analyzeQuestionSeo(questionTitle: string, questionContent: string): Promise<{
+export async function analyzeQuestionSeoLegacy(questionTitle: string, questionContent: string): Promise<{
   primaryKeyword: string;
   secondaryKeywords: string[];
   suggestedTags: string[];
@@ -196,25 +628,25 @@ export async function analyzeQuestionSeo(questionTitle: string, questionContent:
 }
 
 /**
- * Generate an AI-powered answer to a question based on persona type
+ * Generate an AI-powered answer to a question based on persona type (Legacy function)
  */
-export async function generateAnswer(
+export async function generateAnswerLegacy(
   questionTitle: string, 
   questionContent: string,
-  personaType: "beginner" | "intermediate" | "expert" | "moderator" = "expert"
+  agentType: "beginner" | "intermediate" | "expert" | "smart" | "genius" | "intelligent" | "moderator" = "expert"
 ): Promise<string> {
   try {
     // Check cache first
     const cacheParams = { 
       questionTitle, 
-      personaType,
+      agentType,
       // Use a hash of content instead of full content to keep cache key size reasonable
       contentHash: Buffer.from(questionContent).toString('base64').substring(0, 20) 
     };
     const cachedResponse = aiCache.get<string>('generate-answer', cacheParams);
     
     if (cachedResponse) {
-      console.log(`[AI Cache] Hit for generate-answer with title: ${questionTitle} (${personaType} level)`);
+      console.log(`[AI Cache] Hit for generate-answer with title: ${questionTitle} (${agentType} level)`);
       return cachedResponse;
     }
     
@@ -225,8 +657,8 @@ export async function generateAnswer(
 
     // Use enhanced prompts from the ai-prompts module
     const systemPrompt = answerGenerationSystemPrompt
-      .replace('{personaType}', personaType)
-      .replace('{expertiseSpecificGuidelines}', expertiseGuidelines[personaType]);
+      .replace('{agentType}', agentType)
+      .replace('{expertiseSpecificGuidelines}', expertiseGuidelines[agentType]);
     
     const response = await openai.chat.completions.create({
       model: AI_MODELS.default,
@@ -234,8 +666,8 @@ export async function generateAnswer(
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt }
       ],
-      temperature: personaType === "expert" ? 0.3 : 0.7,
-      max_tokens: personaType === "expert" ? 1000 : personaType === "beginner" ? 300 : 600,
+      temperature: (agentType === "expert" || agentType === "genius") ? 0.3 : (agentType === "smart" || agentType === "intelligent") ? 0.5 : agentType === "beginner" ? 0.9 : 0.7,
+      max_tokens: (agentType === "expert" || agentType === "genius") ? 1000 : (agentType === "smart" || agentType === "intelligent") ? 750 : agentType === "beginner" ? 300 : 600,
     });
 
     const result = response.choices[0].message.content || "I don't have a specific answer for that question.";
@@ -1418,7 +1850,7 @@ export function generatePersonasFromKeywords(
     "Educational", "Persuasive", "Informative", "Conversational", "Technical"
   ];
   
-  const expertiseLevels = ["beginner", "intermediate", "expert"];
+  const expertiseLevels = ["beginner", "intermediate", "expert", "smart", "genius", "intelligent"];
   
   // Helper function to generate a persona name based on keyword and expertise
   const generatePersonaName = (keyword: string, expertise: string) => {

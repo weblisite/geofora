@@ -14,11 +14,17 @@ export default function Sidebar() {
   const sidebarItems: SidebarItem[] = [
     { name: "Dashboard", path: "/dashboard", icon: "dashboard", isDashboardItem: true },
     { name: "Forum Management", path: "/dashboard/forum", icon: "forum", isDashboardItem: true },
+    { name: "AI Personas", path: "/dashboard/ai-personas", icon: "psychology", isDashboardItem: true },
+    { name: "Data Export", path: "/dashboard/data-export", icon: "cloud_download", isDashboardItem: true },
+    { name: "Setup Fee", path: "/dashboard/setup-fee", icon: "credit_card", isDashboardItem: true },
+    { name: "Business Analysis", path: "/dashboard/business-analysis", icon: "business", isDashboardItem: true },
+    { name: "Industry Detection", path: "/dashboard/industry-detection", icon: "search", isDashboardItem: true },
+    { name: "Brand Voice", path: "/dashboard/brand-voice", icon: "record_voice_over", isDashboardItem: true },
     { name: "Interlinking", path: "/dashboard/interlinking", icon: "link", isDashboardItem: true },
     { name: "Keyword Analysis", path: "/dashboard/keyword-analysis", icon: "travel_explore", isDashboardItem: true },
     { name: "Lead Capture", path: "/dashboard/lead-capture", icon: "contact_page", isDashboardItem: true },
     { name: "CRM Integrations", path: "/dashboard/crm", icon: "sync", isDashboardItem: true },
-    { name: "AI Personas", path: "/dashboard/personas", icon: "psychology", isDashboardItem: true },
+    { name: "AI Agents", path: "/dashboard/agents", icon: "smart_toy", isDashboardItem: true },
     { name: "Analytics", path: "/dashboard/analytics", icon: "analytics", isDashboardItem: true },
     { name: "Integration", path: "/dashboard/integration", icon: "integration_instructions", isDashboardItem: true },
     { name: "Settings", path: "/dashboard/settings", icon: "settings", isDashboardItem: true },
@@ -43,7 +49,7 @@ export default function Sidebar() {
             <span className="material-icons text-sm">forum</span>
           </div>
           <span className="text-lg font-bold">
-            <GradientText>GeoFora</GradientText>
+            <GradientText>GEOFORA</GradientText>
           </span>
         </div>
         

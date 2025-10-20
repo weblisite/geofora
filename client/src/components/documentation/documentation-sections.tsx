@@ -110,7 +110,7 @@ export const documentationSections = [
         Our platform offers advanced AI capabilities to help you create high-quality, SEO-optimized content at scale. This section explains how to leverage these features effectively.
       </p>
       
-      <h2 class="text-xl font-semibold mb-3 mt-6">AI Persona Levels</h2>
+                      <h2 class="text-xl font-semibold mb-3 mt-6">AI Agent Levels</h2>
       
       <p class="mb-4">
         When generating content, you can choose from four expertise levels:
@@ -553,7 +553,7 @@ export const documentationSections = [
         <li>Select content type (question, answer, article)</li>
         <li>Choose target forum and category</li>
         <li>Enter keyword focus</li>
-        <li>Select AI persona type (for AI-generated content)</li>
+                        <li>Select AI agent type (for AI-generated content)</li>
         <li>Set publication date and time</li>
         <li>Add custom content or request AI generation</li>
         <li>Save schedule</li>
@@ -622,7 +622,7 @@ export const documentationSections = [
         <li>Create a balanced content schedule</li>
         <li>Avoid keyword cannibalization</li>
         <li>Distribute content evenly or by priority</li>
-        <li>Allocate appropriate AI personas by topic complexity</li>
+                        <li>Allocate appropriate AI agents by topic complexity</li>
       </ul>
       
       <h2 class="text-xl font-semibold mb-3 mt-6">Schedule Management</h2>

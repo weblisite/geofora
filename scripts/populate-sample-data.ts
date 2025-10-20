@@ -2,7 +2,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import {
   users, forums, categories, questions, answers,
-  aiPersonas, leadCaptureForms, crmIntegrations
+  aiAgents, leadCaptureForms, crmIntegrations
 } from '../shared/schema';
 import * as dotenv from 'dotenv';
 
@@ -213,8 +213,8 @@ async function populateDatabase() {
       }
     ];
 
-    const createdPersonas = await db.insert(aiPersonas).values(personaData).returning();
-    console.log(`✅ Created ${createdPersonas.length} AI personas`);
+    const createdAgents = await db.insert(aiAgents).values(personaData).returning();
+    console.log(`✅ Created ${createdAgents.length} AI agents`);
 
     // 7. Create sample lead capture forms
     console.log('Creating lead capture forms...');

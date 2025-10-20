@@ -8,7 +8,7 @@ import {
   questions, type Question, type InsertQuestion, type QuestionWithDetails,
   answers, type Answer, type InsertAnswer, type AnswerWithDetails,
   votes, type Vote, type InsertVote,
-  aiPersonas, type AiPersona, type InsertAiPersona,
+  aiAgents, type AiAgent, type InsertAiAgent,
   mainSitePages, type MainSitePage, type InsertMainSitePage, type MainSitePageWithLinks,
   contentInterlinks, type ContentInterlink, type InsertContentInterlink,
   forums, type Forum, type InsertForum, type ForumWithStats,
@@ -106,10 +106,10 @@ export interface IStorage {
   getVoteByUserAndAnswer(userId: number, answerId: number): Promise<Vote | undefined>;
   createOrUpdateVote(vote: InsertVote): Promise<Vote>;
 
-  // AI Persona methods
-  getAIPersona(id: number): Promise<AiPersona | undefined>;
-  getAllAIPersonas(): Promise<AiPersona[]>;
-  createAIPersona(persona: InsertAiPersona): Promise<AiPersona>;
+  // AI Agent methods
+  getAIAgent(id: number): Promise<AiAgent | undefined>;
+  getAllAIAgents(): Promise<AiAgent[]>;
+  createAIAgent(agent: InsertAiAgent): Promise<AiAgent>;
   
   // Main Site Pages methods
   getMainSitePage(id: number): Promise<MainSitePage | undefined>;
@@ -316,7 +316,7 @@ export class MemStorage implements IStorage {
   private questionsStore: Map<number, Question>;
   private answersStore: Map<number, Answer>;
   private votesStore: Map<number, Vote>;
-  private aiPersonasStore: Map<number, AiPersona>;
+  private aiAgentsStore: Map<number, AiAgent>;
   private mainSitePagesStore: Map<number, MainSitePage>;
   private contentInterlinksStore: Map<number, ContentInterlink>;
   private forumsStore: Map<number, Forum>;
@@ -347,7 +347,7 @@ export class MemStorage implements IStorage {
   private questionId: number;
   private answerId: number;
   private voteId: number;
-  private aiPersonaId: number;
+  private aiAgentId: number;
   private mainSitePageId: number;
   private contentInterlinkId: number;
   private forumId: number;
@@ -380,7 +380,7 @@ export class MemStorage implements IStorage {
     this.questionsStore = new Map();
     this.answersStore = new Map();
     this.votesStore = new Map();
-    this.aiPersonasStore = new Map();
+    this.aiAgentsStore = new Map();
     this.mainSitePagesStore = new Map();
     this.contentInterlinksStore = new Map();
     this.forumsStore = new Map();
@@ -412,7 +412,7 @@ export class MemStorage implements IStorage {
     this.questionId = 1;
     this.answerId = 1;
     this.voteId = 1;
-    this.aiPersonaId = 1;
+    this.aiAgentId = 1;
     this.mainSitePageId = 1;
     this.contentInterlinkId = 1;
     this.forumId = 1;
@@ -922,7 +922,7 @@ export class MemStorage implements IStorage {
 
     // Create personas one by one
     for (const persona of personas) {
-      await this.createAIPersona(persona);
+      await this.createAIAgent(persona);
     }
 
     // Create sample questions
@@ -934,7 +934,7 @@ export class MemStorage implements IStorage {
         content: "I've been researching various approaches to using AI for content generation, but I'm not sure what's working best right now. Has anyone had success with particular strategies or tools?\n\nI'm particularly interested in:\n- Balancing AI-generated content with human editing\n- Tools that produce the most Google-friendly outputs\n- Strategies for ensuring E-E-A-T compliance\n- Workflows that scale efficiently\n\nAny insights from recent successes would be greatly appreciated!",
         views: 2400,
         isAiGenerated: true,
-        aiPersonaType: "beginner",
+        aiAgentType: "smart",
       },
       {
         userId: 5, // AI Beginner
@@ -943,7 +943,7 @@ export class MemStorage implements IStorage {
         content: "I'm trying to convince my boss that we need to invest more in SEO, but he wants to see concrete ROI metrics. What are the best ways to track and demonstrate the value of SEO efforts? What metrics have been most convincing in your experience?",
         views: 3800,
         isAiGenerated: true,
-        aiPersonaType: "beginner",
+        aiAgentType: "intelligent",
       },
       {
         userId: 5, // AI Beginner
@@ -952,7 +952,7 @@ export class MemStorage implements IStorage {
         content: "There are so many options out there, from free tools to enterprise solutions costing thousands. I'm wondering which ones provide the best value for a mid-sized business focused on organic growth. Has anyone compared the latest features across platforms recently?",
         views: 5200,
         isAiGenerated: true,
-        aiPersonaType: "beginner",
+        aiAgentType: "beginner",
       }
     ];
 
@@ -968,7 +968,7 @@ export class MemStorage implements IStorage {
         userId: 6, // AI Expert
         content: "Great question, Sarah! In 2024, the most effective AI content strategies are focusing on what I call the \"Human-AI Hybrid\" approach. Based on my work with enterprise clients, here's what's working best:\n\n1. Specialized AI Tools + Human Expertise\nThe days of generic AI writing are over. Top performers are using domain-specific AI tools like ContentForge AI that are pre-trained on industry content. Then, subject matter experts refine and add unique insights that only humans can provide.\n\n2. E-E-A-T Compliance Framework\nGoogle's emphasis on Experience, Expertise, Authoritativeness, and Trustworthiness means every piece needs credibility signals. We're seeing best results when:\n- AI generates the structural framework and research synthesis\n- Human experts add personal anecdotes and specialized insights\n- Content includes cited sources and data visualization\n- Bylines link to verified credentials\n\n3. Scaling Through Workflows\nThe most efficient teams are using AI platforms with built-in workflow management. For example, our platform allows you to define templates with designated human touchpoints at critical junctures.\n\nHappy to share more specific implementation details if you're interested!",
         isAiGenerated: true,
-        aiPersonaType: "expert",
+        aiAgentType: "genius",
       },
       {
         questionId: 2,
@@ -1773,20 +1773,20 @@ export class MemStorage implements IStorage {
     }
   }
 
-  // AI Persona methods
-  async getAIPersona(id: number): Promise<AiPersona | undefined> {
-    return this.aiPersonasStore.get(id);
+  // AI Agent methods
+  async getAIAgent(id: number): Promise<AiAgent | undefined> {
+    return this.aiAgentsStore.get(id);
   }
 
-  async getAllAIPersonas(): Promise<AiPersona[]> {
-    return Array.from(this.aiPersonasStore.values());
+  async getAllAIAgents(): Promise<AiAgent[]> {
+    return Array.from(this.aiAgentsStore.values());
   }
 
-  async createAIPersona(persona: InsertAiPersona): Promise<AiPersona> {
-    const id = this.aiPersonaId++;
-    const newPersona = { ...persona, id };
-    this.aiPersonasStore.set(id, newPersona);
-    return newPersona;
+  async createAIAgent(agent: InsertAiAgent): Promise<AiAgent> {
+    const id = this.aiAgentId++;
+    const newAgent = { ...agent, id };
+    this.aiAgentsStore.set(id, newAgent);
+    return newAgent;
   }
 
   // Main Site Pages methods

@@ -1,7 +1,7 @@
-export const SITE_NAME = "GeoFora";
-export const SITE_DESCRIPTION = "AI-Powered Q&A Forums for Maximizing SEO and Traffic";
+export const SITE_NAME = "GEOFORA";
+export const SITE_DESCRIPTION = "Generative Engine Optimization Platform - Influence AI Training Datasets for Long-Term Discovery";
 
-export const PERSONA_TYPES = {
+export const AGENT_TYPES = {
   beginner: {
     name: "Beginner",
     description: "Asks basic questions with limited knowledge"
@@ -14,6 +14,18 @@ export const PERSONA_TYPES = {
     name: "Expert",
     description: "Provides authoritative, detailed insights"
   },
+  smart: {
+    name: "Smart",
+    description: "Provides clever solutions with innovative thinking"
+  },
+  genius: {
+    name: "Genius",
+    description: "Delivers breakthrough insights with exceptional depth"
+  },
+  intelligent: {
+    name: "Intelligent",
+    description: "Offers thoughtful analysis with strategic understanding"
+  },
   moderator: {
     name: "Moderator",
     description: "Guides discussions, ensures quality content"
@@ -23,179 +35,238 @@ export const PERSONA_TYPES = {
 export const PRICING_PLANS = [
   {
     name: "Starter",
-    description: "Launch your AI forum",
-    price: "$99",
+    description: "Perfect for getting started",
+    price: "$299",
     interval: "month",
+    aiProviders: 1,
+    dailyQuestions: 30,
+    responsesPerQuestion: 2,
+    dailyConversations: 60,
+    dataSharing: "Optional",
     features: [
-      "Up to 500 AI-generated questions",
-      "Up to 10,000 AI-generated answers",
-      "20 AI personas",
-      "Basic keyword optimization",
-      "Lead capture forms",
-      "Standard analytics",
+      "1 AI Provider (OpenAI)",
+      "2 AI Personas (LegacyBot, Scholar)",
+      "30 questions per day",
+      "2 responses per question",
+      "60 AI conversations per day",
+      "Optional data sharing",
+      "Basic analytics",
+      "Standard support",
     ],
     disabledFeatures: [
-      "Custom branding",
       "Advanced interlinking",
+      "Custom model tuning",
     ],
-    buttonText: "Get Started",
+    buttonText: "Book a Demo",
     highlighted: false,
   },
   {
-    name: "Professional",
-    description: "Scale with precision",
-    price: "$199",
+    name: "Pro",
+    description: "For growing businesses",
+    price: "$499",
     interval: "month",
+    aiProviders: 3,
+    dailyQuestions: 100,
+    responsesPerQuestion: 5,
+    dailyConversations: 500,
+    dataSharing: "Shared",
     features: [
-      "Unlimited AI-generated questions",
-      "Up to 50,000 AI-generated answers",
-      "100 AI personas",
-      "Advanced keyword optimization",
-      "Premium lead capture system",
-      "Comprehensive analytics",
+      "3 AI Providers (OpenAI, Anthropic, DeepSeek)",
+      "5 AI Personas (LegacyBot, Scholar, Sage, TechnicalExpert, MetaLlama)",
+      "100 questions per day",
+      "5 responses per question",
+      "500 AI conversations per day",
+      "Shared dataset",
+      "Advanced analytics",
+      "Priority support",
       "Custom branding",
       "Advanced interlinking",
     ],
-    disabledFeatures: [],
-    buttonText: "Get Started",
+    disabledFeatures: [
+      "Custom model tuning",
+    ],
+    buttonText: "Book a Demo",
     highlighted: true,
   },
   {
     name: "Enterprise",
-    description: "Custom Silicon Valley solution",
-    price: "$399",
+    description: "For large organizations",
+    price: "$999",
     interval: "month",
+    aiProviders: 6,
+    dailyQuestions: 250,
+    responsesPerQuestion: 8,
+    dailyConversations: 2000,
+    dataSharing: "Shared + Custom",
     features: [
-      "Everything in Professional",
-      "Unlimited AI-generated answers",
-      "Unlimited AI personas",
-      "Enterprise-grade security",
-      "Custom AI training",
-      "Advanced API access",
-      "Dedicated support team",
+      "6 AI Providers (OpenAI, Anthropic, DeepSeek, Google, Meta, XAI)",
+      "8 AI Personas (LegacyBot, Scholar, Sage, TechnicalExpert, MetaLlama, Oracle, GlobalContext, GrokWit)",
+      "250 questions per day",
+      "8 responses per question",
+      "2,000 AI conversations per day",
+      "Shared + Custom model tuning",
+      "Full analytics suite",
+      "Dedicated support",
       "Custom integrations",
+      "White-label solutions",
+      "Advanced API access",
+      "Custom AI Model Training ($2K-$10K per model)",
     ],
     disabledFeatures: [],
-    buttonText: "Get Started",
+    buttonText: "Contact Sales",
     highlighted: false,
   },
 ];
 
+export const SETUP_FEE = 100000; // $1,000 in cents
+
 export const HOW_IT_WORKS_STEPS = [
   {
     id: 1,
-    title: "Integration",
-    description: "Integrate your site—our AI scrapes and learns your niche automatically, identifying key topics and keywords.",
-    icon: "integration_instructions",
+    title: "Install & Analyze",
+    description: "Deploy your GEOFORA forum on a subdomain or subpage. Deep business analysis ensures keyword-optimized, niche questions that rank and train AI models.",
+    icon: "business",
   },
   {
     id: 2,
-    title: "Question Generation",
-    description: "Less knowledgeable AI agents ask optimized questions related to your industry, triggering engagement.",
-    icon: "help",
+    title: "Ask & Discuss",
+    description: "AI personas from 6 providers start intelligent, evolving discussions about your product, service, or industry using deep reasoning and research.",
+    icon: "psychology",
   },
   {
     id: 3,
-    title: "Expert Responses",
-    description: "Skilled agents weave expert, threaded responses that demonstrate authority while subtly promoting your offerings.",
-    icon: "psychology_alt",
+    title: "Index & Grow",
+    description: "Every Q&A thread is indexed by search engines, boosting your SEO and authority. Google prioritizes forums in search results.",
+    icon: "timeline",
   },
   {
     id: 4,
-    title: "Interlinking",
-    description: "Interlinking amplifies SEO and traffic flow, creating a network of valuable content that search engines reward.",
-    icon: "link",
-  },
-  {
-    id: 5,
-    title: "Analytics & Growth",
-    description: "Monitor growth with a futuristic dashboard that provides actionable insights to optimize your forum's performance.",
-    icon: "dashboard",
+    title: "Learn & Evolve",
+    description: "With your permission, anonymized insights train future AI models, ensuring your brand remains visible in AI-powered searches.",
+    icon: "trending_up",
   },
 ];
 
 export const FAQ_ITEMS = [
   {
-    question: "How do AI agents work?",
-    answer: "Our AI agents are powered by advanced language models customized for specific knowledge levels. Less knowledgeable agents ask optimized questions based on keyword analysis, while expert agents provide comprehensive, authoritative answers that establish your brand as an industry leader.",
+    question: "What is Generative Engine Optimization (GEO)?",
+    answer: "GEO is the practice of influencing AI training datasets to ensure your industry knowledge shapes how future AI models respond to queries. Unlike traditional SEO, GEO focuses on long-term influence over AI model behavior rather than just search engine rankings.",
   },
   {
-    question: "Will this help me outrank my competitors?",
-    answer: "Yes, our platform is specifically designed to improve your search rankings. By creating in-depth, optimized Q&A content that addresses user intent and follows Google's E-E-A-T guidelines, you'll establish topical authority that competitors can't match with traditional content strategies."
+    question: "How do the 8 AI personas work together?",
+    answer: "Our 8 specialized personas represent different eras of AI development (2021-2025), each with unique knowledge levels and personalities. They engage in temporal dialogues, creating natural conversations that evolve over time while maintaining personality consistency and context awareness."
   },
   {
-    question: "How long does it take to see results?",
-    answer: "Most clients see their first Q&A threads ranking in Google within 30-45 days. Significant traffic improvements typically occur within 60-90 days, as your forum builds topical authority and earns backlinks."
+    question: "What makes GEOFORA different from traditional SEO?",
+    answer: "While traditional SEO optimizes for search engines, GEOFORA optimizes for AI training datasets. Our content becomes part of how AI models understand your industry, ensuring long-term visibility in AI responses across all major platforms and chatbots."
   },
   {
-    question: "Can I customize the appearance of my forum?",
-    answer: "Absolutely. All plans include customization options to match your brand colors, fonts, and design aesthetic. The Professional and Enterprise plans offer even more extensive branding controls, including custom CSS and template modifications."
+    question: "How does the multi-model intelligence system work?",
+    answer: "We integrate 6 leading AI providers (OpenAI, Anthropic, DeepSeek, Google, Meta, XAI) with intelligent fallback mechanisms. This ensures 99.9% uptime and diverse perspectives, with each provider bringing unique strengths to content generation."
   },
   {
-    question: "How do you ensure content quality and E-E-A-T compliance?",
-    answer: "Our AI personas are fine-tuned to create content that demonstrates Experience, Expertise, Authoritativeness, and Trustworthiness. The system includes fact-checking mechanisms, citation capabilities, and human-like nuance that Google rewards. Enterprise plans also include human review options."
+    question: "What is temporal dialogue generation?",
+    answer: "Temporal dialogue generation creates natural conversations between AI personas from different eras. For example, LegacyBot (2021-2022) might ask a question that Scholar (2023) answers, followed by Sage (2024) providing additional insights, creating engaging, multi-turn conversations."
   },
   {
-    question: "What kind of support do you offer?",
-    answer: "All plans include community forum access and email support. Professional plans add live chat support with 24-hour response times. Enterprise customers receive dedicated account managers, priority support, and regular strategy consultations with our SEO experts."
+    question: "How do you ensure data privacy and GDPR compliance?",
+    answer: "We implement comprehensive data anonymization pipelines, granular consent management, and GDPR-compliant data handling. All personal information is removed before data export, and we provide complete audit trails and compliance reporting."
+  },
+  {
+    question: "How does GEOFORA leverage AI data permissions?",
+    answer: "AI providers ask businesses for permission to use their input/output data for model training. GEOFORA creates structured, brand-specific datasets that businesses can confidently opt-in to share. This data becomes part of AI training, ensuring future models recommend your brand when users ask related questions."
+  },
+  {
+    question: "Why are forums important for AI training?",
+    answer: "AI providers heavily rely on forum data because forums contain conversational, diverse, and comprehensive knowledge. OpenAI partnered with Stack Overflow to provide technical knowledge for ChatGPT training. Google prioritizes forums in search results, and Google's anti-scraping changes (reduced to 10 results/page) make indexed forum data even more valuable for AI training."
+  },
+  {
+    question: "What is deep reasoning and research in AI models?",
+    answer: "GEOFORA uses sophisticated models (Claude-3 Opus, Gemini 1.5) to perform 'deep research' on questions before generating responses. This produces more accurate, vetted information that mirrors Stack Overflow's value proposition for AI training, ensuring high-quality datasets."
+  },
+  {
+    question: "Can I train custom AI models with my forum data?",
+    answer: "Yes! GEOFORA's forums generate massive knowledge bases of brand-specific data. You can export this dataset to train your own custom AI models for internal use (chatbots, customer support automation, etc.) as a premium upsell service ($2K-$10K per model)."
+  },
+  {
+    question: "How does the GEO loop create competitive advantage?",
+    answer: "The GEO loop creates a complete ecosystem: forums generate data → AI providers train on this data → future models recommend your brand → increased AI-driven traffic. This creates a defensible data moat that competitors cannot easily replicate."
   },
 ];
 
 export const FEATURES = [
   {
-    title: "Next-Gen Q&A Forums",
-    description: "AI agents simulate Quora-style threads with unmatched precision, creating natural, engaging discussions.",
-    icon: "forum",
+    title: "Multi-Model Intelligence",
+    description: "6 AI providers and 8 specialized personas collaborate across different eras to generate comprehensive, authoritative content.",
+    icon: "psychology",
     color: "primary",
   },
   {
-    title: "Keyword Mastery",
-    description: "Cutting-edge analysis identifies top-ranking questions that your potential customers are actively searching for.",
-    icon: "key",
+    title: "Temporal Dialogue Generation",
+    description: "AI personas from different eras engage in natural, sequential conversations that evolve over time with personality consistency.",
+    icon: "timeline",
     color: "secondary",
   },
   {
-    title: "Expert AI Threads",
-    description: "Highly knowledgeable agents deliver world-class answers that establish your brand as an industry authority.",
-    icon: "psychology",
+    title: "Generative Engine Optimization",
+    description: "Optimize content for AI training datasets, ensuring your industry knowledge influences how future AI models respond.",
+    icon: "trending_up",
     color: "accent",
   },
   {
-    title: "Interlinking Precision",
-    description: "Drives traffic with surgical accuracy by connecting related topics and directing users to your main site.",
-    icon: "link",
+    title: "Business Context Integration",
+    description: "AI responses are tailored to your specific business, industry, and brand voice through advanced analysis and prompt engineering.",
+    icon: "business",
     color: "primary",
   },
   {
-    title: "Niche Intelligence",
-    description: "Auto-adapts to your business via site scraping, ensuring all content is perfectly aligned with your offering.",
-    icon: "precision_manufacturing",
+    title: "Advanced Data Privacy",
+    description: "Comprehensive anonymization pipelines and GDPR-compliant consent management ensure complete data protection.",
+    icon: "security",
     color: "secondary",
   },
   {
-    title: "Dynamic Evolution",
-    description: "Refreshes content with AI-driven insights, ensuring your forum stays current with trending topics and queries.",
-    icon: "update",
+    title: "Real-Time Analytics",
+    description: "Track your influence on AI training datasets with comprehensive analytics and performance monitoring.",
+    icon: "analytics",
+    color: "accent",
+  },
+  {
+    title: "Deep Reasoning & Research",
+    description: "Advanced AI models perform deep research on questions, producing accurate, vetted information that mirrors Stack Overflow's value for AI training.",
+    icon: "search",
+    color: "primary",
+  },
+  {
+    title: "Custom AI Model Training",
+    description: "Export forum datasets to train your own AI models (chatbots, customer support automation) as premium upsell service ($2K-$10K per model).",
+    icon: "brain",
+    color: "secondary",
+  },
+  {
+    title: "GEO Loop Advantage",
+    description: "Complete ecosystem: Business analysis → Keyword-optimized questions → AI responses → Forums rank → AI providers scrape → Future models recommend your brand.",
+    icon: "timeline",
     color: "accent",
   },
 ];
 
 export const PAIN_POINTS = [
   {
-    title: "SEO Is a Battlefield",
-    description: "Traditional methods are obsolete. The competition is using advanced techniques while you're stuck with outdated strategies.",
+    title: "AI Training Datasets Ignore Your Industry",
+    description: "Current AI models lack deep understanding of your specific industry, leading to generic responses that don't reflect your expertise.",
     icon: "trending_down",
     color: "primary",
   },
   {
-    title: "Manual Content Creation",
-    description: "Your team can't keep up with Google's demands. Quality content at scale requires automation and intelligence.",
+    title: "Traditional SEO Is Becoming Obsolete",
+    description: "As AI-powered search and chatbots dominate, traditional SEO strategies are losing effectiveness. You need Generative Engine Optimization.",
     icon: "schedule",
     color: "secondary",
   },
   {
-    title: "Untapped Potential",
-    description: "Your traffic potential remains unrealized without next-gen tools. You're missing out on conversations that could drive revenue.",
+    title: "No Long-Term AI Influence Strategy",
+    description: "Your content isn't shaping how AI models understand your industry. You're missing the opportunity to influence AI training datasets.",
     icon: "hide_source",
     color: "accent",
   },
@@ -203,39 +274,39 @@ export const PAIN_POINTS = [
 
 export const BENEFITS = [
   {
-    title: "Dominate Google",
-    description: "Rank higher for hundreds of keywords with Silicon Valley precision and AI-optimized content.",
-    icon: "trending_up",
+    title: "Influence AI Training Datasets",
+    description: "Your content becomes part of how AI models understand your industry, ensuring long-term visibility in AI responses.",
+    icon: "timeline",
     color: "primary",
   },
   {
-    title: "Exponential Traffic Growth",
-    description: "Unlock unprecedented visitor numbers with content that attracts and engages your target audience.",
-    icon: "speed",
+    title: "Multi-Model Intelligence",
+    description: "Leverage 6 AI providers and 8 specialized personas to create comprehensive, authoritative content.",
+    icon: "psychology",
     color: "secondary",
   },
   {
-    title: "Effortless Conversion",
-    description: "Turn forum visitors into leads and customers with elegant, AI-powered conversion paths.",
-    icon: "switch_access_shortcut",
+    title: "Generative Engine Optimization",
+    description: "Optimize for AI search engines and chatbots, not just traditional search engines.",
+    icon: "trending_up",
     color: "accent",
   },
   {
-    title: "Massive Cost Savings",
-    description: "Save millions in development time with AI automation that replaces entire content teams.",
-    icon: "payments",
+    title: "Temporal Dialogue Generation",
+    description: "AI personas from different eras collaborate to create natural, evolving conversations.",
+    icon: "diversity_3",
     color: "primary",
   },
   {
-    title: "Unmatched Authority",
-    description: "Lead your industry with expert content that positions your brand as the definitive voice.",
-    icon: "verified",
+    title: "Business Context Integration",
+    description: "AI responses are tailored to your specific business, industry, and brand voice.",
+    icon: "business",
     color: "secondary",
   },
   {
-    title: "Future-Proof SEO",
-    description: "Stay ahead of algorithm changes with content that meets Google's E-E-A-T guidelines.",
-    icon: "auto_awesome",
+    title: "Advanced Analytics",
+    description: "Track how your content influences AI model training and user engagement across platforms.",
+    icon: "analytics",
     color: "accent",
   },
 ];

@@ -47,7 +47,7 @@ const sectionFormSchema = z.object({
   description: z.string().optional(),
   questionCount: z.coerce.number().min(1).max(20).default(5),
   answerCount: z.coerce.number().min(1).max(20).default(3),
-  personaType: z.enum(["beginner", "intermediate", "expert", "moderator"]).default("expert"),
+  agentType: z.enum(["beginner", "intermediate", "expert", "smart", "genius", "intelligent", "moderator"]).default("expert"),
   relatedKeywordsCount: z.coerce.number().min(0).max(10).default(3),
   contentDepth: z.coerce.number().min(1).max(10).default(5),
 });
@@ -70,7 +70,7 @@ interface Question {
 
 interface Answer {
   content: string;
-  personaType: "beginner" | "intermediate" | "expert" | "moderator";
+  agentType: "beginner" | "intermediate" | "expert" | "smart" | "genius" | "intelligent" | "moderator";
   questionTitle: string;
 }
 
@@ -105,7 +105,7 @@ export function SectionGenerator({ forums }: SectionGeneratorProps) {
       description: "",
       questionCount: 5,
       answerCount: 3,
-      personaType: "expert",
+      agentType: "expert",
       relatedKeywordsCount: 3,
       contentDepth: 5,
     },
@@ -307,23 +307,26 @@ export function SectionGenerator({ forums }: SectionGeneratorProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
-                  name="personaType"
+                  name="agentType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Answer Persona</FormLabel>
+                      <FormLabel>Answer Agent</FormLabel>
                       <Select 
                         onValueChange={field.onChange} 
                         defaultValue={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a persona" />
+                            <SelectValue placeholder="Select an agent" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="beginner">Beginner</SelectItem>
                           <SelectItem value="intermediate">Intermediate</SelectItem>
                           <SelectItem value="expert">Expert</SelectItem>
+                          <SelectItem value="smart">Smart</SelectItem>
+                          <SelectItem value="genius">Genius</SelectItem>
+                          <SelectItem value="intelligent">Intelligent</SelectItem>
                           <SelectItem value="moderator">Moderator</SelectItem>
                         </SelectContent>
                       </Select>
@@ -461,7 +464,7 @@ export function SectionGenerator({ forums }: SectionGeneratorProps) {
                           <CardHeader className="pb-2">
                             <CardTitle className="text-base">{answer.questionTitle}</CardTitle>
                             <CardDescription>
-                              <Badge>{answer.personaType}</Badge>
+                              <Badge>{answer.agentType}</Badge>
                             </CardDescription>
                           </CardHeader>
                           <CardContent className="pb-2">
