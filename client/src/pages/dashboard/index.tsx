@@ -42,6 +42,7 @@ const AIPersonasCustomizationDashboard = lazy(() => import("@/components/dashboa
 const MultilingualSupportDashboard = lazy(() => import("@/components/dashboard/multilingual-support"));
 const CustomAITrainingDashboard = lazy(() => import("@/components/dashboard/custom-ai-training"));
 const WebhookSystemDashboard = lazy(() => import("@/components/dashboard/webhook-system"));
+const AccessibilityDashboard = lazy(() => import("@/components/dashboard/accessibility-dashboard"));
 const BrandVoiceDashboard = lazy(() => import("@/components/dashboard/brand-voice"));
 
 // Define the stats type
@@ -144,6 +145,8 @@ export default function DashboardPage() {
           return ['/api/custom-models', '/api/training-datasets', '/api/training-jobs', '/api/custom-models/test'];
         case 'webhook-system':
           return ['/api/webhooks', '/api/webhook-events', '/api/webhook-tests'];
+        case 'accessibility':
+          return ['/api/accessibility/stats', '/api/accessibility/issues', '/api/accessibility/report'];
         case 'brand-voice':
           return ['/api/brand-voice', '/api/brand-voice/config'];
       default:
@@ -345,6 +348,14 @@ export default function DashboardPage() {
             <div className="p-6">
               <Suspense fallback={<LoadingComponent />}>
                 <WebhookSystemDashboard />
+              </Suspense>
+            </div>
+          );
+        } else if (location === "/dashboard/accessibility") {
+          return (
+            <div className="p-6">
+              <Suspense fallback={<LoadingComponent />}>
+                <AccessibilityDashboard />
               </Suspense>
             </div>
           );

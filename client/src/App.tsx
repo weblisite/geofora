@@ -29,6 +29,8 @@ import { useUserSync } from "@/hooks/use-user-sync";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PWAProvider, PWAInstallBanner, PWAUpdateBanner, OfflineIndicator } from "@/components/pwa/PWAProvider";
 import { MobileOptimizationProvider } from "@/components/mobile/MobileOptimizationProvider";
+import { AccessibilityProvider } from "@/components/accessibility/AccessibilityProvider";
+import { SkipLinks } from "@/components/accessibility/SkipLinks";
 
 // Placeholder page components for site sections
 const PartnersPage = () => <div className="min-h-screen p-8"><h1 className="text-3xl font-bold mb-6">Partners</h1><p>Coming soon!</p></div>;
@@ -89,7 +91,9 @@ function App() {
     <ErrorBoundary>
       <PWAProvider>
         <MobileOptimizationProvider>
-          <Switch>
+          <AccessibilityProvider>
+            <SkipLinks />
+            <Switch>
         <Route path="/" component={HomePage} />
         <Route path="/forum" component={ForumPage} />
         <Route path="/forum/new" component={NewQuestionPage} />
@@ -113,6 +117,7 @@ function App() {
         <ProtectedRoute path="/dashboard/business-analysis" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/industry-detection" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/brand-voice" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/accessibility" component={DashboardPage} />
         <Route path="/sign-in" component={SignInPage} />
         <Route path="/sign-up" component={SignUpPage} />
         <Route path="/sign-up/verify" component={VerifyPage} />
@@ -142,6 +147,7 @@ function App() {
           <PWAInstallBanner />
           <PWAUpdateBanner />
           <OfflineIndicator />
+          </AccessibilityProvider>
         </MobileOptimizationProvider>
       </PWAProvider>
     </ErrorBoundary>
