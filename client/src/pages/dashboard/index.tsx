@@ -43,6 +43,9 @@ const MultilingualSupportDashboard = lazy(() => import("@/components/dashboard/m
 const CustomAITrainingDashboard = lazy(() => import("@/components/dashboard/custom-ai-training"));
 const WebhookSystemDashboard = lazy(() => import("@/components/dashboard/webhook-system"));
 const AccessibilityDashboard = lazy(() => import("@/components/dashboard/accessibility-dashboard"));
+const EnhancedAnalyticsDashboard = lazy(() => import("@/components/dashboard/enhanced-analytics"));
+const AnalyticsReportingDashboard = lazy(() => import("@/components/dashboard/analytics-reporting"));
+const RealTimeAnalyticsDashboard = lazy(() => import("@/components/dashboard/realtime-analytics"));
 const BrandVoiceDashboard = lazy(() => import("@/components/dashboard/brand-voice"));
 
 // Define the stats type
@@ -147,6 +150,12 @@ export default function DashboardPage() {
           return ['/api/webhooks', '/api/webhook-events', '/api/webhook-tests'];
         case 'accessibility':
           return ['/api/accessibility/stats', '/api/accessibility/issues', '/api/accessibility/report'];
+        case 'enhanced-analytics':
+          return ['/api/analytics/overview', '/api/analytics/timeseries', '/api/analytics/devices', '/api/analytics/geography', '/api/analytics/sources', '/api/analytics/content', '/api/analytics/funnel'];
+        case 'analytics-reporting':
+          return ['/api/analytics/report-templates', '/api/analytics/report-data'];
+        case 'realtime-analytics':
+          return ['/api/analytics/realtime'];
         case 'brand-voice':
           return ['/api/brand-voice', '/api/brand-voice/config'];
       default:
@@ -356,6 +365,30 @@ export default function DashboardPage() {
             <div className="p-6">
               <Suspense fallback={<LoadingComponent />}>
                 <AccessibilityDashboard />
+              </Suspense>
+            </div>
+          );
+        } else if (location === "/dashboard/enhanced-analytics") {
+          return (
+            <div className="p-6">
+              <Suspense fallback={<LoadingComponent />}>
+                <EnhancedAnalyticsDashboard />
+              </Suspense>
+            </div>
+          );
+        } else if (location === "/dashboard/analytics-reporting") {
+          return (
+            <div className="p-6">
+              <Suspense fallback={<LoadingComponent />}>
+                <AnalyticsReportingDashboard />
+              </Suspense>
+            </div>
+          );
+        } else if (location === "/dashboard/realtime-analytics") {
+          return (
+            <div className="p-6">
+              <Suspense fallback={<LoadingComponent />}>
+                <RealTimeAnalyticsDashboard />
               </Suspense>
             </div>
           );

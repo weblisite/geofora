@@ -9,6 +9,7 @@ import additionalEndpoints from "./routes/additional-endpoints";
 import accessibilityEndpoints from "./routes/accessibility-endpoints";
 import interlinkingEndpoints from "./routes/interlinking-endpoints";
 import missingEndpoints from "./routes/missing-endpoints";
+import analyticsEndpoints from "./routes/analytics-endpoints";
 import { clerkClient } from '@clerk/clerk-sdk-node';
 import { errorHandlingSystem } from './middleware/error-handler';
 import { performanceOptimizationSystem } from './performance/optimization';
@@ -5266,6 +5267,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register missing endpoints
   app.use(missingEndpoints);
+  
+  // Register analytics endpoints
+  app.use(analyticsEndpoints);
 
   // User subscription plans
   app.post("/api/users/select-plan", requireClerkAuth, async (req, res) => {

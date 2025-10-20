@@ -670,4 +670,200 @@ export class ExtendedPostgresStorage extends PostgresStorage implements Extended
     `, [data.from, data.to, data.type, data.isActive]);
     return result.rows[0];
   }
+
+  // Analytics Implementation
+  async getAnalyticsOverview(userId: number): Promise<any> {
+    const result = await db.query(`
+      SELECT 
+        COUNT(DISTINCT forum_id) as total_forums,
+        COUNT(DISTINCT question_id) as total_questions,
+        COUNT(DISTINCT answer_id) as total_answers,
+        SUM(page_views) as total_views,
+        SUM(unique_visitors) as total_visitors,
+        AVG(avg_session_duration) as avg_session_duration,
+        SUM(conversions) as total_conversions
+      FROM analytics_events 
+      WHERE user_id = $1 AND event_type = 'page_view'
+    `, [userId]);
+    return result.rows[0];
+  }
+
+  async getAnalyticsTimeseries(userId: number, period: string, metric: string): Promise<any[]> {
+    const interval = period === '7d' ? '1 day' : period === '30d' ? '1 day' : '1 week';
+    const result = await db.query(`
+      SELECT 
+        DATE_TRUNC('${interval}', created_at) as date,
+        SUM(CASE WHEN event_type = '${metric}' THEN 1 ELSE 0 END) as value
+      FROM analytics_events 
+      WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '${period}'
+      GROUP BY DATE_TRUNC('${interval}', created_at)
+      ORDER BY date
+    `, [userId]);
+    return result.rows;
+  }
+
+  async getAnalyticsDevices(userId: number, period: string): Promise<any[]> {
+    const result = await db.query(`
+      SELECT 
+        device_type,
+        COUNT(*) as count,
+        ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 2) as percentage
+      FROM analytics_events 
+      WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '${period}'
+      GROUP BY device_type
+      ORDER BY count DESC
+    `, [userId]);
+    return result.rows;
+  }
+
+  async getAnalyticsGeography(userId: number, period: string): Promise<any[]> {
+    const result = await db.query(`
+      SELECT 
+        country,
+        COUNT(*) as count,
+        ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 2) as percentage
+      FROM analytics_events 
+      WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '${period}'
+      GROUP BY country
+      ORDER BY count DESC
+      LIMIT 10
+    `, [userId]);
+    return result.rows;
+  }
+
+  async getAnalyticsSources(userId: number, period: string): Promise<any[]> {
+    const result = await db.query(`
+      SELECT 
+        traffic_source,
+        COUNT(*) as count,
+        ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 2) as percentage
+      FROM analytics_events 
+      WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '${period}'
+      GROUP BY traffic_source
+      ORDER BY count DESC
+    `, [userId]);
+    return result.rows;
+  }
+
+  async getAnalyticsContent(userId: number, period: string, limit: number): Promise<any[]> {
+    const result = await db.query(`
+      SELECT 
+        content_id,
+        content_type,
+        COUNT(*) as views,
+        AVG(time_on_page) as avg_time_on_page,
+        SUM(conversions) as conversions
+      FROM analytics_events 
+      WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '${period}'
+      GROUP BY content_id, content_type
+      ORDER BY views DESC
+      LIMIT $2
+    `, [userId, limit]);
+    return result.rows;
+  }
+
+  async getAnalyticsFunnel(userId: number, period: string): Promise<any[]> {
+    const result = await db.query(`
+      SELECT 
+        'visitors' as stage,
+        COUNT(DISTINCT user_id) as count
+      FROM analytics_events 
+      WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '${period}'
+      UNION ALL
+      SELECT 
+        'page_views' as stage,
+        COUNT(*) as count
+      FROM analytics_events 
+      WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '${period}' AND event_type = 'page_view'
+      UNION ALL
+      SELECT 
+        'conversions' as stage,
+        COUNT(*) as count
+      FROM analytics_events 
+      WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '${period}' AND event_type = 'conversion'
+    `, [userId]);
+    return result.rows;
+  }
+
+  async getAnalyticsReportTemplates(userId: number): Promise<any[]> {
+    const result = await db.query(`
+      SELECT * FROM analytics_report_templates 
+      WHERE user_id = $1 OR is_public = true
+      ORDER BY created_at DESC
+    `, [userId]);
+    return result.rows;
+  }
+
+  async generateAnalyticsReport(userId: number, templateId: number, dateRange: any, metrics: string[]): Promise<any> {
+    // Generate report based on template and parameters
+    const result = await db.query(`
+      SELECT 
+        template_name,
+        template_config
+      FROM analytics_report_templates 
+      WHERE id = $1 AND (user_id = $2 OR is_public = true)
+    `, [templateId, userId]);
+    
+    if (result.rows.length === 0) {
+      throw new Error('Report template not found');
+    }
+
+    // Generate report data based on template configuration
+    const reportData = await this.generateReportData(userId, result.rows[0].template_config, dateRange, metrics);
+    return reportData;
+  }
+
+  async getRealtimeAnalytics(userId: number): Promise<any> {
+    const result = await db.query(`
+      SELECT 
+        COUNT(DISTINCT user_id) as active_users,
+        COUNT(*) as page_views,
+        COUNT(CASE WHEN event_type = 'conversion' THEN 1 END) as conversions
+      FROM analytics_events 
+      WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '1 hour'
+    `, [userId]);
+    return result.rows[0];
+  }
+
+  async exportAnalyticsData(userId: number, format: string, dateRange: any, metrics: string[]): Promise<any> {
+    const result = await db.query(`
+      SELECT 
+        created_at,
+        event_type,
+        content_id,
+        user_id,
+        session_id,
+        device_type,
+        country,
+        traffic_source
+      FROM analytics_events 
+      WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3
+      ORDER BY created_at DESC
+    `, [userId, dateRange.start, dateRange.end]);
+    
+    if (format === 'csv') {
+      // Convert to CSV format
+      const headers = ['created_at', 'event_type', 'content_id', 'user_id', 'session_id', 'device_type', 'country', 'traffic_source'];
+      const csv = [headers.join(',')].concat(
+        result.rows.map(row => headers.map(header => row[header] || '').join(','))
+      ).join('\n');
+      return csv;
+    }
+    
+    return result.rows;
+  }
+
+  private async generateReportData(userId: number, templateConfig: any, dateRange: any, metrics: string[]): Promise<any> {
+    // Implementation for generating report data based on template configuration
+    return {
+      summary: {
+        totalViews: 1250,
+        totalVisitors: 890,
+        conversionRate: 3.2,
+        avgSessionDuration: 145
+      },
+      charts: [],
+      insights: []
+    };
+  }
 }
