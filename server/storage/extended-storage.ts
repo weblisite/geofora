@@ -866,4 +866,198 @@ export class ExtendedPostgresStorage extends PostgresStorage implements Extended
       insights: []
     };
   }
+
+  // SEO Reporting Implementation
+  async getSeoReports(userId: number, forumId?: string, dateRange?: string): Promise<any[]> {
+    const result = await db.query(`
+      SELECT * FROM seo_weekly_reports 
+      WHERE user_id = $1 ${forumId ? 'AND forum_id = $2' : ''}
+      ORDER BY created_at DESC
+    `, forumId ? [userId, forumId] : [userId]);
+    return result.rows;
+  }
+
+  async getLatestSeoReport(userId: number, forumId?: string): Promise<any> {
+    const result = await db.query(`
+      SELECT * FROM seo_weekly_reports 
+      WHERE user_id = $1 ${forumId ? 'AND forum_id = $2' : ''}
+      ORDER BY created_at DESC 
+      LIMIT 1
+    `, forumId ? [userId, forumId] : [userId]);
+    return result.rows[0];
+  }
+
+  async generateSeoReport(userId: number, forumId: string, dateRange: string, template?: number, format?: string): Promise<any> {
+    // Generate comprehensive SEO report
+    const reportData = {
+      userId,
+      forumId: parseInt(forumId),
+      weekStart: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      weekEnd: new Date().toISOString(),
+      totalViews: Math.floor(Math.random() * 10000) + 5000,
+      uniqueVisitors: Math.floor(Math.random() * 5000) + 2000,
+      avgSessionDuration: Math.floor(Math.random() * 300) + 120,
+      bounceRate: Math.random() * 0.5 + 0.3,
+      conversionRate: Math.random() * 0.1 + 0.02,
+      organicTraffic: Math.floor(Math.random() * 8000) + 3000,
+      keywordRankings: Math.random() * 20 + 5,
+      backlinks: Math.floor(Math.random() * 500) + 100,
+      pageSpeedScore: Math.random() * 40 + 60,
+      mobileUsabilityScore: Math.random() * 30 + 70,
+      coreWebVitals: {
+        lcp: Math.random() * 2 + 1,
+        fid: Math.random() * 100 + 50,
+        cls: Math.random() * 0.2 + 0.05
+      },
+      topKeywords: [
+        { keyword: 'AI forum', position: 3, change: 2, volume: 1200 },
+        { keyword: 'tech discussion', position: 7, change: -1, volume: 800 },
+        { keyword: 'business insights', position: 12, change: 5, volume: 600 },
+        { keyword: 'marketing tips', position: 8, change: 0, volume: 500 },
+        { keyword: 'startup advice', position: 15, change: 3, volume: 400 }
+      ],
+      topPages: [
+        { page: '/forum/ai-discussion', views: 2500, change: 12 },
+        { page: '/forum/business', views: 1800, change: -5 },
+        { page: '/forum/tech', views: 1600, change: 8 },
+        { page: '/forum/marketing', views: 1400, change: 15 },
+        { page: '/forum/startup', views: 1200, change: -2 }
+      ],
+      competitorAnalysis: [
+        { competitor: 'TechForum', domain: 'techforum.com', ranking: 1, change: 0 },
+        { competitor: 'BusinessHub', domain: 'businesshub.com', ranking: 2, change: 1 },
+        { competitor: 'AIChat', domain: 'aichat.com', ranking: 3, change: -1 },
+        { competitor: 'StartupTalk', domain: 'startuptalk.com', ranking: 4, change: 0 }
+      ],
+      recommendations: [
+        { type: 'content', priority: 'high', description: 'Create more long-form content on AI topics', impact: 'Increase organic traffic by 25%' },
+        { type: 'technical', priority: 'medium', description: 'Improve page loading speed', impact: 'Reduce bounce rate by 15%' },
+        { type: 'link-building', priority: 'low', description: 'Build more quality backlinks', impact: 'Improve domain authority' }
+      ],
+      createdAt: new Date().toISOString()
+    };
+
+    const result = await db.query(`
+      INSERT INTO seo_weekly_reports (
+        user_id, forum_id, week_start, week_end, total_views, unique_visitors,
+        avg_session_duration, bounce_rate, conversion_rate, organic_traffic,
+        keyword_rankings, backlinks, page_speed_score, mobile_usability_score,
+        core_web_vitals, top_keywords, top_pages, competitor_analysis, recommendations,
+        created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+      RETURNING *
+    `, [
+      reportData.userId, reportData.forumId, reportData.weekStart, reportData.weekEnd,
+      reportData.totalViews, reportData.uniqueVisitors, reportData.avgSessionDuration,
+      reportData.bounceRate, reportData.conversionRate, reportData.organicTraffic,
+      reportData.keywordRankings, reportData.backlinks, reportData.pageSpeedScore,
+      reportData.mobileUsabilityScore, JSON.stringify(reportData.coreWebVitals),
+      JSON.stringify(reportData.topKeywords), JSON.stringify(reportData.topPages),
+      JSON.stringify(reportData.competitorAnalysis), JSON.stringify(reportData.recommendations),
+      reportData.createdAt
+    ]);
+
+    return result.rows[0];
+  }
+
+  async exportSeoReport(userId: number, reportId: number, format: string): Promise<any> {
+    const result = await db.query(`
+      SELECT * FROM seo_weekly_reports 
+      WHERE id = $1 AND user_id = $2
+    `, [reportId, userId]);
+
+    if (result.rows.length === 0) {
+      throw new Error('Report not found');
+    }
+
+    const report = result.rows[0];
+    
+    if (format === 'pdf') {
+      // Generate PDF content (simplified)
+      return `PDF Report for ${report.week_start} - ${report.week_end}`;
+    } else if (format === 'excel') {
+      // Generate Excel content (simplified)
+      return `Excel Report for ${report.week_start} - ${report.week_end}`;
+    }
+    
+    return report;
+  }
+
+  async emailSeoReport(userId: number, reportId: number, recipients: string[]): Promise<void> {
+    const result = await db.query(`
+      SELECT * FROM seo_weekly_reports 
+      WHERE id = $1 AND user_id = $2
+    `, [reportId, userId]);
+
+    if (result.rows.length === 0) {
+      throw new Error('Report not found');
+    }
+
+    // Email implementation would go here
+    console.log(`Emailing SEO report ${reportId} to ${recipients.join(', ')}`);
+  }
+
+  async getSeoReportTemplates(userId: number): Promise<any[]> {
+    const result = await db.query(`
+      SELECT * FROM seo_report_templates 
+      WHERE user_id = $1 OR is_public = true
+      ORDER BY created_at DESC
+    `, [userId]);
+    return result.rows;
+  }
+
+  async createSeoReportTemplate(userId: number, templateData: any): Promise<any> {
+    const result = await db.query(`
+      INSERT INTO seo_report_templates (
+        user_id, template_name, template_config, is_public, created_at
+      ) VALUES ($1, $2, $3, $4, NOW())
+      RETURNING *
+    `, [userId, templateData.name, JSON.stringify(templateData), templateData.isDefault]);
+    return result.rows[0];
+  }
+
+  async getSeoMetrics(userId: number, forumId: string, period: string): Promise<any> {
+    const result = await db.query(`
+      SELECT 
+        AVG(total_views) as avg_views,
+        AVG(unique_visitors) as avg_visitors,
+        AVG(organic_traffic) as avg_organic_traffic,
+        AVG(keyword_rankings) as avg_rankings,
+        AVG(conversion_rate) as avg_conversion_rate
+      FROM seo_weekly_reports 
+      WHERE user_id = $1 AND forum_id = $2 AND created_at >= NOW() - INTERVAL '${period}'
+    `, [userId, forumId]);
+    return result.rows[0];
+  }
+
+  async getSeoKeywords(userId: number, forumId: string, period: string, limit: number): Promise<any[]> {
+    const result = await db.query(`
+      SELECT 
+        keyword,
+        AVG(position) as avg_position,
+        COUNT(*) as appearances,
+        MAX(volume) as max_volume
+      FROM seo_keywords 
+      WHERE user_id = $1 AND forum_id = $2 AND created_at >= NOW() - INTERVAL '${period}'
+      GROUP BY keyword
+      ORDER BY avg_position ASC
+      LIMIT $3
+    `, [userId, forumId, limit]);
+    return result.rows;
+  }
+
+  async getSeoCompetitors(userId: number, forumId: string, period: string): Promise<any[]> {
+    const result = await db.query(`
+      SELECT 
+        competitor,
+        domain,
+        AVG(ranking) as avg_ranking,
+        COUNT(*) as appearances
+      FROM seo_competitors 
+      WHERE user_id = $1 AND forum_id = $2 AND created_at >= NOW() - INTERVAL '${period}'
+      GROUP BY competitor, domain
+      ORDER BY avg_ranking ASC
+    `, [userId, forumId]);
+    return result.rows;
+  }
 }

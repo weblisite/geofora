@@ -46,6 +46,7 @@ const AccessibilityDashboard = lazy(() => import("@/components/dashboard/accessi
 const EnhancedAnalyticsDashboard = lazy(() => import("@/components/dashboard/enhanced-analytics"));
 const AnalyticsReportingDashboard = lazy(() => import("@/components/dashboard/analytics-reporting"));
 const RealTimeAnalyticsDashboard = lazy(() => import("@/components/dashboard/realtime-analytics"));
+const SEOReportingDashboard = lazy(() => import("@/components/dashboard/seo-reporting"));
 const BrandVoiceDashboard = lazy(() => import("@/components/dashboard/brand-voice"));
 
 // Define the stats type
@@ -156,6 +157,8 @@ export default function DashboardPage() {
           return ['/api/analytics/report-templates', '/api/analytics/report-data'];
         case 'realtime-analytics':
           return ['/api/analytics/realtime'];
+        case 'seo-reporting':
+          return ['/api/seo/reports', '/api/seo/reports/latest', '/api/seo/report-templates'];
         case 'brand-voice':
           return ['/api/brand-voice', '/api/brand-voice/config'];
       default:
@@ -392,7 +395,15 @@ export default function DashboardPage() {
               </Suspense>
             </div>
           );
-    } else if (location === "/dashboard/brand-voice") {
+        } else if (location === "/dashboard/seo-reporting") {
+          return (
+            <div className="p-6">
+              <Suspense fallback={<LoadingComponent />}>
+                <SEOReportingDashboard />
+              </Suspense>
+            </div>
+          );
+        } else if (location === "/dashboard/brand-voice") {
       return (
         <div className="p-6">
           <Suspense fallback={<LoadingComponent />}>
