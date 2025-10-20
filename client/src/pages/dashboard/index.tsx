@@ -37,6 +37,10 @@ const BusinessAnalysisDashboard = lazy(() => import("@/components/dashboard/busi
 const IndustryDetectionDashboard = lazy(() => import("@/components/dashboard/industry-detection"));
 const SEOManagementDashboard = lazy(() => import("@/components/dashboard/seo-management"));
 const CustomDomainSetupDashboard = lazy(() => import("@/components/dashboard/custom-domain-setup"));
+const ContentModerationDashboard = lazy(() => import("@/components/dashboard/content-moderation"));
+const AIPersonasCustomizationDashboard = lazy(() => import("@/components/dashboard/ai-personas-customization"));
+const MultilingualSupportDashboard = lazy(() => import("@/components/dashboard/multilingual-support"));
+const CustomAITrainingDashboard = lazy(() => import("@/components/dashboard/custom-ai-training"));
 const BrandVoiceDashboard = lazy(() => import("@/components/dashboard/brand-voice"));
 
 // Define the stats type
@@ -129,8 +133,16 @@ export default function DashboardPage() {
         return ['/api/seo/config', '/api/seo/indexing-status', '/api/seo/sitemap'];
       case 'custom-domain-setup':
         return ['/api/domains', '/api/subdomains', '/api/domains/ssl', '/api/domains/redirects'];
-      case 'brand-voice':
-        return ['/api/brand-voice', '/api/brand-voice/config'];
+        case 'content-moderation':
+          return ['/api/moderation/stats', '/api/moderation/rules', '/api/moderation/actions', '/api/moderation/reports'];
+        case 'ai-personas':
+          return ['/api/ai-personas', '/api/ai-personas/test'];
+        case 'multilingual-support':
+          return ['/api/languages', '/api/translation-configs', '/api/translations/recent', '/api/translations/test', '/api/translations/bulk'];
+        case 'custom-ai-training':
+          return ['/api/custom-models', '/api/training-datasets', '/api/training-jobs', '/api/custom-models/test'];
+        case 'brand-voice':
+          return ['/api/brand-voice', '/api/brand-voice/config'];
       default:
         return [];
     }
@@ -293,6 +305,38 @@ export default function DashboardPage() {
           </Suspense>
         </div>
       );
+        } else if (location === "/dashboard/content-moderation") {
+          return (
+            <div className="p-6">
+              <Suspense fallback={<LoadingComponent />}>
+                <ContentModerationDashboard />
+              </Suspense>
+            </div>
+          );
+        } else if (location === "/dashboard/ai-personas") {
+          return (
+            <div className="p-6">
+              <Suspense fallback={<LoadingComponent />}>
+                <AIPersonasCustomizationDashboard />
+              </Suspense>
+            </div>
+          );
+        } else if (location === "/dashboard/multilingual-support") {
+          return (
+            <div className="p-6">
+              <Suspense fallback={<LoadingComponent />}>
+                <MultilingualSupportDashboard />
+              </Suspense>
+            </div>
+          );
+        } else if (location === "/dashboard/custom-ai-training") {
+          return (
+            <div className="p-6">
+              <Suspense fallback={<LoadingComponent />}>
+                <CustomAITrainingDashboard />
+              </Suspense>
+            </div>
+          );
     } else if (location === "/dashboard/brand-voice") {
       return (
         <div className="p-6">
