@@ -48,6 +48,7 @@ const AnalyticsReportingDashboard = lazy(() => import("@/components/dashboard/an
 const RealTimeAnalyticsDashboard = lazy(() => import("@/components/dashboard/realtime-analytics"));
 const SEOReportingDashboard = lazy(() => import("@/components/dashboard/seo-reporting"));
 const CompetitorAnalysisDashboard = lazy(() => import("@/components/dashboard/competitor-analysis"));
+const ContentGapAnalysisDashboard = lazy(() => import("@/components/dashboard/content-gap-analysis"));
 const BrandVoiceDashboard = lazy(() => import("@/components/dashboard/brand-voice"));
 
 // Define the stats type
@@ -162,6 +163,8 @@ export default function DashboardPage() {
           return ['/api/seo/reports', '/api/seo/reports/latest', '/api/seo/report-templates'];
         case 'competitor-analysis':
           return ['/api/competitor-analysis', '/api/competitors', '/api/competitor-insights'];
+        case 'content-gap-analysis':
+          return ['/api/content-gaps/analysis', '/api/content-gaps', '/api/content-gaps/export'];
         case 'brand-voice':
           return ['/api/brand-voice', '/api/brand-voice/config'];
       default:
@@ -411,6 +414,14 @@ export default function DashboardPage() {
             <div className="p-6">
               <Suspense fallback={<LoadingComponent />}>
                 <CompetitorAnalysisDashboard />
+              </Suspense>
+            </div>
+          );
+        } else if (location === "/dashboard/content-gap-analysis") {
+          return (
+            <div className="p-6">
+              <Suspense fallback={<LoadingComponent />}>
+                <ContentGapAnalysisDashboard />
               </Suspense>
             </div>
           );

@@ -123,6 +123,7 @@ function App() {
         <ProtectedRoute path="/dashboard/realtime-analytics" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/seo-reporting" component={DashboardPage} />
         <ProtectedRoute path="/dashboard/competitor-analysis" component={DashboardPage} />
+        <ProtectedRoute path="/dashboard/content-gap-analysis" component={DashboardPage} />
         <Route path="/sign-in" component={SignInPage} />
         <Route path="/sign-up" component={SignUpPage} />
         <Route path="/sign-up/verify" component={VerifyPage} />

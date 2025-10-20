@@ -1318,4 +1318,210 @@ export class ExtendedPostgresStorage extends PostgresStorage implements Extended
     `, [userId, competitorId, keywordData.keyword, keywordData.position, keywordData.volume, keywordData.difficulty || 5]);
     return result.rows[0];
   }
+
+  // Content Gap Analysis Implementation
+  async getContentGapAnalysis(userId: number, forumId: string, period: string): Promise<any> {
+    const result = await db.query(`
+      SELECT 
+        COUNT(*) as total_gaps,
+        COUNT(CASE WHEN priority = 'high' THEN 1 END) as high_priority_gaps,
+        COUNT(CASE WHEN status = 'open' THEN 1 END) as open_gaps,
+        COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress_gaps,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_gaps,
+        AVG(search_volume) as avg_search_volume,
+        AVG(difficulty) as avg_difficulty,
+        AVG(opportunity_score) as avg_opportunity_score
+      FROM content_gaps 
+      WHERE user_id = $1 AND forum_id = $2
+      AND created_at >= NOW() - INTERVAL '${period}'
+    `, [userId, forumId]);
+    return result.rows[0];
+  }
+
+  async getContentGaps(userId: number, filters: any): Promise<any[]> {
+    let query = `
+      SELECT * FROM content_gaps 
+      WHERE user_id = $1
+    `;
+    const params = [userId];
+    let paramCount = 1;
+
+    if (filters.forumId) {
+      paramCount++;
+      query += ` AND forum_id = $${paramCount}`;
+      params.push(filters.forumId);
+    }
+
+    if (filters.priority) {
+      paramCount++;
+      query += ` AND priority = $${paramCount}`;
+      params.push(filters.priority);
+    }
+
+    if (filters.status) {
+      paramCount++;
+      query += ` AND status = $${paramCount}`;
+      params.push(filters.status);
+    }
+
+    if (filters.contentType) {
+      paramCount++;
+      query += ` AND content_type = $${paramCount}`;
+      params.push(filters.contentType);
+    }
+
+    const sortBy = filters.sortBy || 'opportunity_score';
+    const sortOrder = filters.sortOrder || 'DESC';
+    query += ` ORDER BY ${sortBy} ${sortOrder}`;
+
+    const result = await db.query(query, params);
+    return result.rows;
+  }
+
+  async analyzeContentGaps(userId: number, forumId: string, industry: string, period: string): Promise<any> {
+    // Simulate content gap analysis
+    const gaps = [
+      {
+        keyword: 'best practices',
+        search_volume: 12000,
+        difficulty: 45,
+        opportunity_score: 85,
+        content_type: 'guide',
+        priority: 'high',
+        status: 'open',
+        competitor_coverage: 60,
+        our_coverage: 20,
+        gap_size: 40
+      },
+      {
+        keyword: 'troubleshooting',
+        search_volume: 8500,
+        difficulty: 35,
+        opportunity_score: 78,
+        content_type: 'tutorial',
+        priority: 'high',
+        status: 'open',
+        competitor_coverage: 70,
+        our_coverage: 30,
+        gap_size: 40
+      }
+    ];
+
+    // Store gaps in database
+    for (const gap of gaps) {
+      await db.query(`
+        INSERT INTO content_gaps (user_id, forum_id, keyword, search_volume, difficulty, opportunity_score, content_type, priority, status, competitor_coverage, our_coverage, gap_size, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+        ON CONFLICT (user_id, forum_id, keyword) DO UPDATE SET
+        search_volume = EXCLUDED.search_volume,
+        difficulty = EXCLUDED.difficulty,
+        opportunity_score = EXCLUDED.opportunity_score,
+        competitor_coverage = EXCLUDED.competitor_coverage,
+        our_coverage = EXCLUDED.our_coverage,
+        gap_size = EXCLUDED.gap_size,
+        updated_at = NOW()
+      `, [userId, forumId, gap.keyword, gap.search_volume, gap.difficulty, gap.opportunity_score, gap.content_type, gap.priority, gap.status, gap.competitor_coverage, gap.our_coverage, gap.gap_size]);
+    }
+
+    return {
+      total_gaps: gaps.length,
+      high_priority_gaps: gaps.filter(g => g.priority === 'high').length,
+      avg_opportunity_score: gaps.reduce((sum, g) => sum + g.opportunity_score, 0) / gaps.length,
+      gaps
+    };
+  }
+
+  async updateContentGapStatus(userId: number, gapId: number, status: string): Promise<any> {
+    const result = await db.query(`
+      UPDATE content_gaps 
+      SET status = $1, updated_at = NOW()
+      WHERE id = $2 AND user_id = $3
+      RETURNING *
+    `, [status, gapId, userId]);
+    return result.rows[0];
+  }
+
+  async updateContentGap(userId: number, gapId: number, updateData: any): Promise<any> {
+    const fields = Object.keys(updateData).map((key, index) => `${key} = $${index + 2}`);
+    const values = Object.values(updateData);
+    
+    const result = await db.query(`
+      UPDATE content_gaps 
+      SET ${fields.join(', ')}, updated_at = NOW()
+      WHERE id = $1 AND user_id = $${values.length + 2}
+      RETURNING *
+    `, [gapId, ...values, userId]);
+    return result.rows[0];
+  }
+
+  async deleteContentGap(userId: number, gapId: number): Promise<void> {
+    await db.query(`
+      DELETE FROM content_gaps 
+      WHERE id = $1 AND user_id = $2
+    `, [gapId, userId]);
+  }
+
+  async exportContentGapAnalysis(userId: number, forumId: string, format: string): Promise<any> {
+    const result = await db.query(`
+      SELECT * FROM content_gaps 
+      WHERE user_id = $1 AND forum_id = $2
+      ORDER BY opportunity_score DESC
+    `, [userId, forumId]);
+
+    if (format === 'pdf') {
+      // Generate PDF export
+      return Buffer.from('PDF content would be generated here');
+    } else {
+      // Generate Excel export
+      return Buffer.from('Excel content would be generated here');
+    }
+  }
+
+  async getContentGapInsights(userId: number, forumId: string, period: string): Promise<any> {
+    const result = await db.query(`
+      SELECT 
+        content_type,
+        COUNT(*) as gap_count,
+        AVG(opportunity_score) as avg_opportunity_score,
+        SUM(search_volume) as total_search_volume
+      FROM content_gaps 
+      WHERE user_id = $1 AND forum_id = $2
+      AND created_at >= NOW() - INTERVAL '${period}'
+      GROUP BY content_type
+      ORDER BY avg_opportunity_score DESC
+    `, [userId, forumId]);
+    return result.rows;
+  }
+
+  async getContentGapTrends(userId: number, forumId: string, period: string): Promise<any[]> {
+    const result = await db.query(`
+      SELECT 
+        DATE_TRUNC('week', created_at) as week,
+        COUNT(*) as gap_count,
+        AVG(opportunity_score) as avg_opportunity_score
+      FROM content_gaps 
+      WHERE user_id = $1 AND forum_id = $2
+      AND created_at >= NOW() - INTERVAL '${period}'
+      GROUP BY DATE_TRUNC('week', created_at)
+      ORDER BY week DESC
+    `, [userId, forumId]);
+    return result.rows;
+  }
+
+  async createContentGap(userId: number, gapData: any): Promise<any> {
+    const result = await db.query(`
+      INSERT INTO content_gaps (user_id, forum_id, keyword, search_volume, difficulty, opportunity_score, content_type, priority, status, competitor_coverage, our_coverage, gap_size, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+      RETURNING *
+    `, [userId, gapData.forumId, gapData.keyword, gapData.searchVolume, gapData.difficulty, gapData.opportunityScore, gapData.contentType, gapData.priority, gapData.status, gapData.competitorCoverage, gapData.ourCoverage, gapData.gapSize]);
+    return result.rows[0];
+  }
+
+  async getContentGapById(userId: number, gapId: number): Promise<any> {
+    const result = await db.query(`
+      SELECT * FROM content_gaps 
+      WHERE id = $1 AND user_id = $2
+    `, [gapId, userId]);
+    return result.rows[0];
+  }
 }
