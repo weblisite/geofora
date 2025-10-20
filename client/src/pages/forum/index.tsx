@@ -4,9 +4,10 @@ import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import QuestionList from "@/components/forum/question-list";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function ForumPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user, isAuthenticated } = useAuth();
 
   return (
     <div className="min-h-screen flex flex-col">

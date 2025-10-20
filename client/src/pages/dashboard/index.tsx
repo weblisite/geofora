@@ -35,6 +35,8 @@ const DataExportDashboard = lazy(() => import("@/components/dashboard/data-expor
 const SetupFeeManagement = lazy(() => import("@/components/dashboard/setup-fee"));
 const BusinessAnalysisDashboard = lazy(() => import("@/components/dashboard/business-analysis"));
 const IndustryDetectionDashboard = lazy(() => import("@/components/dashboard/industry-detection"));
+const SEOManagementDashboard = lazy(() => import("@/components/dashboard/seo-management"));
+const CustomDomainSetupDashboard = lazy(() => import("@/components/dashboard/custom-domain-setup"));
 const BrandVoiceDashboard = lazy(() => import("@/components/dashboard/brand-voice"));
 
 // Define the stats type
@@ -119,6 +121,16 @@ export default function DashboardPage() {
         return ['/api/ai-agents', '/api/ai-agents/stats'];
       case 'settings':
         return ['/api/settings', '/api/user/profile'];
+      case 'business-analysis':
+        return ['/api/business/analyze', '/api/business-analysis/current'];
+      case 'industry-detection':
+        return ['/api/business/industry/detect-text', '/api/business/industry/detect-website'];
+      case 'seo-management':
+        return ['/api/seo/config', '/api/seo/indexing-status', '/api/seo/sitemap'];
+      case 'custom-domain-setup':
+        return ['/api/domains', '/api/subdomains', '/api/domains/ssl', '/api/domains/redirects'];
+      case 'brand-voice':
+        return ['/api/brand-voice', '/api/brand-voice/config'];
       default:
         return [];
     }
@@ -262,6 +274,22 @@ export default function DashboardPage() {
         <div className="p-6">
           <Suspense fallback={<LoadingComponent />}>
             <IndustryDetectionDashboard />
+          </Suspense>
+        </div>
+      );
+    } else if (location === "/dashboard/seo-management") {
+      return (
+        <div className="p-6">
+          <Suspense fallback={<LoadingComponent />}>
+            <SEOManagementDashboard />
+          </Suspense>
+        </div>
+      );
+    } else if (location === "/dashboard/custom-domain-setup") {
+      return (
+        <div className="p-6">
+          <Suspense fallback={<LoadingComponent />}>
+            <CustomDomainSetupDashboard />
           </Suspense>
         </div>
       );

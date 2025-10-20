@@ -19,6 +19,8 @@ export default function Sidebar() {
     { name: "Setup Fee", path: "/dashboard/setup-fee", icon: "credit_card", isDashboardItem: true },
     { name: "Business Analysis", path: "/dashboard/business-analysis", icon: "business", isDashboardItem: true },
     { name: "Industry Detection", path: "/dashboard/industry-detection", icon: "search", isDashboardItem: true },
+    { name: "SEO Management", path: "/dashboard/seo-management", icon: "search", isDashboardItem: true },
+    { name: "Custom Domain Setup", path: "/dashboard/custom-domain-setup", icon: "domain", isDashboardItem: true },
     { name: "Brand Voice", path: "/dashboard/brand-voice", icon: "record_voice_over", isDashboardItem: true },
     { name: "Interlinking", path: "/dashboard/interlinking", icon: "link", isDashboardItem: true },
     { name: "Keyword Analysis", path: "/dashboard/keyword-analysis", icon: "travel_explore", isDashboardItem: true },
