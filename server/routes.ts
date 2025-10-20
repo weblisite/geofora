@@ -11,6 +11,7 @@ import interlinkingEndpoints from "./routes/interlinking-endpoints";
 import missingEndpoints from "./routes/missing-endpoints";
 import analyticsEndpoints from "./routes/analytics-endpoints";
 import seoReportingEndpoints from "./routes/seo-reporting-endpoints";
+import competitorAnalysisEndpoints from "./routes/competitor-analysis-endpoints";
 import { clerkClient } from '@clerk/clerk-sdk-node';
 import { errorHandlingSystem } from './middleware/error-handler';
 import { performanceOptimizationSystem } from './performance/optimization';
@@ -5274,6 +5275,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register SEO reporting endpoints
   app.use(seoReportingEndpoints);
+  
+  // Register competitor analysis endpoints
+  app.use(competitorAnalysisEndpoints);
 
   // User subscription plans
   app.post("/api/users/select-plan", requireClerkAuth, async (req, res) => {

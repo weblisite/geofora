@@ -20,6 +20,7 @@ export default function Sidebar() {
     { name: "Industry Detection", path: "/dashboard/industry-detection", icon: "search", isDashboardItem: true },
             { name: "SEO Management", path: "/dashboard/seo-management", icon: "search", isDashboardItem: true },
             { name: "SEO Reporting", path: "/dashboard/seo-reporting", icon: "assessment", isDashboardItem: true },
+            { name: "Competitor Analysis", path: "/dashboard/competitor-analysis", icon: "trending_up", isDashboardItem: true },
             { name: "Custom Domain Setup", path: "/dashboard/custom-domain-setup", icon: "domain", isDashboardItem: true },
     { name: "Content Moderation", path: "/dashboard/content-moderation", icon: "shield", isDashboardItem: true },
     { name: "AI Personas", path: "/dashboard/ai-personas", icon: "bot", isDashboardItem: true },

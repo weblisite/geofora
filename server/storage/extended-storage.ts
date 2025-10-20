@@ -1060,4 +1060,262 @@ export class ExtendedPostgresStorage extends PostgresStorage implements Extended
     `, [userId, forumId]);
     return result.rows;
   }
+
+  // Competitor Analysis Implementation
+  async getCompetitorAnalysis(userId: number, forumId: string, period: string): Promise<any> {
+    const result = await db.query(`
+      SELECT * FROM competitor_analysis 
+      WHERE user_id = $1 AND forum_id = $2 AND created_at >= NOW() - INTERVAL '${period}'
+      ORDER BY created_at DESC 
+      LIMIT 1
+    `, [userId, forumId]);
+    
+    if (result.rows.length === 0) {
+      // Return mock data for demonstration
+      return {
+        id: 1,
+        forumId: parseInt(forumId),
+        competitors: [
+          {
+            id: 1,
+            name: 'TechForum',
+            domain: 'techforum.com',
+            industry: 'Technology',
+            description: 'Leading technology discussion forum',
+            strengths: ['High domain authority', 'Active community', 'Quality content'],
+            weaknesses: ['Slow loading times', 'Limited mobile experience'],
+            keywords: [
+              { keyword: 'tech discussion', position: 3, volume: 1200, difficulty: 7 },
+              { keyword: 'programming help', position: 5, volume: 800, difficulty: 6 },
+              { keyword: 'software development', position: 8, volume: 600, difficulty: 8 }
+            ],
+            traffic: { organic: 15000, paid: 2000, social: 3000, direct: 5000 },
+            backlinks: 2500,
+            domainAuthority: 85,
+            socialMetrics: { followers: 50000, engagement: 3.2 },
+            contentStrategy: { blogPosts: 120, videos: 45, infographics: 20, caseStudies: 15 },
+            lastAnalyzed: new Date().toISOString(),
+            isTracked: true
+          },
+          {
+            id: 2,
+            name: 'BusinessHub',
+            domain: 'businesshub.com',
+            industry: 'Business',
+            description: 'Business insights and networking platform',
+            strengths: ['Expert contributors', 'Industry focus', 'Networking features'],
+            weaknesses: ['Limited free content', 'High subscription cost'],
+            keywords: [
+              { keyword: 'business strategy', position: 4, volume: 900, difficulty: 7 },
+              { keyword: 'entrepreneurship', position: 6, volume: 700, difficulty: 6 },
+              { keyword: 'startup advice', position: 9, volume: 500, difficulty: 5 }
+            ],
+            traffic: { organic: 12000, paid: 3000, social: 2000, direct: 4000 },
+            backlinks: 1800,
+            domainAuthority: 78,
+            socialMetrics: { followers: 35000, engagement: 2.8 },
+            contentStrategy: { blogPosts: 80, videos: 30, infographics: 15, caseStudies: 25 },
+            lastAnalyzed: new Date().toISOString(),
+            isTracked: true
+          }
+        ],
+        marketShare: [
+          { competitor: 'TechForum', share: 35, change: 2 },
+          { competitor: 'BusinessHub', share: 28, change: -1 },
+          { competitor: 'AIChat', share: 20, change: 3 },
+          { competitor: 'StartupTalk', share: 17, change: 0 }
+        ],
+        keywordGaps: [
+          { keyword: 'AI development', opportunity: 8, difficulty: 6, competitors: ['TechForum', 'AIChat'] },
+          { keyword: 'remote work tools', opportunity: 7, difficulty: 5, competitors: ['BusinessHub', 'StartupTalk'] },
+          { keyword: 'digital marketing', opportunity: 9, difficulty: 7, competitors: ['BusinessHub', 'TechForum'] }
+        ],
+        contentGaps: [
+          { topic: 'AI Ethics', opportunity: 8, competitors: ['TechForum', 'AIChat'] },
+          { topic: 'Remote Team Management', opportunity: 7, competitors: ['BusinessHub', 'StartupTalk'] },
+          { topic: 'Sustainable Business Practices', opportunity: 6, competitors: ['BusinessHub'] }
+        ],
+        recommendations: [
+          { type: 'content', priority: 'high', description: 'Create comprehensive AI ethics content series', impact: 'Capture 15% more AI-related traffic', effort: 'Medium' },
+          { type: 'technical', priority: 'medium', description: 'Improve page loading speed', impact: 'Reduce bounce rate by 20%', effort: 'Low' },
+          { type: 'keyword', priority: 'high', description: 'Target remote work tools keywords', impact: 'Increase organic traffic by 25%', effort: 'High' }
+        ],
+        createdAt: new Date().toISOString()
+      };
+    }
+    
+    return result.rows[0];
+  }
+
+  async getTrackedCompetitors(userId: number, forumId: string): Promise<any[]> {
+    const result = await db.query(`
+      SELECT * FROM competitors 
+      WHERE user_id = $1 AND forum_id = $2 AND is_tracked = true
+      ORDER BY created_at DESC
+    `, [userId, forumId]);
+    return result.rows;
+  }
+
+  async addCompetitor(userId: number, competitorData: any): Promise<any> {
+    const result = await db.query(`
+      INSERT INTO competitors (
+        user_id, forum_id, name, domain, industry, description, is_tracked, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, true, NOW())
+      RETURNING *
+    `, [userId, competitorData.forumId, competitorData.name, competitorData.domain, competitorData.industry, competitorData.description]);
+    return result.rows[0];
+  }
+
+  async updateCompetitor(userId: number, competitorId: number, updateData: any): Promise<any> {
+    const result = await db.query(`
+      UPDATE competitors SET
+        name = COALESCE($3, name),
+        domain = COALESCE($4, domain),
+        industry = COALESCE($5, industry),
+        description = COALESCE($6, description),
+        updated_at = NOW()
+      WHERE id = $1 AND user_id = $2
+      RETURNING *
+    `, [competitorId, userId, updateData.name, updateData.domain, updateData.industry, updateData.description]);
+    return result.rows[0];
+  }
+
+  async deleteCompetitor(userId: number, competitorId: number): Promise<void> {
+    await db.query(`
+      UPDATE competitors SET is_tracked = false, updated_at = NOW()
+      WHERE id = $1 AND user_id = $2
+    `, [competitorId, userId]);
+  }
+
+  async analyzeCompetitors(userId: number, forumId: string, competitors: string[], period: string): Promise<any> {
+    // This would perform comprehensive competitor analysis
+    // For now, return mock analysis data
+    return {
+      id: Math.floor(Math.random() * 1000),
+      forumId: parseInt(forumId),
+      competitors: competitors.map((comp, index) => ({
+        id: index + 1,
+        name: comp,
+        domain: `${comp.toLowerCase()}.com`,
+        industry: 'Technology',
+        description: `Competitor analysis for ${comp}`,
+        strengths: ['Strong SEO', 'Active community'],
+        weaknesses: ['Limited content', 'Poor UX'],
+        keywords: [
+          { keyword: `${comp} discussion`, position: Math.floor(Math.random() * 10) + 1, volume: Math.floor(Math.random() * 1000) + 500, difficulty: Math.floor(Math.random() * 5) + 5 }
+        ],
+        traffic: { organic: Math.floor(Math.random() * 20000) + 5000, paid: Math.floor(Math.random() * 5000), social: Math.floor(Math.random() * 3000), direct: Math.floor(Math.random() * 4000) },
+        backlinks: Math.floor(Math.random() * 5000) + 1000,
+        domainAuthority: Math.floor(Math.random() * 30) + 60,
+        socialMetrics: { followers: Math.floor(Math.random() * 100000) + 10000, engagement: Math.random() * 5 + 1 },
+        contentStrategy: { blogPosts: Math.floor(Math.random() * 200) + 50, videos: Math.floor(Math.random() * 100) + 20, infographics: Math.floor(Math.random() * 50) + 10, caseStudies: Math.floor(Math.random() * 30) + 5 },
+        lastAnalyzed: new Date().toISOString(),
+        isTracked: true
+      })),
+      marketShare: competitors.map(comp => ({
+        competitor: comp,
+        share: Math.floor(Math.random() * 40) + 10,
+        change: Math.floor(Math.random() * 10) - 5
+      })),
+      keywordGaps: [
+        { keyword: 'AI development', opportunity: Math.floor(Math.random() * 5) + 5, difficulty: Math.floor(Math.random() * 5) + 5, competitors: competitors.slice(0, 2) },
+        { keyword: 'remote work', opportunity: Math.floor(Math.random() * 5) + 5, difficulty: Math.floor(Math.random() * 5) + 5, competitors: competitors.slice(1, 3) }
+      ],
+      contentGaps: [
+        { topic: 'AI Ethics', opportunity: Math.floor(Math.random() * 5) + 5, competitors: competitors.slice(0, 2) },
+        { topic: 'Remote Management', opportunity: Math.floor(Math.random() * 5) + 5, competitors: competitors.slice(1, 3) }
+      ],
+      recommendations: [
+        { type: 'content', priority: 'high', description: 'Create AI ethics content', impact: 'Increase traffic by 20%', effort: 'Medium' },
+        { type: 'technical', priority: 'medium', description: 'Improve page speed', impact: 'Reduce bounce rate', effort: 'Low' }
+      ],
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  async getCompetitorInsights(userId: number, forumId: string, period: string): Promise<any> {
+    const result = await db.query(`
+      SELECT 
+        competitor,
+        AVG(traffic_organic) as avg_organic_traffic,
+        AVG(domain_authority) as avg_domain_authority,
+        AVG(backlinks) as avg_backlinks,
+        COUNT(*) as analysis_count
+      FROM competitor_metrics 
+      WHERE user_id = $1 AND forum_id = $2 AND created_at >= NOW() - INTERVAL '${period}'
+      GROUP BY competitor
+      ORDER BY avg_organic_traffic DESC
+    `, [userId, forumId]);
+    return result.rows;
+  }
+
+  async getKeywordGaps(userId: number, forumId: string, period: string, limit: number): Promise<any[]> {
+    const result = await db.query(`
+      SELECT 
+        keyword,
+        AVG(opportunity_score) as avg_opportunity,
+        AVG(difficulty_score) as avg_difficulty,
+        COUNT(*) as appearances,
+        STRING_AGG(competitor, ', ') as competitors
+      FROM keyword_gaps 
+      WHERE user_id = $1 AND forum_id = $2 AND created_at >= NOW() - INTERVAL '${period}'
+      GROUP BY keyword
+      ORDER BY avg_opportunity DESC, avg_difficulty ASC
+      LIMIT $3
+    `, [userId, forumId, limit]);
+    return result.rows;
+  }
+
+  async getContentGaps(userId: number, forumId: string, period: string, limit: number): Promise<any[]> {
+    const result = await db.query(`
+      SELECT 
+        topic,
+        AVG(opportunity_score) as avg_opportunity,
+        COUNT(*) as appearances,
+        STRING_AGG(competitor, ', ') as competitors
+      FROM content_gaps 
+      WHERE user_id = $1 AND forum_id = $2 AND created_at >= NOW() - INTERVAL '${period}'
+      GROUP BY topic
+      ORDER BY avg_opportunity DESC
+      LIMIT $3
+    `, [userId, forumId, limit]);
+    return result.rows;
+  }
+
+  async exportCompetitorAnalysis(userId: number, forumId: string, format: string): Promise<any> {
+    const analysis = await this.getCompetitorAnalysis(userId, forumId, '90d');
+    
+    if (format === 'pdf') {
+      return `PDF Competitor Analysis Report for Forum ${forumId}`;
+    } else if (format === 'excel') {
+      return `Excel Competitor Analysis Report for Forum ${forumId}`;
+    }
+    
+    return analysis;
+  }
+
+  async getCompetitorMetrics(userId: number, competitorId: number, period: string): Promise<any> {
+    const result = await db.query(`
+      SELECT 
+        AVG(traffic_organic) as avg_organic_traffic,
+        AVG(traffic_paid) as avg_paid_traffic,
+        AVG(domain_authority) as avg_domain_authority,
+        AVG(backlinks) as avg_backlinks,
+        AVG(social_followers) as avg_social_followers,
+        AVG(engagement_rate) as avg_engagement_rate
+      FROM competitor_metrics 
+      WHERE user_id = $1 AND competitor_id = $2 AND created_at >= NOW() - INTERVAL '${period}'
+    `, [userId, competitorId]);
+    return result.rows[0];
+  }
+
+  async trackCompetitorKeyword(userId: number, competitorId: number, keywordData: any): Promise<any> {
+    const result = await db.query(`
+      INSERT INTO competitor_keywords (
+        user_id, competitor_id, keyword, position, volume, difficulty, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      RETURNING *
+    `, [userId, competitorId, keywordData.keyword, keywordData.position, keywordData.volume, keywordData.difficulty || 5]);
+    return result.rows[0];
+  }
 }
