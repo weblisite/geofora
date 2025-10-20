@@ -5,6 +5,8 @@
  */
 
 import { z } from 'zod';
+import { PostgresStorage } from '../postgres-storage';
+import { db } from '../db';
 
 // AI Personas Storage Methods
 export interface AIPersonaStorage {
@@ -101,12 +103,14 @@ export interface ExtendedStorage extends
   CustomDomainStorage {}
 
 // Implementation of additional storage methods
-export class ExtendedPostgresStorage implements ExtendedStorage {
-  constructor(private db: any) {}
+export class ExtendedPostgresStorage extends PostgresStorage implements ExtendedStorage {
+  constructor(database: any) {
+    super(database);
+  }
 
   // AI Personas Implementation
   async getAllAIPersonas(): Promise<any[]> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT * FROM ai_personas 
       ORDER BY created_at DESC
     `);
@@ -114,7 +118,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async createAIPersona(data: any): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       INSERT INTO ai_personas (
         name, description, personality, expertise, tone, 
         knowledge_level, response_length, brand_voice, 
@@ -131,7 +135,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async updateAIPersona(id: number, data: any): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       UPDATE ai_personas SET
         name = COALESCE($2, name),
         description = COALESCE($3, description),
@@ -157,17 +161,17 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async deleteAIPersona(id: number): Promise<void> {
-    await this.db.query('DELETE FROM ai_personas WHERE id = $1', [id]);
+    await db.query('DELETE FROM ai_personas WHERE id = $1', [id]);
   }
 
   async getAIPersona(id: number): Promise<any> {
-    const result = await this.db.query('SELECT * FROM ai_personas WHERE id = $1', [id]);
+    const result = await db.query('SELECT * FROM ai_personas WHERE id = $1', [id]);
     return result.rows[0];
   }
 
   // Multilingual Support Implementation
   async getAllLanguages(): Promise<any[]> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT * FROM languages 
       ORDER BY is_default DESC, name ASC
     `);
@@ -175,7 +179,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async createLanguage(data: any): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       INSERT INTO languages (
         code, name, native_name, flag, is_active, is_default,
         translation_quality, ai_provider, custom_prompts, created_at, updated_at
@@ -190,7 +194,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async updateLanguage(code: string, data: any): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       UPDATE languages SET
         name = COALESCE($2, name),
         native_name = COALESCE($3, native_name),
@@ -212,7 +216,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async deleteLanguage(code: string): Promise<void> {
-    await this.db.query('DELETE FROM languages WHERE code = $1', [code]);
+    await db.query('DELETE FROM languages WHERE code = $1', [code]);
   }
 
   async translateContent(content: string, sourceLang: string, targetLang: string): Promise<string> {
@@ -227,7 +231,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async getRecentTranslations(): Promise<any[]> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT * FROM content_translations 
       ORDER BY created_at DESC 
       LIMIT 50
@@ -236,7 +240,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async getTranslationConfigs(): Promise<any[]> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT * FROM translation_configs 
       ORDER BY created_at DESC
     `);
@@ -245,7 +249,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
 
   // Custom AI Training Implementation
   async getAllCustomModels(): Promise<any[]> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT * FROM custom_models 
       ORDER BY created_at DESC
     `);
@@ -253,7 +257,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async createCustomModel(data: any): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       INSERT INTO custom_models (
         name, description, base_model, training_data, hyperparameters,
         status, performance, cost, created_at, updated_at
@@ -268,7 +272,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async updateCustomModel(id: number, data: any): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       UPDATE custom_models SET
         name = COALESCE($2, name),
         description = COALESCE($3, description),
@@ -292,11 +296,11 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async deleteCustomModel(id: number): Promise<void> {
-    await this.db.query('DELETE FROM custom_models WHERE id = $1', [id]);
+    await db.query('DELETE FROM custom_models WHERE id = $1', [id]);
   }
 
   async startModelTraining(id: number): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       INSERT INTO training_jobs (
         model_id, status, progress, start_time, created_at
       ) VALUES ($1, 'running', 0, NOW(), NOW())
@@ -306,7 +310,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async deployModel(id: number): Promise<any> {
-    await this.db.query(`
+    await db.query(`
       UPDATE custom_models SET
         status = 'deployed',
         deployed_at = NOW(),
@@ -322,7 +326,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async getTrainingDatasets(): Promise<any[]> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT * FROM training_datasets 
       ORDER BY created_at DESC
     `);
@@ -330,7 +334,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async getTrainingJobs(): Promise<any[]> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT * FROM training_jobs 
       ORDER BY created_at DESC
     `);
@@ -338,7 +342,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async stopTrainingJob(id: number): Promise<void> {
-    await this.db.query(`
+    await db.query(`
       UPDATE training_jobs SET
         status = 'stopped',
         end_time = NOW()
@@ -348,7 +352,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
 
   // Webhook System Implementation
   async getAllWebhooks(): Promise<any[]> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT * FROM webhooks 
       ORDER BY created_at DESC
     `);
@@ -356,7 +360,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async createWebhook(data: any): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       INSERT INTO webhooks (
         name, url, events, secret, is_active, retry_policy,
         headers, delivery_stats, created_at, updated_at
@@ -371,7 +375,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async updateWebhook(id: number, data: any): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       UPDATE webhooks SET
         name = COALESCE($2, name),
         url = COALESCE($3, url),
@@ -392,7 +396,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async deleteWebhook(id: number): Promise<void> {
-    await this.db.query('DELETE FROM webhooks WHERE id = $1', [id]);
+    await db.query('DELETE FROM webhooks WHERE id = $1', [id]);
   }
 
   async testWebhook(id: number, payload: any): Promise<any> {
@@ -401,7 +405,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async getWebhookEvents(): Promise<any[]> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT * FROM webhook_events 
       ORDER BY created_at DESC 
       LIMIT 100
@@ -410,7 +414,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async retryWebhookEvent(id: number): Promise<void> {
-    await this.db.query(`
+    await db.query(`
       UPDATE webhook_events SET
         status = 'retrying',
         attempts = attempts + 1
@@ -419,7 +423,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async getWebhookTests(): Promise<any[]> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT * FROM webhook_tests 
       ORDER BY created_at DESC 
       LIMIT 50
@@ -429,7 +433,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
 
   // Content Moderation Implementation
   async getModerationStats(): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT 
         COUNT(*) as total_content,
         COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved,
@@ -441,7 +445,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async getModerationRules(): Promise<any[]> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT * FROM moderation_rules 
       ORDER BY created_at DESC
     `);
@@ -449,7 +453,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async createModerationRule(data: any): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       INSERT INTO moderation_rules (
         name, description, type, pattern, action, severity, is_active, created_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
@@ -462,7 +466,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async updateModerationRule(id: number, data: any): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       UPDATE moderation_rules SET
         name = COALESCE($2, name),
         description = COALESCE($3, description),
@@ -481,11 +485,11 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async deleteModerationRule(id: number): Promise<void> {
-    await this.db.query('DELETE FROM moderation_rules WHERE id = $1', [id]);
+    await db.query('DELETE FROM moderation_rules WHERE id = $1', [id]);
   }
 
   async getModerationActions(): Promise<any[]> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT * FROM moderation_actions 
       ORDER BY created_at DESC 
       LIMIT 100
@@ -494,7 +498,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async performModerationAction(data: any): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       INSERT INTO moderation_actions (
         content_id, content_type, action, reason, moderator_id, created_at
       ) VALUES ($1, $2, $3, $4, $5, NOW())
@@ -506,7 +510,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async getModerationReports(): Promise<any[]> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT * FROM moderation_reports 
       ORDER BY created_at DESC 
       LIMIT 50
@@ -516,7 +520,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
 
   // SEO Management Implementation
   async getSEOConfig(): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT * FROM seo_config 
       ORDER BY created_at DESC 
       LIMIT 1
@@ -525,7 +529,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async updateSEOConfig(data: any): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       INSERT INTO seo_config (config_data, created_at)
       VALUES ($1, NOW())
       ON CONFLICT (id) DO UPDATE SET
@@ -537,7 +541,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async getIndexingStatus(): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT 
         COUNT(*) as total_pages,
         COUNT(CASE WHEN indexed = true THEN 1 END) as indexed_pages,
@@ -563,7 +567,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async updateRobotsTxt(content: string): Promise<void> {
-    await this.db.query(`
+    await db.query(`
       INSERT INTO robots_txt (content, created_at)
       VALUES ($1, NOW())
       ON CONFLICT (id) DO UPDATE SET
@@ -573,7 +577,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async getStructuredData(): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT * FROM structured_data 
       ORDER BY created_at DESC 
       LIMIT 1
@@ -582,7 +586,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async updateStructuredData(data: any): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       INSERT INTO structured_data (data, created_at)
       VALUES ($1, NOW())
       ON CONFLICT (id) DO UPDATE SET
@@ -595,7 +599,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
 
   // Custom Domain Setup Implementation
   async getDomains(): Promise<any[]> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT * FROM domains 
       ORDER BY created_at DESC
     `);
@@ -603,7 +607,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async addDomain(data: any): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       INSERT INTO domains (
         domain, is_verified, verification_token, created_at
       ) VALUES ($1, $2, $3, NOW())
@@ -613,7 +617,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async verifyDomain(id: number): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       UPDATE domains SET
         is_verified = true,
         verified_at = NOW()
@@ -624,7 +628,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async getSubdomains(): Promise<any[]> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT * FROM subdomains 
       ORDER BY created_at DESC
     `);
@@ -632,7 +636,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async createSubdomain(data: any): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       INSERT INTO subdomains (
         subdomain, domain_id, forum_id, created_at
       ) VALUES ($1, $2, $3, NOW())
@@ -642,7 +646,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async getSSLCertificates(): Promise<any[]> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT * FROM ssl_certificates 
       ORDER BY created_at DESC
     `);
@@ -650,7 +654,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async getURLRedirects(): Promise<any[]> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       SELECT * FROM url_redirects 
       ORDER BY created_at DESC
     `);
@@ -658,7 +662,7 @@ export class ExtendedPostgresStorage implements ExtendedStorage {
   }
 
   async createURLRedirect(data: any): Promise<any> {
-    const result = await this.db.query(`
+    const result = await db.query(`
       INSERT INTO url_redirects (
         from_url, to_url, type, is_active, created_at
       ) VALUES ($1, $2, $3, $4, NOW())

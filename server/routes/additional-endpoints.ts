@@ -6,9 +6,9 @@
 
 import express from 'express';
 import { z } from 'zod';
-import { storage } from './storage';
-import { requireClerkAuth } from './clerk-auth';
-import { generateAnswer } from './ai';
+import { storage } from '../storage';
+import { requireClerkAuth } from '../clerk-auth';
+import { generateAnswer } from '../ai';
 
 const router = express.Router();
 
