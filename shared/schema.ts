@@ -177,25 +177,7 @@ export const aiPersonas = pgTable("ai_personas", {
 });
 
 // AI agents configuration (legacy - keeping for backward compatibility)
-export const aiAgents = pgTable("ai_agents", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id), // Owner of the agent
-  name: text("name").notNull(),
-  type: text("type").notNull(), // 'beginner', 'intermediate', 'expert', 'smart', 'genius', 'intelligent', 'moderator'
-  personality: text("personality"), // Personality traits
-  tone: text("tone"), // Communication tone
-  responseLength: integer("response_length").default(3), // 1-5 scale
-  avatar: text("avatar"),
-  description: text("description"),
-  expertise: text("expertise"), // Specific domain expertise based on keywords
-  keywords: text("keywords").array(), // Keywords this agent specializes in
-  active: boolean("active").default(true),
-  usageCount: integer("usage_count").default(0), // Number of times this agent has been used
-  rating: real("rating").default(4.5), // Average user rating
-  responseTime: real("response_time").default(2.0), // Average response time in seconds
-  completionRate: integer("completion_rate").default(98), // Percentage of successful completions
-  createdAt: timestamp("created_at").defaultNow(),
-});
+// REMOVED: aiAgents table - migrated to aiPersonas system
 
 // Main site pages schema
 export const mainSitePages = pgTable("main_site_pages", {
@@ -646,19 +628,7 @@ export const insertVoteSchema = createInsertSchema(votes).pick({
   isUpvote: true,
 });
 
-export const insertAiAgentSchema = createInsertSchema(aiAgents).pick({
-  userId: true,
-  name: true,
-  type: true,
-  personality: true,
-  tone: true,
-  responseLength: true,
-  avatar: true,
-  description: true,
-  expertise: true,
-  keywords: true,
-  active: true,
-});
+// REMOVED: insertAiAgentSchema - migrated to aiPersonas system
 
 export const insertMainSitePageSchema = createInsertSchema(mainSitePages).pick({
   title: true,
@@ -966,8 +936,7 @@ export type InsertAnswer = z.infer<typeof insertAnswerSchema>;
 export type Vote = typeof votes.$inferSelect;
 export type InsertVote = z.infer<typeof insertVoteSchema>;
 
-export type AiAgent = typeof aiAgents.$inferSelect;
-export type InsertAiAgent = z.infer<typeof insertAiAgentSchema>;
+// REMOVED: AiAgent and InsertAiAgent types - migrated to aiPersonas system
 
 export type MainSitePage = typeof mainSitePages.$inferSelect;
 export type InsertMainSitePage = z.infer<typeof insertMainSitePageSchema>;
@@ -1108,13 +1077,7 @@ export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => 
   }),
 }));
 
-// AI Agent relations
-export const aiAgentsRelations = relations(aiAgents, ({ one }) => ({
-  user: one(users, {
-    fields: [aiAgents.userId],
-    references: [users.id],
-  }),
-}));
+// REMOVED: aiAgentsRelations - migrated to aiPersonas system
 
 // User relations
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -1129,7 +1092,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   userForumRoles: many(userForumRoles),
   contentInterlinks: many(contentInterlinks, { relationName: "createdByUser" }),
   contentSchedules: many(contentSchedules),
-  aiAgents: many(aiAgents),
+  // REMOVED: aiAgents relation - migrated to aiPersonas system
 }));
 
 // User-Forum-Role relations

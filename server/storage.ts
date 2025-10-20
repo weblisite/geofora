@@ -8,7 +8,7 @@ import {
   questions, type Question, type InsertQuestion, type QuestionWithDetails,
   answers, type Answer, type InsertAnswer, type AnswerWithDetails,
   votes, type Vote, type InsertVote,
-  aiAgents, type AiAgent, type InsertAiAgent,
+  // REMOVED: aiAgents import - migrated to aiPersonas system
   mainSitePages, type MainSitePage, type InsertMainSitePage, type MainSitePageWithLinks,
   contentInterlinks, type ContentInterlink, type InsertContentInterlink,
   forums, type Forum, type InsertForum, type ForumWithStats,
@@ -107,10 +107,7 @@ export interface IStorage {
   getVoteByUserAndAnswer(userId: number, answerId: number): Promise<Vote | undefined>;
   createOrUpdateVote(vote: InsertVote): Promise<Vote>;
 
-  // AI Agent methods
-  getAIAgent(id: number): Promise<AiAgent | undefined>;
-  getAllAIAgents(): Promise<AiAgent[]>;
-  createAIAgent(agent: InsertAiAgent): Promise<AiAgent>;
+  // REMOVED: AI Agent methods - migrated to aiPersonas system
   
   // Main Site Pages methods
   getMainSitePage(id: number): Promise<MainSitePage | undefined>;
@@ -317,7 +314,7 @@ export class MemStorage implements IStorage {
   private questionsStore: Map<number, Question>;
   private answersStore: Map<number, Answer>;
   private votesStore: Map<number, Vote>;
-  private aiAgentsStore: Map<number, AiAgent>;
+  // REMOVED: aiAgentsStore - migrated to aiPersonas system
   private mainSitePagesStore: Map<number, MainSitePage>;
   private contentInterlinksStore: Map<number, ContentInterlink>;
   private forumsStore: Map<number, Forum>;
@@ -348,7 +345,7 @@ export class MemStorage implements IStorage {
   private questionId: number;
   private answerId: number;
   private voteId: number;
-  private aiAgentId: number;
+  // REMOVED: aiAgentId counter - migrated to aiPersonas system
   private mainSitePageId: number;
   private contentInterlinkId: number;
   private forumId: number;
@@ -381,7 +378,7 @@ export class MemStorage implements IStorage {
     this.questionsStore = new Map();
     this.answersStore = new Map();
     this.votesStore = new Map();
-    this.aiAgentsStore = new Map();
+    // REMOVED: aiAgentsStore initialization - migrated to aiPersonas system
     this.mainSitePagesStore = new Map();
     this.contentInterlinksStore = new Map();
     this.forumsStore = new Map();
@@ -413,7 +410,7 @@ export class MemStorage implements IStorage {
     this.questionId = 1;
     this.answerId = 1;
     this.voteId = 1;
-    this.aiAgentId = 1;
+    // REMOVED: aiAgentId initialization - migrated to aiPersonas system
     this.mainSitePageId = 1;
     this.contentInterlinkId = 1;
     this.forumId = 1;
@@ -1774,21 +1771,7 @@ export class MemStorage implements IStorage {
     }
   }
 
-  // AI Agent methods
-  async getAIAgent(id: number): Promise<AiAgent | undefined> {
-    return this.aiAgentsStore.get(id);
-  }
-
-  async getAllAIAgents(): Promise<AiAgent[]> {
-    return Array.from(this.aiAgentsStore.values());
-  }
-
-  async createAIAgent(agent: InsertAiAgent): Promise<AiAgent> {
-    const id = this.aiAgentId++;
-    const newAgent = { ...agent, id };
-    this.aiAgentsStore.set(id, newAgent);
-    return newAgent;
-  }
+  // REMOVED: AI Agent method implementations - migrated to aiPersonas system
 
   // Main Site Pages methods
   async getMainSitePage(id: number): Promise<MainSitePage | undefined> {

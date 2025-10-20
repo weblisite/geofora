@@ -2,7 +2,7 @@ import { eq, and, sql, desc, asc, like, or, gte, lte, inArray } from 'drizzle-or
 import { db } from './db';
 import { 
   roles, permissions, rolePermissions, users, userForumRoles,
-  categories, questions, answers, votes, aiAgents,
+  // REMOVED: aiAgents import - migrated to aiPersonas system
   mainSitePages, contentInterlinks, forums, domainVerifications,
   leadCaptureForms, leadSubmissions, gatedContents, crmIntegrations,
   leadFormViews, contentSchedules, seoKeywords, seoPositions,
@@ -700,81 +700,7 @@ export class PostgresStorage implements IStorage {
     }
   }
 
-  // AI Agent methods
-  async getAiAgent(id: number): Promise<AiAgent | undefined> {
-    const result = await db.select().from(aiAgents).where(eq(aiAgents.id, id));
-    return result[0];
-  }
-
-  async getAiAgentByType(type: string): Promise<AiAgent | undefined> {
-    const result = await db.select().from(aiAgents).where(eq(aiAgents.type, type));
-    return result[0];
-  }
-
-  async getAllAiAgents(): Promise<AiAgent[]> {
-    return await db.select().from(aiAgents);
-  }
-  
-  async getAiAgentsByUserId(userId: number): Promise<AiAgent[]> {
-    return await db.select()
-      .from(aiAgents)
-      .where(eq(aiAgents.userId, userId));
-  }
-  
-  async getActiveAiAgentsByUserId(userId: number): Promise<AiAgent[]> {
-    return await db.select()
-      .from(aiAgents)
-      .where(and(
-        eq(aiAgents.userId, userId),
-        eq(aiAgents.active, true)
-      ));
-  }
-
-  async createAiAgent(agent: InsertAiAgent): Promise<AiAgent> {
-    const result = await db.insert(aiAgents).values(agent).returning();
-    return result[0];
-  }
-
-  async updateAiAgent(id: number, data: Partial<InsertAiAgent>): Promise<AiAgent> {
-    const result = await db.update(aiAgents).set(data).where(eq(aiAgents.id, id)).returning();
-    return result[0];
-  }
-  
-  async incrementAiAgentUsage(id: number): Promise<AiAgent> {
-    // First get the current count
-    const agent = await this.getAiAgent(id);
-    if (!agent) {
-      throw new Error(`AI Agent with ID ${id} not found`);
-    }
-    
-    // Increment the count
-    const usageCount = (agent.usageCount || 0) + 1;
-    
-    // Update the agent
-    const result = await db.update(aiAgents)
-      .set({ usageCount })
-      .where(eq(aiAgents.id, id))
-      .returning();
-      
-    return result[0];
-  }
-  
-  async updateAiAgentMetrics(id: number, metrics: { 
-    rating?: number; 
-    responseTime?: number; 
-    completionRate?: number;
-  }): Promise<AiAgent> {
-    const result = await db.update(aiAgents)
-      .set(metrics)
-      .where(eq(aiAgents.id, id))
-      .returning();
-      
-    return result[0];
-  }
-
-  async deleteAiAgent(id: number): Promise<void> {
-    await db.delete(aiAgents).where(eq(aiAgents.id, id));
-  }
+  // REMOVED: AI Agent methods - migrated to aiPersonas system
   
   async getUserSubscription(userId: number): Promise<{ 
     plan: string; 
