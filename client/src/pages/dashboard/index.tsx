@@ -41,6 +41,7 @@ const ContentModerationDashboard = lazy(() => import("@/components/dashboard/con
 const AIPersonasCustomizationDashboard = lazy(() => import("@/components/dashboard/ai-personas-customization"));
 const MultilingualSupportDashboard = lazy(() => import("@/components/dashboard/multilingual-support"));
 const CustomAITrainingDashboard = lazy(() => import("@/components/dashboard/custom-ai-training"));
+const WebhookSystemDashboard = lazy(() => import("@/components/dashboard/webhook-system"));
 const BrandVoiceDashboard = lazy(() => import("@/components/dashboard/brand-voice"));
 
 // Define the stats type
@@ -141,6 +142,8 @@ export default function DashboardPage() {
           return ['/api/languages', '/api/translation-configs', '/api/translations/recent', '/api/translations/test', '/api/translations/bulk'];
         case 'custom-ai-training':
           return ['/api/custom-models', '/api/training-datasets', '/api/training-jobs', '/api/custom-models/test'];
+        case 'webhook-system':
+          return ['/api/webhooks', '/api/webhook-events', '/api/webhook-tests'];
         case 'brand-voice':
           return ['/api/brand-voice', '/api/brand-voice/config'];
       default:
@@ -334,6 +337,14 @@ export default function DashboardPage() {
             <div className="p-6">
               <Suspense fallback={<LoadingComponent />}>
                 <CustomAITrainingDashboard />
+              </Suspense>
+            </div>
+          );
+        } else if (location === "/dashboard/webhook-system") {
+          return (
+            <div className="p-6">
+              <Suspense fallback={<LoadingComponent />}>
+                <WebhookSystemDashboard />
               </Suspense>
             </div>
           );

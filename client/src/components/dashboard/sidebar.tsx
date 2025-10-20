@@ -24,6 +24,7 @@ export default function Sidebar() {
     { name: "AI Personas", path: "/dashboard/ai-personas", icon: "bot", isDashboardItem: true },
     { name: "Multilingual Support", path: "/dashboard/multilingual-support", icon: "language", isDashboardItem: true },
     { name: "Custom AI Training", path: "/dashboard/custom-ai-training", icon: "psychology", isDashboardItem: true },
+    { name: "Webhook System", path: "/dashboard/webhook-system", icon: "webhook", isDashboardItem: true },
     { name: "Brand Voice", path: "/dashboard/brand-voice", icon: "record_voice_over", isDashboardItem: true },
     { name: "Interlinking", path: "/dashboard/interlinking", icon: "link", isDashboardItem: true },
     { name: "Keyword Analysis", path: "/dashboard/keyword-analysis", icon: "travel_explore", isDashboardItem: true },
