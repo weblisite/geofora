@@ -32,6 +32,7 @@ import {
 } from "@shared/schema";
 // Import PostgreSQL storage
 import { PostgresStorage } from './postgres-storage';
+import { ExtendedPostgresStorage } from './storage/extended-storage';
 
 // Storage interface with CRUD methods
 export interface IStorage {
@@ -3786,5 +3787,5 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Use PostgreSQL storage instead of in-memory storage
-export const storage = new PostgresStorage();
+// Use Extended PostgreSQL storage with additional methods
+export const storage = new ExtendedPostgresStorage(new PostgresStorage().db);

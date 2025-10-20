@@ -5,6 +5,7 @@ import { z } from "zod";
 import * as crypto from "crypto";
 import { generateAnswer, generateSeoQuestions, analyzeQuestionSeo, generateInterlinkingSuggestions } from "./ai";
 import prdEndpoints from "./routes/prd-endpoints";
+import additionalEndpoints from "./routes/additional-endpoints";
 import { clerkClient } from '@clerk/clerk-sdk-node';
 import { errorHandlingSystem } from './middleware/error-handler';
 import { performanceOptimizationSystem } from './performance/optimization';
@@ -5250,6 +5251,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register PRD endpoints
   app.use('/api', prdEndpoints);
+  
+  // Register additional endpoints for frontend components
+  app.use(additionalEndpoints);
 
   // User subscription plans
   app.post("/api/users/select-plan", requireClerkAuth, async (req, res) => {
